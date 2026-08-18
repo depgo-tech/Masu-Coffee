@@ -62,7 +62,6 @@
   .clock .date { font-size:11px; color:var(--text-dim); font-weight:400; }
   .main { flex:1; display:flex; overflow:hidden; }
 
-  /* POS */
   .pos-layout { flex:1; display:flex; overflow:hidden; }
   .menu-section { flex:1; display:flex; flex-direction:column; padding:16px; overflow:hidden; }
   .menu-toolbar { display:flex; gap:12px; margin-bottom:14px; }
@@ -85,7 +84,6 @@
   .cat-tab:hover { border-color: var(--accent); color:var(--text); }
   .cat-tab.active { background: var(--accent); color:white; border-color: var(--accent); }
 
-  /* FLEX GRID - tidak memanjang jika sedikit */
   .menu-grid {
     flex:1; display:flex; flex-wrap:wrap; gap:12px;
     overflow-y:auto; padding:4px; align-content:flex-start;
@@ -109,7 +107,6 @@
   .menu-desc { font-size:10px; color:var(--text-dim); margin-bottom:6px; min-height:24px; line-height:1.3; }
   .menu-price { font-size:14px; color:var(--accent); font-weight:700; }
 
-  /* ORDER PANEL */
   .order-panel {
     width:380px; background: var(--bg-2);
     border-left:1px solid var(--border); display:flex; flex-direction:column;
@@ -172,7 +169,6 @@
   .hold-btn:hover:not(:disabled) { border-color:var(--gold); color:var(--gold); }
   .hold-btn:disabled { opacity:0.5; cursor:not-allowed; }
 
-  /* MODAL */
   .modal-overlay {
     position:fixed; top:0; left:0; right:0; bottom:0;
     background:rgba(0,0,0,0.5); z-index:100;
@@ -230,8 +226,7 @@
   .btn-secondary:hover { background:var(--panel-2); color:var(--text); }
   .btn-danger { padding:8px 14px; background:var(--danger); color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; }
 
-  /* TABLES */
-  .view-container { padding:20px; flex:1; overflow-y:auto; }
+  .view-container { padding:20px; flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .view-title { font-size:20px; font-weight:700; margin-bottom:16px; }
   .tables-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:16px; }
   .table-card {
@@ -245,7 +240,6 @@
   .table-status { font-size:11px; color:var(--text-dim); margin-top:4px; }
   .table-card.held .table-status { color:var(--gold); font-weight:600; }
 
-  /* REPORTS */
   .report-cards { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:20px; }
   .report-card { background: var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:18px; box-shadow: var(--shadow); }
   .report-card .label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; font-weight:600; }
@@ -263,7 +257,6 @@
   .badge.dine-in { background:var(--accent-light); color:var(--accent-dark); }
   .badge.takeaway { background:#fff4e0; color:var(--gold); }
 
-  /* STOCK */
   .stock-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; }
   .stock-card { background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow: var(--shadow); }
   .stock-card .name { font-size:15px; font-weight:600; margin-bottom:6px; }
@@ -274,16 +267,14 @@
   .stock-actions input { flex:1; padding:8px 12px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; }
   .stock-actions button { padding:8px 14px; background:var(--accent); color:white; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-weight:600; }
 
-  /* SETTINGS */
-  .settings-container { max-width:700px; margin:0 auto; padding:20px; }
+  .settings-container { max-width:700px; margin:0 auto; padding:20px; overflow-y:auto; flex:1; height:100%; -webkit-overflow-scrolling:touch; }
   .settings-section { background:var(--bg-2); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; box-shadow: var(--shadow); }
   .settings-section h3 { font-size:15px; font-weight:700; margin-bottom:14px; color:var(--accent); border-bottom:1px solid var(--border); padding-bottom:8px; }
   .settings-save { width:100%; padding:14px; background:var(--accent); color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; margin-top:10px; }
   .settings-save:hover { background:var(--accent-dark); }
 
-  /* MENU MANAGEMENT */
   .mgmt-container { padding:20px; flex:1; overflow-y:auto; }
-  .mgmt-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .mgmt-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px; }
   .mgmt-grid { display:flex; flex-wrap:wrap; gap:12px; }
   .mgmt-card {
     width:200px; flex:0 0 200px; background:var(--bg-2);
@@ -303,7 +294,6 @@
   .mgmt-del { background:#fce0e0; color:var(--danger); }
   .mgmt-del:hover { background:var(--danger); color:white; }
 
-  /* IMAGE UPLOAD */
   .img-upload-area { display:flex; gap:12px; align-items:flex-start; }
   .img-preview { width:100px; height:100px; border-radius:8px; overflow:hidden; background:var(--panel-2); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
   .img-preview img { width:100%; height:100%; object-fit:cover; }
@@ -312,7 +302,6 @@
   .img-upload-btns input[type=file] { font-size:12px; }
   .img-upload-btns input[type=text] { padding:8px; background:var(--panel-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; }
 
-  /* RECEIPT - for print window */
   .receipt { width: 280px; padding: 16px; color:#000; font-family: 'Courier New', monospace; font-size:11px; line-height:1.4; }
   .receipt h3 { text-align:center; font-size:14px; margin-bottom:4px; }
   .receipt .raddr { text-align:center; font-size:10px; margin-bottom:8px; }
@@ -372,7 +361,6 @@
   <div class="main" id="mainContent"></div>
 </div>
 
-<!-- VARIANT MODAL -->
 <div class="modal-overlay" id="variantModal">
   <div class="modal">
     <h2 id="modalItemName">Customize</h2>
@@ -393,7 +381,6 @@
   </div>
 </div>
 
-<!-- PAYMENT MODAL -->
 <div class="modal-overlay" id="paymentModal">
   <div class="modal" style="max-width:420px;">
     <h2>💳 Pembayaran</h2>
@@ -430,7 +417,6 @@
   </div>
 </div>
 
-<!-- MENU EDIT MODAL -->
 <div class="modal-overlay" id="menuEditModal">
   <div class="modal">
     <h2 id="menuEditTitle">Tambah Menu</h2>
@@ -459,7 +445,7 @@
         <div class="img-preview" id="imgPreview"></div>
         <div class="img-upload-btns">
           <input type="file" id="imgFile" accept="image/*" onchange="handleImgUpload(event)">
-          <input type="text" id="imgUrl" placeholder="atau paste URL gambar" onchange="handleImgUrl()">
+          <input type="text" id="imgUrl" placeholder="atau paste URL gambar" oninput="handleImgUrl()">
         </div>
       </div>
     </div>
@@ -477,7 +463,6 @@
   </div>
 </div>
 
-<!-- CATEGORY MODAL -->
 <div class="modal-overlay" id="categoryModal">
   <div class="modal" style="max-width:400px;">
     <h2>Kelola Kategori</h2>
@@ -492,7 +477,6 @@
   </div>
 </div>
 
-<!-- RECEIPT MODAL -->
 <div class="modal-overlay" id="receiptModal">
   <div class="modal" style="max-width:340px;">
     <div id="receiptContent"></div>
@@ -526,34 +510,31 @@ let settings = {
 };
 let editImageData = '';
 
-// ===== SVG ILLUSTRATIONS (Professional, bukan emoji) =====
 const SVG_IMG = {
-  espresso: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,92 Q38,98 44,98 L76,98 Q82,98 82,92 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#2a1505" stroke="#5c3a21" stroke-width="2"/><ellipse cx="56" cy="65" rx="10" ry="2.5" fill="#a07040" opacity="0.4"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
-  americano: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,50 L35,100 Q35,106 41,106 L79,106 Q85,106 85,100 L85,50 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="51" rx="25" ry="5" fill="#3a1f0a" stroke="#5c3a21" stroke-width="2"/><path d="M85,55 Q97,55 97,70 Q97,82 85,82" fill="none" stroke="#5c3a21" stroke-width="2.5"/><path d="M50,60 Q55,68 50,76 Q45,84 50,92" stroke="#a07040" stroke-width="1.5" fill="none" opacity="0.3"/></svg>`,
-  cappuccino: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,92 Q38,98 44,98 L76,98 Q82,98 82,92 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#fff" stroke="#5c3a21" stroke-width="2"/><ellipse cx="60" cy="66" rx="18" ry="4" fill="#f5ede0"/><path d="M50,64 Q55,60 60,64 Q65,60 70,64" stroke="#d4a574" stroke-width="1.5" fill="none"/><ellipse cx="60" cy="62" rx="14" ry="3" fill="#2a1505" opacity="0.3"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
-  latte: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M42,55 L78,55 M42,70 L78,70 M42,85 L78,85" stroke="#d4a574" stroke-width="0.8" opacity="0.3"/><ellipse cx="60" cy="41" rx="14" ry="3" fill="#f5ede0"/><path d="M52,39 Q60,35 68,39" stroke="#caramel" stroke-width="1" fill="none" opacity="0.4"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
-  mocha: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#fff" stroke="#5c3a21" stroke-width="2"/><ellipse cx="60" cy="41" rx="14" ry="3" fill="#f5ede0"/><path d="M42,55 Q60,52 78,55 L78,80 Q60,83 42,80 Z" fill="#d4a574" opacity="0.2"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
-  tea: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="103" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,95 Q38,100 44,100 L76,100 Q82,100 82,95 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#c8d6a0" stroke="#5c3a21" stroke-width="2"/><path d="M50,63 Q55,60 60,63 Q65,60 70,63" stroke="#8a9a5b" stroke-width="1.5" fill="none"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/><path d="M55,40 Q55,30 60,28 Q65,30 65,40" stroke="#5c3a21" stroke-width="2" fill="none" opacity="0.4"/></svg>`,
-  greenTea: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#a0c050" stroke="#5c3a21" stroke-width="2"/><path d="M42,55 Q60,52 78,55 L78,90 Q60,93 42,90 Z" fill="#c0d080" opacity="0.3"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
-  lemonTea: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M40,50 L40,98 Q40,103 45,103 L75,103 Q80,103 80,98 L80,50 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="51" rx="20" ry="4" fill="#d4a020" stroke="#5c3a21" stroke-width="2"/><circle cx="88" cy="45" r="8" fill="#f0c020" stroke="#5c3a21" stroke-width="2"/><path d="M85,42 L91,48 M91,42 L85,48" stroke="#5c3a21" stroke-width="1"/></svg>`,
-  fries: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M40,60 L42,100 Q42,105 47,105 L73,105 Q78,105 78,100 L80,60 Z" fill="#d4480a" stroke="#5c3a21" stroke-width="2.5"/><path d="M40,60 L80,60 L78,52 L42,52 Z" fill="#e85820" stroke="#5c3a21" stroke-width="2"/><rect x="48" y="30" width="5" height="30" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="56" y="25" width="5" height="35" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="64" y="28" width="5" height="32" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="72" y="32" width="5" height="28" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/></svg>`,
-  banana: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="35" ry="6" fill="#f5ede0" stroke="#5c3a21" stroke-width="2"/><path d="M40,90 Q35,50 55,45 Q75,40 85,55 Q90,65 85,75 Q80,85 70,88 Z" fill="#f0c020" stroke="#5c3a21" stroke-width="2.5"/><path d="M40,90 Q50,88 60,88 Q70,88 85,75" stroke="#5c3a21" stroke-width="2" fill="none"/><circle cx="50" cy="50" r="3" fill="#5c3a21" opacity="0.3"/></svg>`,
-  croissant: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="100" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M30,70 Q25,50 40,45 Q50,42 60,48 Q70,42 80,45 Q95,50 90,70 Q85,85 60,88 Q35,85 30,70 Z" fill="#d4a040" stroke="#5c3a21" stroke-width="2.5"/><path d="M35,65 Q40,55 50,58 M50,58 Q60,55 70,58 M70,58 Q80,55 85,65" stroke="#a07020" stroke-width="2" fill="none"/><path d="M40,72 Q45,68 50,72 M55,72 Q60,68 65,72 M70,72 Q75,68 80,72" stroke="#a07020" stroke-width="1.5" fill="none"/></svg>`,
-  donut: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><circle cx="60" cy="60" r="32" fill="#f0c060" stroke="#5c3a21" stroke-width="2.5"/><circle cx="60" cy="60" r="12" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M40,50 Q50,45 60,48 Q70,45 80,50 L78,55 Q70,52 60,54 Q50,52 42,55 Z" fill="#d44020" opacity="0.7"/><circle cx="45" cy="55" r="2" fill="#5c3a21"/><circle cx="55" cy="52" r="2" fill="#5c3a21"/><circle cx="68" cy="53" r="2" fill="#5c3a21"/><circle cx="75" cy="56" r="2" fill="#5c3a21"/></svg>`,
-  cake: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,70 L35,100 Q35,105 40,105 L80,105 Q85,105 85,100 L85,70 Z" fill="#f5ede0" stroke="#5c3a21" stroke-width="2.5"/><path d="M35,70 L85,70 L80,60 L40,60 Z" fill="#d4a040" stroke="#5c3a21" stroke-width="2"/><path d="M40,60 L80,60" stroke="#a07020" stroke-width="1.5"/><rect x="48" y="65" width="8" height="5" fill="#d44020"/><rect x="64" y="65" width="8" height="5" fill="#d44020"/><path d="M45,55 L45,65 M55,55 L55,65 M65,55 L65,65 M75,55 L75,65" stroke="#d4a040" stroke-width="2"/></svg>`,
-  rice: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="42" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="40" ry="8" fill="#f5ede0" stroke="#5c3a21" stroke-width="2"/><path d="M30,95 Q30,70 60,65 Q90,70 90,95 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="68" rx="25" ry="5" fill="#f0e0c0" stroke="#5c3a21" stroke-width="2"/><circle cx="50" cy="68" r="3" fill="#d44020"/><circle cx="60" cy="66" r="3" fill="#5a8a20"/><circle cx="70" cy="68" r="3" fill="#d44020"/></svg>`,
-  noodles: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="42" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M25,75 Q25,100 60,103 Q95,100 95,75 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="76" rx="33" ry="6" fill="#f0c060" stroke="#5c3a21" stroke-width="2"/><path d="M35,70 Q45,65 55,70 Q65,65 75,70 Q85,65 85,72" stroke="#d4a040" stroke-width="2" fill="none"/><path d="M35,63 Q45,58 55,63 Q65,58 75,63 Q85,58 85,65" stroke="#d4a040" stroke-width="2" fill="none"/><circle cx="55" cy="76" r="4" fill="#5a8a20"/><circle cx="68" cy="74" r="3" fill="#d44020"/></svg>`,
-  default: `<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,55 L35,95 Q35,100 40,100 L80,100 Q85,100 85,95 L85,55 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="56" rx="25" ry="5" fill="#8b6914" stroke="#5c3a21" stroke-width="2"/><path d="M85,60 Q97,60 97,75 Q97,85 85,85" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>`,
+  espresso: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,92 Q38,98 44,98 L76,98 Q82,98 82,92 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#2a1505" stroke="#5c3a21" stroke-width="2"/><ellipse cx="56" cy="65" rx="10" ry="2.5" fill="#a07040" opacity="0.4"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  americano: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,50 L35,100 Q35,106 41,106 L79,106 Q85,106 85,100 L85,50 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="51" rx="25" ry="5" fill="#3a1f0a" stroke="#5c3a21" stroke-width="2"/><path d="M85,55 Q97,55 97,70 Q97,82 85,82" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  cappuccino: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,92 Q38,98 44,98 L76,98 Q82,98 82,92 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#fff" stroke="#5c3a21" stroke-width="2"/><ellipse cx="60" cy="66" rx="18" ry="4" fill="#f5ede0"/><ellipse cx="60" cy="62" rx="14" ry="3" fill="#2a1505" opacity="0.3"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  latte: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#fff" stroke="#5c3a21" stroke-width="2"/><ellipse cx="60" cy="41" rx="14" ry="3" fill="#f5ede0"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  mocha: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#fff" stroke="#5c3a21" stroke-width="2"/><ellipse cx="60" cy="41" rx="14" ry="3" fill="#f5ede0"/><path d="M42,55 Q60,52 78,55 L78,80 Q60,83 42,80 Z" fill="#d4a574" opacity="0.2"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  tea: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="103" rx="38" ry="6" fill="#fff" stroke="#5c3a21" stroke-width="2"/><path d="M38,65 L38,95 Q38,100 44,100 L76,100 Q82,100 82,95 L82,65 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="66" rx="22" ry="5" fill="#c8d6a0" stroke="#5c3a21" stroke-width="2"/><path d="M82,70 Q94,70 94,80 Q94,88 82,88" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  greenTea: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="110" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M42,40 L42,105 Q42,110 47,110 L73,110 Q78,110 78,105 L78,40 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="41" rx="18" ry="4" fill="#a0c050" stroke="#5c3a21" stroke-width="2"/><path d="M42,55 Q60,52 78,55 L78,90 Q60,93 42,90 Z" fill="#c0d080" opacity="0.3"/><path d="M78,50 Q90,50 90,65 Q90,78 78,78" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  lemonTea: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="35" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M40,50 L40,98 Q40,103 45,103 L75,103 Q80,103 80,98 L80,50 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="51" rx="20" ry="4" fill="#d4a020" stroke="#5c3a21" stroke-width="2"/><circle cx="88" cy="45" r="8" fill="#f0c020" stroke="#5c3a21" stroke-width="2"/></svg>',
+  fries: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M40,60 L42,100 Q42,105 47,105 L73,105 Q78,105 78,100 L80,60 Z" fill="#d4480a" stroke="#5c3a21" stroke-width="2.5"/><path d="M40,60 L80,60 L78,52 L42,52 Z" fill="#e85820" stroke="#5c3a21" stroke-width="2"/><rect x="48" y="30" width="5" height="30" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="56" y="25" width="5" height="35" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="64" y="28" width="5" height="32" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/><rect x="72" y="32" width="5" height="28" rx="2" fill="#f0c060" stroke="#5c3a21" stroke-width="1.5"/></svg>',
+  banana: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="35" ry="6" fill="#f5ede0" stroke="#5c3a21" stroke-width="2"/><path d="M40,90 Q35,50 55,45 Q75,40 85,55 Q90,65 85,75 Q80,85 70,88 Z" fill="#f0c020" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  croissant: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="100" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M30,70 Q25,50 40,45 Q50,42 60,48 Q70,42 80,45 Q95,50 90,70 Q85,85 60,88 Q35,85 30,70 Z" fill="#d4a040" stroke="#5c3a21" stroke-width="2.5"/></svg>',
+  donut: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><circle cx="60" cy="60" r="32" fill="#f0c060" stroke="#5c3a21" stroke-width="2.5"/><circle cx="60" cy="60" r="12" fill="#fff" stroke="#5c3a21" stroke-width="2"/></svg>',
+  cake: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="40" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,70 L35,100 Q35,105 40,105 L80,105 Q85,105 85,100 L85,70 Z" fill="#f5ede0" stroke="#5c3a21" stroke-width="2.5"/><path d="M35,70 L85,70 L80,60 L40,60 Z" fill="#d4a040" stroke="#5c3a21" stroke-width="2"/></svg>',
+  rice: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="42" ry="4" fill="rgba(0,0,0,0.08)"/><ellipse cx="60" cy="100" rx="40" ry="8" fill="#f5ede0" stroke="#5c3a21" stroke-width="2"/><path d="M30,95 Q30,70 60,65 Q90,70 90,95 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="68" rx="25" ry="5" fill="#f0e0c0" stroke="#5c3a21" stroke-width="2"/></svg>',
+  noodles: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="108" rx="42" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M25,75 Q25,100 60,103 Q95,100 95,75 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="76" rx="33" ry="6" fill="#f0c060" stroke="#5c3a21" stroke-width="2"/></svg>',
+  default: '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><ellipse cx="60" cy="105" rx="38" ry="4" fill="rgba(0,0,0,0.08)"/><path d="M35,55 L35,95 Q35,100 40,100 L80,100 Q85,100 85,95 L85,55 Z" fill="#fff" stroke="#5c3a21" stroke-width="2.5"/><ellipse cx="60" cy="56" rx="25" ry="5" fill="#8b6914" stroke="#5c3a21" stroke-width="2"/><path d="M85,60 Q97,60 97,75 Q97,85 85,85" fill="none" stroke="#5c3a21" stroke-width="2.5"/></svg>',
 };
 
 function getItemSVG(item) {
-  const n = (item.name||'').toLowerCase();
+  var n = (item.name||'').toLowerCase();
   if (n.includes('espresso')) return SVG_IMG.espresso;
   if (n.includes('americano')) return SVG_IMG.americano;
   if (n.includes('cappuccino') || n.includes('flat white')) return SVG_IMG.cappuccino;
   if (n.includes('mocha')) return SVG_IMG.mocha;
-  if (n.includes('latte') && n.includes('caramel')) return SVG_IMG.latte;
-  if (n.includes('latte') && n.includes('vanilla')) return SVG_IMG.latte;
   if (n.includes('latte')) return SVG_IMG.latte;
   if (n.includes('green tea')) return SVG_IMG.greenTea;
   if (n.includes('lemon')) return SVG_IMG.lemonTea;
@@ -569,45 +550,37 @@ function getItemSVG(item) {
 }
 
 function getItemImageHTML(item) {
-  if (item.image_data) return `<img src="${item.image_data}" alt="${item.name}">`;
-  if (item.image_url) return `<img src="${item.image_url}" alt="${item.name}" onerror="this.parentElement.innerHTML=getItemSVG(${JSON.stringify(item).replace(/"/g,'&quot;')})">`;
+  if (item.image_data) return '<img src="'+item.image_data+'" alt="'+item.name+'">';
+  if (item.image_url) return '<img src="'+item.image_url+'" alt="'+item.name+'">';
   return getItemSVG(item);
 }
 
-// ===== UTILS =====
 function formatRupiah(n) { return 'Rp ' + (Math.round(n)||0).toLocaleString('id-ID'); }
-function toast(msg, err) { const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(err?' error':''); setTimeout(()=>t.className='toast',2500); }
+function toast(msg, err) { var t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(err?' error':''); setTimeout(function(){t.className='toast';},2500); }
 
 function updateClock() {
-  const now=new Date(); const h=String(now.getHours()).padStart(2,'0'); const m=String(now.getMinutes()).padStart(2,'0');
+  var now=new Date(); var h=String(now.getHours()).padStart(2,'0'); var m=String(now.getMinutes()).padStart(2,'0');
   document.getElementById('clockTime').textContent=h+':'+m;
   document.getElementById('clockDate').textContent=now.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'});
 }
 setInterval(updateClock,1000); updateClock();
 
-// ===== API =====
-async function apiGet(p) { try { const r=await fetch(API+'/'+p); return await r.json(); } catch(e) { return {error:e.message}; } }
-async function apiPost(p,b) { try { const r=await fetch(API+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); return await r.json(); } catch(e) { return {error:e.message}; } }
-async function apiPut(p,b) { try { const r=await fetch(API+'/'+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); return await r.json(); } catch(e) { return {error:e.message}; } }
-async function apiDel(p) { try { const r=await fetch(API+'/'+p,{method:'DELETE'}); return await r.json(); } catch(e) { return {error:e.message}; } }
+function apiGet(p) { return fetch(API+'/'+p).then(function(r){return r.json();}).catch(function(e){return {error:e.message};}); }
+function apiPost(p,b) { return fetch(API+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json();}).catch(function(e){return {error:e.message};}); }
+function apiPut(p,b) { return fetch(API+'/'+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json();}).catch(function(e){return {error:e.message};}); }
+function apiDel(p) { return fetch(API+'/'+p,{method:'DELETE'}).then(function(r){return r.json();}).catch(function(e){return {error:e.message};}); }
 
-// ===== LOAD DATA =====
-async function loadAll() {
-  await loadSettings();
-  await loadMenu();
-  await loadTables();
-  renderView();
+function loadAll() {
+  loadSettings().then(function(){ return loadMenu(); }).then(function(){ return loadTables(); }).then(function(){ renderView(); });
 }
 
-async function loadSettings() {
-  const d = await apiGet('settings');
-  if (d && !d.error) {
-    settings = { ...settings, ...d };
-  }
-  // Load from localStorage as fallback
-  const ls = localStorage.getItem('pos_settings');
-  if (ls) { try { settings = { ...settings, ...JSON.parse(ls) }; } catch(e){} }
+function loadSettings() {
+  var ls = localStorage.getItem('pos_settings');
+  if (ls) { try { settings = JSON.parse(JSON.stringify(settings)); Object.assign(settings, JSON.parse(ls)); } catch(e){} }
   applySettings();
+  return apiGet('settings').then(function(d) {
+    if (d && !d.error) { Object.assign(settings, d); applySettings(); }
+  }).catch(function(){});
 }
 
 function applySettings() {
@@ -616,19 +589,17 @@ function applySettings() {
   if (!settings.tax_rate) settings.tax_rate = 0.10;
 }
 
-async function saveSettings() {
+function saveSettings() {
   localStorage.setItem('pos_settings', JSON.stringify(settings));
-  await apiPut('settings', settings);
   applySettings();
+  apiPut('settings', settings).catch(function(){});
 }
 
-async function loadMenu() {
-  const d = await apiGet('menu');
-  if (d && !d.error && d.items && d.items.length) {
-    menuData = d;
-  } else {
-    loadLocalMenu();
-  }
+function loadMenu() {
+  return apiGet('menu').then(function(d) {
+    if (d && !d.error && d.items && d.items.length) { menuData = d; }
+    else { loadLocalMenu(); }
+  }).catch(function(){ loadLocalMenu(); });
 }
 
 function loadLocalMenu() {
@@ -671,34 +642,36 @@ function loadLocalMenu() {
     ],
     itemAddons: []
   };
-  menuData.items.forEach(item => {
+  menuData.items.forEach(function(item) {
     if (item.category_id===1 || item.category_id===2) {
-      ['Hot','Iced'].forEach((v,i) => menuData.variants.push({id:Math.random(),menu_item_id:item.id,variant_group:'Temperature',variant_value:v,price_modifier:i*3000}));
-      ['Reg','Large'].forEach((v,i) => menuData.variants.push({id:Math.random(),menu_item_id:item.id,variant_group:'Size',variant_value:v,price_modifier:i*5000}));
-      menuData.addons.forEach(a => menuData.itemAddons.push({menu_item_id:item.id,addon_id:a.id}));
+      ['Hot','Iced'].forEach(function(v,i) { menuData.variants.push({id:Math.random(),menu_item_id:item.id,variant_group:'Temperature',variant_value:v,price_modifier:i*3000}); });
+      ['Reg','Large'].forEach(function(v,i) { menuData.variants.push({id:Math.random(),menu_item_id:item.id,variant_group:'Size',variant_value:v,price_modifier:i*5000}); });
+      menuData.addons.forEach(function(a) { menuData.itemAddons.push({menu_item_id:item.id,addon_id:a.id}); });
     }
   });
 }
 
-async function loadTables() {
-  const d = await apiGet('tables');
-  if (d && !d.error && Array.isArray(d) && d.length) {
-    tables = d;
-  } else {
+function loadTables() {
+  return apiGet('tables').then(function(d) {
+    if (d && !d.error && Array.isArray(d) && d.length) { tables = d; }
+    else {
+      tables = [];
+      for (var i=1;i<=10;i++) tables.push({id:i,name:'Table '+i,status:'available',hold_order:null});
+    }
+  }).catch(function(){
     tables = [];
-    for (let i=1;i<=10;i++) tables.push({id:i,name:'Table '+i,status:'available',hold_order:null});
-  }
+    for (var i=1;i<=10;i++) tables.push({id:i,name:'Table '+i,status:'available',hold_order:null});
+  });
 }
 
-// ===== VIEW =====
 function switchView(view) {
   currentView = view;
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view===view));
+  document.querySelectorAll('.nav-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.view===view); });
   renderView();
 }
 
 function renderView() {
-  const main = document.getElementById('mainContent');
+  var main = document.getElementById('mainContent');
   main.innerHTML = '';
   if (currentView==='pos') renderPOS();
   else if (currentView==='tables') renderTables();
@@ -708,27 +681,16 @@ function renderView() {
   else if (currentView==='settings') renderSettings();
 }
 
-// ===== POS =====
 function renderPOS() {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="pos-layout">
-      <div class="menu-section">
-        <div class="menu-toolbar">
-          <div class="search-box"><input type="text" id="searchInput" placeholder="Cari menu..." oninput="renderMenuGrid()"></div>
-        </div>
-        <div class="category-tabs" id="categoryTabs"></div>
-        <div class="menu-grid" id="menuGrid"></div>
-      </div>
-      <div class="order-panel" id="orderPanel"></div>
-    </div>`;
+  document.getElementById('mainContent').innerHTML = '<div class="pos-layout"><div class="menu-section"><div class="menu-toolbar"><div class="search-box"><input type="text" id="searchInput" placeholder="Cari menu..." oninput="renderMenuGrid()"></div></div><div class="category-tabs" id="categoryTabs"></div><div class="menu-grid" id="menuGrid"></div></div><div class="order-panel" id="orderPanel"></div></div>';
   renderCategoryTabs(); renderMenuGrid(); renderOrderPanel();
 }
 
 function renderCategoryTabs() {
-  const el = document.getElementById('categoryTabs'); if (!el) return;
-  let html = `<div class="cat-tab ${!currentCategory?'active':''}" onclick="selectCategory(null)">📋 Semua</div>`;
-  menuData.categories.forEach(c => {
-    html += `<div class="cat-tab ${currentCategory===c.id?'active':''}" onclick="selectCategory(${c.id})">${c.icon||'☕'} ${c.name}</div>`;
+  var el = document.getElementById('categoryTabs'); if (!el) return;
+  var html = '<div class="cat-tab '+(currentCategory?'':'active')+'" onclick="selectCategory(null)">📋 Semua</div>';
+  menuData.categories.forEach(function(c) {
+    html += '<div class="cat-tab '+(currentCategory===c.id?'active':'')+'" onclick="selectCategory('+c.id+')">'+(c.icon||'☕')+' '+c.name+'</div>';
   });
   el.innerHTML = html;
 }
@@ -736,55 +698,50 @@ function renderCategoryTabs() {
 function selectCategory(id) { currentCategory=id; renderCategoryTabs(); renderMenuGrid(); }
 
 function renderMenuGrid() {
-  const grid = document.getElementById('menuGrid'); if (!grid) return;
-  const search = (document.getElementById('searchInput')?.value||'').toLowerCase();
-  let items = menuData.items.filter(i => i.is_active!==false);
-  if (currentCategory) items = items.filter(i => i.category_id===currentCategory);
-  if (search) items = items.filter(i => i.name.toLowerCase().includes(search) || (i.description||'').toLowerCase().includes(search));
+  var grid = document.getElementById('menuGrid'); if (!grid) return;
+  var search = (document.getElementById('searchInput') ? document.getElementById('searchInput').value : '').toLowerCase();
+  var items = menuData.items.filter(function(i) { return i.is_active!==false; });
+  if (currentCategory) items = items.filter(function(i) { return i.category_id===currentCategory; });
+  if (search) items = items.filter(function(i) { return i.name.toLowerCase().includes(search) || (i.description||'').toLowerCase().includes(search); });
   if (!items.length) { grid.innerHTML = '<div class="empty-state"><div class="ico">☕</div>Menu tidak ditemukan</div>'; return; }
-  grid.innerHTML = items.map(item => `
-    <div class="menu-card" onclick="openVariantModal(${item.id})">
-      <div class="menu-img">${getItemImageHTML(item)}</div>
-      <div class="menu-name">${item.name}</div>
-      <div class="menu-desc">${item.description||''}</div>
-      <div class="menu-price">${formatRupiah(item.base_price)}</div>
-    </div>`).join('');
+  grid.innerHTML = items.map(function(item) {
+    return '<div class="menu-card" onclick="openVariantModal('+item.id+')"><div class="menu-img">'+getItemImageHTML(item)+'</div><div class="menu-name">'+item.name+'</div><div class="menu-desc">'+(item.description||'')+'</div><div class="menu-price">'+formatRupiah(item.base_price)+'</div></div>';
+  }).join('');
 }
 
-// ===== VARIANT MODAL =====
 function openVariantModal(itemId) {
-  const item = menuData.items.find(i => i.id===itemId); if (!item) return;
+  var item = menuData.items.find(function(i){return i.id===itemId;}); if (!item) return;
   modalItem = item;
   modalSelections = { temp:null, size:null, addons:[], qty:1 };
-  const variants = menuData.variants.filter(v => v.menu_item_id===itemId);
-  const tempVars = variants.filter(v => v.variant_group==='Temperature');
-  const sizeVars = variants.filter(v => v.variant_group==='Size');
+  var variants = menuData.variants.filter(function(v){return v.menu_item_id===itemId;});
+  var tempVars = variants.filter(function(v){return v.variant_group==='Temperature';});
+  var sizeVars = variants.filter(function(v){return v.variant_group==='Size';});
   if (tempVars.length) modalSelections.temp = tempVars[0].variant_value;
   if (sizeVars.length) modalSelections.size = sizeVars[0].variant_value;
-  const itemAddons = menuData.itemAddons.filter(ia => ia.menu_item_id===itemId);
-  const addons = itemAddons.map(ia => menuData.addons.find(a => a.id===ia.addon_id)).filter(Boolean);
+  var itemAddons = menuData.itemAddons.filter(function(ia){return ia.menu_item_id===itemId;});
+  var addons = itemAddons.map(function(ia){return menuData.addons.find(function(a){return a.id===ia.addon_id;});}).filter(Boolean);
 
-  let html = `<div style="text-align:center; margin-bottom:16px;"><div style="width:120px;height:120px;margin:0 auto;">${getItemImageHTML(item)}</div></div>`;
+  var html = '<div style="text-align:center; margin-bottom:16px;"><div style="width:120px;height:120px;margin:0 auto;">'+getItemImageHTML(item)+'</div></div>';
   if (tempVars.length) {
-    html += `<div class="variant-group"><h4>Suhu</h4><div class="variant-options">`;
-    tempVars.forEach(v => {
-      html += `<div class="variant-opt ${modalSelections.temp===v.variant_value?'active':''}" onclick="selectVariant('temp','${v.variant_value}',this)">${v.variant_value}${v.price_modifier?`<span class="price">+${formatRupiah(v.price_modifier)}</span>`:''}</div>`;
+    html += '<div class="variant-group"><h4>Suhu</h4><div class="variant-options">';
+    tempVars.forEach(function(v) {
+      html += '<div class="variant-opt '+(modalSelections.temp===v.variant_value?'active':'')+'" onclick="selectVariant(\'temp\',\''+v.variant_value+'\',this)">'+v.variant_value+(v.price_modifier?'<span class="price">+'+formatRupiah(v.price_modifier)+'</span>':'')+'</div>';
     });
-    html += `</div></div>`;
+    html += '</div></div>';
   }
   if (sizeVars.length) {
-    html += `<div class="variant-group"><h4>Ukuran</h4><div class="variant-options">`;
-    sizeVars.forEach(v => {
-      html += `<div class="variant-opt ${modalSelections.size===v.variant_value?'active':''}" onclick="selectVariant('size','${v.variant_value}',this)">${v.variant_value}${v.price_modifier?`<span class="price">+${formatRupiah(v.price_modifier)}</span>`:''}</div>`;
+    html += '<div class="variant-group"><h4>Ukuran</h4><div class="variant-options">';
+    sizeVars.forEach(function(v) {
+      html += '<div class="variant-opt '+(modalSelections.size===v.variant_value?'active':'')+'" onclick="selectVariant(\'size\',\''+v.variant_value+'\',this)">'+v.variant_value+(v.price_modifier?'<span class="price">+'+formatRupiah(v.price_modifier)+'</span>':'')+'</div>';
     });
-    html += `</div></div>`;
+    html += '</div></div>';
   }
   if (addons.length) {
-    html += `<div class="variant-group"><h4>Add-ons</h4><div class="addon-list">`;
-    addons.forEach(a => {
-      html += `<label class="addon-item" onclick="toggleAddonLabel(this,${a.id})"><input type="checkbox"><span class="a-name">${a.name}</span><span class="a-price">+${formatRupiah(a.price)}</span></label>`;
+    html += '<div class="variant-group"><h4>Add-ons</h4><div class="addon-list">';
+    addons.forEach(function(a) {
+      html += '<label class="addon-item" onclick="toggleAddonLabel(this,'+a.id+')"><input type="checkbox"><span class="a-name">'+a.name+'</span><span class="a-price">+'+formatRupiah(a.price)+'</span></label>';
     });
-    html += `</div></div>`;
+    html += '</div></div>';
   }
   document.getElementById('modalItemName').textContent = item.name;
   document.getElementById('modalContent').innerHTML = html;
@@ -795,14 +752,14 @@ function openVariantModal(itemId) {
 
 function selectVariant(type,val,el) {
   if (type==='temp') modalSelections.temp=val; else modalSelections.size=val;
-  el.parentNode.querySelectorAll('.variant-opt').forEach(o => o.classList.remove('active'));
+  el.parentNode.querySelectorAll('.variant-opt').forEach(function(o){o.classList.remove('active');});
   el.classList.add('active'); updateModalTotal();
 }
 
 function toggleAddonLabel(el,id) {
-  const cb = el.querySelector('input'); cb.checked = !cb.checked;
+  var cb = el.querySelector('input'); cb.checked = !cb.checked;
   if (cb.checked) { modalSelections.addons.push(id); el.classList.add('checked'); }
-  else { modalSelections.addons = modalSelections.addons.filter(a => a!==id); el.classList.remove('checked'); }
+  else { modalSelections.addons = modalSelections.addons.filter(function(a){return a!==id;}); el.classList.remove('checked'); }
   updateModalTotal();
 }
 
@@ -810,13 +767,13 @@ function modalQty(d) { modalSelections.qty = Math.max(1, modalSelections.qty+d);
 
 function calcModalUnitPrice() {
   if (!modalItem) return 0;
-  const variants = menuData.variants.filter(v => v.menu_item_id===modalItem.id);
-  let price = parseFloat(modalItem.base_price);
-  const t = variants.find(v => v.variant_group==='Temperature' && v.variant_value===modalSelections.temp);
-  const s = variants.find(v => v.variant_group==='Size' && v.variant_value===modalSelections.size);
+  var variants = menuData.variants.filter(function(v){return v.menu_item_id===modalItem.id;});
+  var price = parseFloat(modalItem.base_price);
+  var t = variants.find(function(v){return v.variant_group==='Temperature'&&v.variant_value===modalSelections.temp;});
+  var s = variants.find(function(v){return v.variant_group==='Size'&&v.variant_value===modalSelections.size;});
   if (t) price += parseFloat(t.price_modifier);
   if (s) price += parseFloat(s.price_modifier);
-  modalSelections.addons.forEach(aid => { const a = menuData.addons.find(x => x.id===aid); if (a) price += parseFloat(a.price); });
+  modalSelections.addons.forEach(function(aid){var a=menuData.addons.find(function(x){return x.id===aid;});if(a)price+=parseFloat(a.price);});
   return price;
 }
 
@@ -828,11 +785,17 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 
 function addToCart() {
   if (!modalItem) return;
-  const unitPrice = calcModalUnitPrice();
-  const addons = modalSelections.addons.map(aid => menuData.addons.find(a => a.id===aid)).filter(Boolean);
-  const variantPriceMod = (function(){ const vs = menuData.variants.filter(v => v.menu_item_id===modalItem.id); let m=0; const t=vs.find(v=>v.variant_group==='Temperature'&&v.variant_value===modalSelections.temp); const s=vs.find(v=>v.variant_group==='Size'&&v.variant_value===modalSelections.size); if(t) m+=parseFloat(t.price_modifier); if(s) m+=parseFloat(s.price_modifier); return m; })();
-  const addonTotal = addons.reduce((s,a) => s+parseFloat(a.price), 0);
-  const existing = cart.find(c => c.menu_item_id===modalItem.id && c.variant_temp===modalSelections.temp && c.variant_size===modalSelections.size && JSON.stringify((c.addons||[]).map(a=>a.id).sort())===JSON.stringify([...modalSelections.addons].sort()));
+  var unitPrice = calcModalUnitPrice();
+  var addons = modalSelections.addons.map(function(aid){return menuData.addons.find(function(a){return a.id===aid;});}).filter(Boolean);
+  var vs = menuData.variants.filter(function(v){return v.menu_item_id===modalItem.id;});
+  var variantPriceMod = 0;
+  var t = vs.find(function(v){return v.variant_group==='Temperature'&&v.variant_value===modalSelections.temp;});
+  var s = vs.find(function(v){return v.variant_group==='Size'&&v.variant_value===modalSelections.size;});
+  if (t) variantPriceMod += parseFloat(t.price_modifier);
+  if (s) variantPriceMod += parseFloat(s.price_modifier);
+  var addonTotal = addons.reduce(function(sm,a){return sm+parseFloat(a.price);},0);
+  var adIds = addons.map(function(a){return a.id;}).sort();
+  var existing = cart.find(function(c){return c.menu_item_id===modalItem.id&&c.variant_temp===modalSelections.temp&&c.variant_size===modalSelections.size&&JSON.stringify((c.addons||[]).map(function(a){return a.id;}).sort())===JSON.stringify(adIds);});
   if (existing) { existing.quantity += modalSelections.qty; existing.subtotal = existing.unit_price * existing.quantity; }
   else {
     cart.push({
@@ -846,83 +809,77 @@ function addToCart() {
   closeModal('variantModal'); renderOrderPanel(); toast('Item ditambahkan');
 }
 
-// ===== ORDER PANEL =====
 function renderOrderPanel() {
-  const panel = document.getElementById('orderPanel'); if (!panel) return;
-  const subtotal = cart.reduce((s,i) => s+i.subtotal, 0);
-  const dVal = parseFloat(document.getElementById('discountInput')?.value)||0;
-  const dType = document.getElementById('discountType')?.value||'amount';
-  let discount = dType==='percent' ? subtotal*dVal/100 : dVal;
+  var panel = document.getElementById('orderPanel'); if (!panel) return;
+  var subtotal = cart.reduce(function(s,i){return s+i.subtotal;},0);
+  var dVal = parseFloat(document.getElementById('discountInput') ? document.getElementById('discountInput').value : 0)||0;
+  var dType = document.getElementById('discountType') ? document.getElementById('discountType').value : 'amount';
+  var discount = dType==='percent' ? subtotal*dVal/100 : dVal;
   discount = Math.min(discount, subtotal);
-  const afterDisc = subtotal - discount;
-  const tax = afterDisc * parseFloat(settings.tax_rate||0.10);
-  const total = afterDisc + tax;
+  var afterDisc = subtotal - discount;
+  var tax = afterDisc * parseFloat(settings.tax_rate||0.10);
+  var total = afterDisc + tax;
 
-  let html = `
-    <div class="order-header"><h2>🛒 Order</h2><span class="order-num">#${currentOrderNumber}</span></div>
-    <div class="order-type-toggle">
-      <div class="type-btn ${orderType==='dine-in'?'active':''}" onclick="setOrderType('dine-in')">🍽️ Dine-in</div>
-      <div class="type-btn ${orderType==='takeaway'?'active':''}" onclick="setOrderType('takeaway')">🥡 Takeaway</div>
-    </div>`;
+  var html = '<div class="order-header"><h2>🛒 Order</h2><span class="order-num">#'+currentOrderNumber+'</span></div>';
+  html += '<div class="order-type-toggle"><div class="type-btn '+(orderType==='dine-in'?'active':'')+'" onclick="setOrderType(\'dine-in\')">🍽️ Dine-in</div><div class="type-btn '+(orderType==='takeaway'?'active':'')+'" onclick="setOrderType(\'takeaway\')">🥡 Takeaway</div></div>';
   if (orderType==='dine-in') {
-    html += `<div class="table-select"><select id="tableSelect" onchange="selectedTableId=this.value"><option value="">-- Pilih Meja --</option>${tables.map(t=>`<option value="${t.id}" ${selectedTableId==t.id?'selected':''}>${t.name}${t.status==='held'?' (Held)':''}</option>`).join('')}</select></div>`;
+    html += '<div class="table-select"><select id="tableSelect" onchange="selectedTableId=this.value"><option value="">-- Pilih Meja --</option>'+tables.map(function(t){return '<option value="'+t.id+'" '+(selectedTableId==t.id?'selected':'')+'>'+t.name+(t.status==='held'?' (Held)':'')+'</option>';}).join('')+'</select></div>';
   }
-  html += `<div class="order-items">`;
-  if (!cart.length) { html += `<div class="empty-order"><div class="ico">☕</div>Pilih menu untuk memulai</div>`; }
+  html += '<div class="order-items">';
+  if (!cart.length) { html += '<div class="empty-order"><div class="ico">☕</div>Pilih menu untuk memulai</div>'; }
   else {
-    cart.forEach((item,idx) => {
-      const vs = [item.variant_temp,item.variant_size].filter(Boolean).join(' • ');
-      const ads = item.addons?.map(a => a.name).join(', ')||'';
-      html += `<div class="order-item"><div class="oi-info"><div class="oi-name">${item.menu_item_name}</div>${vs?`<div class="oi-variants">${vs}</div>`:''}${ads?`<div class="oi-addons">+ ${ads}</div>`:''}<div class="oi-controls"><button class="qty-btn" onclick="changeQty(${idx},-1)">−</button><span class="qty-val">${item.quantity}</span><button class="qty-btn" onclick="changeQty(${idx},1)">+</button></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;"><button class="oi-remove" onclick="removeItem(${idx})">×</button><div class="oi-price">${formatRupiah(item.subtotal)}</div></div></div>`;
+    cart.forEach(function(item,idx) {
+      var vs = [item.variant_temp,item.variant_size].filter(Boolean).join(' • ');
+      var ads = item.addons ? item.addons.map(function(a){return a.name;}).join(', ') : '';
+      html += '<div class="order-item"><div class="oi-info"><div class="oi-name">'+item.menu_item_name+'</div>'+(vs?'<div class="oi-variants">'+vs+'</div>':'')+(ads?'<div class="oi-addons">+ '+ads+'</div>':'')+'<div class="oi-controls"><button class="qty-btn" onclick="changeQty('+idx+',-1)">−</button><span class="qty-val">'+item.quantity+'</span><button class="qty-btn" onclick="changeQty('+idx+',1)">+</button></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;"><button class="oi-remove" onclick="removeItem('+idx+')">×</button><div class="oi-price">'+formatRupiah(item.subtotal)+'</div></div></div>';
     });
   }
-  html += `</div>`;
-  html += `<div class="order-footer">
-    <div class="discount-row"><input type="number" class="discount-input" id="discountInput" placeholder="Diskon" value="${dVal||''}" oninput="renderOrderPanel()"><select class="discount-type" id="discountType" onchange="renderOrderPanel()"><option value="amount" ${dType==='amount'?'selected':''}>Rp</option><option value="percent" ${dType==='percent'?'selected':''}>%</option></select></div>
-    <div class="summary-row"><span class="label">Subtotal</span><span>${formatRupiah(subtotal)}</span></div>
-    <div class="summary-row"><span class="label">Diskon</span><span style="color:var(--danger);">- ${formatRupiah(discount)}</span></div>
-    <div class="summary-row"><span class="label">Pajak (${Math.round((settings.tax_rate||0.10)*100)}%)</span><span>${formatRupiah(tax)}</span></div>
-    <div class="summary-row total"><span>Total</span><span>${formatRupiah(total)}</span></div>
-    <button class="place-order-btn" ${!cart.length?'disabled':''} onclick="openPayment(${subtotal},${discount},${tax},${total})">💳 Bayar Pesanan</button>
-    <button class="hold-btn" ${!cart.length?'disabled':''} onclick="holdOrder()">⏸️ Hold Order</button>
-  </div>`;
+  html += '</div>';
+  html += '<div class="order-footer"><div class="discount-row"><input type="number" class="discount-input" id="discountInput" placeholder="Diskon" value="'+(dVal||'')+'" oninput="renderOrderPanel()"><select class="discount-type" id="discountType" onchange="renderOrderPanel()"><option value="amount" '+(dType==='amount'?'selected':'')+'>Rp</option><option value="percent" '+(dType==='percent'?'selected':'')+'>%</option></select></div>';
+  html += '<div class="summary-row"><span class="label">Subtotal</span><span>'+formatRupiah(subtotal)+'</span></div>';
+  html += '<div class="summary-row"><span class="label">Diskon</span><span style="color:var(--danger);">- '+formatRupiah(discount)+'</span></div>';
+  html += '<div class="summary-row"><span class="label">Pajak ('+Math.round((settings.tax_rate||0.10)*100)+'%)</span><span>'+formatRupiah(tax)+'</span></div>';
+  html += '<div class="summary-row total"><span>Total</span><span>'+formatRupiah(total)+'</span></div>';
+  html += '<button class="place-order-btn" '+(!cart.length?'disabled':'')+' onclick="openPayment('+subtotal+','+discount+','+tax+','+total+')">💳 Bayar Pesanan</button>';
+  html += '<button class="hold-btn" '+(!cart.length?'disabled':'')+' onclick="holdOrder()">⏸️ Hold Order</button>';
+  html += '</div>';
   panel.innerHTML = html;
-  if (selectedTableId) { const sel = document.getElementById('tableSelect'); if (sel) sel.value = selectedTableId; }
+  if (selectedTableId) { var sel = document.getElementById('tableSelect'); if (sel) sel.value = selectedTableId; }
 }
 
 function setOrderType(t) { orderType=t; if (t==='takeaway') selectedTableId=null; renderOrderPanel(); }
 function changeQty(i,d) { cart[i].quantity+=d; if (cart[i].quantity<=0) cart.splice(i,1); else cart[i].subtotal=cart[i].unit_price*cart[i].quantity; renderOrderPanel(); }
 function removeItem(i) { cart.splice(i,1); renderOrderPanel(); }
 
-async function holdOrder() {
+function holdOrder() {
   if (!cart.length) return;
   if (orderType==='dine-in' && !selectedTableId) { toast('Pilih meja dulu',true); return; }
-  const tid = selectedTableId;
-  const od = { cart, orderType, selectedTableId, order_number: currentOrderNumber, discount: parseFloat(document.getElementById('discountInput').value)||0, discount_type: document.getElementById('discountType').value };
-  await apiPost('hold-order', { table_id: tid, order_data: od });
-  const t = tables.find(x => x.id==tid); if (t) { t.status='held'; t.hold_order=od; }
+  var tid = selectedTableId;
+  var od = { cart:cart, orderType:orderType, selectedTableId:selectedTableId, order_number:currentOrderNumber, discount: parseFloat(document.getElementById('discountInput').value)||0, discount_type: document.getElementById('discountType').value };
+  apiPost('hold-order', { table_id: tid, order_data: od });
+  var t = tables.find(function(x){return x.id==tid;}); if (t) { t.status='held'; t.hold_order=od; }
   cart=[]; selectedTableId=null; currentOrderNumber='MS'+String(Math.floor(Math.random()*90000)+10000);
   renderOrderPanel(); toast('Order disimpan');
 }
 
-async function recallOrder(tid) {
-  let t; const r = await apiGet('recall-order?table_id='+tid);
-  if (r && !r.error && r.hold_order) t=r; else t=tables.find(x => x.id==tid);
-  if (!t || !t.hold_order) { toast('Tidak ada held order',true); return; }
-  const d = t.hold_order; cart=d.cart; orderType=d.orderType; selectedTableId=d.selectedTableId||tid; currentOrderNumber=d.order_number;
-  switchView('pos'); toast('Order dipanggil');
+function recallOrder(tid) {
+  apiGet('recall-order?table_id='+tid).then(function(r) {
+    var t = (r && !r.error && r.hold_order) ? r : tables.find(function(x){return x.id==tid;});
+    if (!t || !t.hold_order) { toast('Tidak ada held order',true); return; }
+    var d = t.hold_order; cart=d.cart; orderType=d.orderType; selectedTableId=d.selectedTableId||tid; currentOrderNumber=d.order_number;
+    switchView('pos'); toast('Order dipanggil');
+  });
 }
 
-async function clearHold(tid) {
-  await apiPost('clear-hold', { table_id: tid });
-  const t = tables.find(x => x.id==tid); if (t) { t.status='available'; t.hold_order=null; }
+function clearHold(tid) {
+  apiPost('clear-hold', { table_id: tid });
+  var t = tables.find(function(x){return x.id==tid;}); if (t) { t.status='available'; t.hold_order=null; }
   renderTables(); toast('Meja dibebaskan');
 }
 
-// ===== PAYMENT =====
 function openPayment(subtotal,discount,tax,total) {
   if (!cart.length) return;
-  payTotal=total; payData={subtotal,discount,tax,total};
+  payTotal=total; payData={subtotal:subtotal,discount:discount,tax:tax,total:total};
   document.getElementById('payTotal').textContent=formatRupiah(total);
   document.getElementById('payReceived').value='';
   document.getElementById('payChange').textContent='Rp 0';
@@ -930,137 +887,98 @@ function openPayment(subtotal,discount,tax,total) {
 }
 
 function setCash(a) { document.getElementById('payReceived').value=a; calcChange(); }
-function calcChange() { const r=parseFloat(document.getElementById('payReceived').value)||0; document.getElementById('payChange').textContent=formatRupiah(Math.max(0,r-payTotal)); }
+function calcChange() { var r=parseFloat(document.getElementById('payReceived').value)||0; document.getElementById('payChange').textContent=formatRupiah(Math.max(0,r-payTotal)); }
 
-async function processPayment() {
-  const received=parseFloat(document.getElementById('payReceived').value)||0;
+function processPayment() {
+  var received=parseFloat(document.getElementById('payReceived').value)||0;
   if (received<payTotal && document.getElementById('payMethod').value==='cash') { toast('Uang tidak cukup',true); return; }
-  const method=document.getElementById('payMethod').value;
-  const change=Math.max(0,received-payTotal);
-  const orderPayload = {
+  var method=document.getElementById('payMethod').value;
+  var change=Math.max(0,received-payTotal);
+  var orderPayload = {
     order_type: orderType, table_id: orderType==='dine-in'?selectedTableId:null,
-    table_name: orderType==='dine-in'?(tables.find(t=>t.id==selectedTableId)?.name||null):null,
+    table_name: orderType==='dine-in'?(tables.find(function(t){return t.id==selectedTableId;}) ? tables.find(function(t){return t.id==selectedTableId;}).name : null):null,
     subtotal: payData.subtotal, discount_value: parseFloat(document.getElementById('discountInput').value)||0,
     discount_type: document.getElementById('discountType').value, discount_amount: payData.discount,
     tax_rate: settings.tax_rate||0.10, tax_amount: payData.tax, total: payData.total,
     payment_method: method, amount_paid: received, change_amount: change, status: 'completed',
   };
-  const itemsPayload = cart.map(c => ({ ...c, addons: JSON.stringify(c.addons) }));
-  let result = await apiPost('order', { order: orderPayload, items: itemsPayload, table_id: selectedTableId });
-  if (result && result.error) { toast('Error: '+result.error, true); return; }
-  closeModal('paymentModal');
-  const orderNum = result?.order_number || currentOrderNumber;
-  showReceipt(orderNum, orderPayload, cart, change, received, method);
-  cart=[]; selectedTableId=null; currentOrderNumber='MS'+String(Math.floor(Math.random()*90000)+10000);
-  renderOrderPanel();
+  var itemsPayload = cart.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic;});
+  apiPost('order', { order: orderPayload, items: itemsPayload, table_id: selectedTableId }).then(function(result) {
+    if (result && result.error) { toast('Error: '+result.error, true); return; }
+    closeModal('paymentModal');
+    var orderNum = result && result.order_number ? result.order_number : currentOrderNumber;
+    showReceipt(orderNum, orderPayload, cart, change, received, method);
+    cart=[]; selectedTableId=null; currentOrderNumber='MS'+String(Math.floor(Math.random()*90000)+10000);
+    renderOrderPanel();
+  });
 }
 
-// ===== RECEIPT (PRINT) =====
 function showReceipt(orderNum, order, items, change, paid, method) {
-  const now = new Date();
-  const dateStr = now.toLocaleString('id-ID');
-  const taxPct = Math.round(parseFloat(order.tax_rate||0.10)*100);
-  let html = `<div class="receipt">
-    <h3>${settings.store_logo ? '' : ''}${settings.store_name||'MASU SPACE'}</h3>
-    <div class="raddr">${settings.store_address||''}<br>${settings.store_phone||''}</div>
-    <div class="rdivider"></div>
-    <div class="rrow"><span>No:</span><span>${orderNum}</span></div>
-    <div class="rrow"><span>Date:</span><span>${dateStr}</span></div>
-    <div class="rrow"><span>Type:</span><span>${order.order_type==='dine-in'?'Dine-in '+(order.table_name||''):'Takeaway'}</span></div>
-    <div class="rrow"><span>Cashier:</span><span>Kasir 1</span></div>
-    <div class="rdivider"></div>`;
-  items.forEach(it => {
-    const vs = [it.variant_temp, it.variant_size].filter(Boolean).join(', ');
-    html += `<div style="margin:4px 0;"><div class="rrow"><span>${it.quantity}x ${it.menu_item_name}</span><span>${formatRupiah(it.subtotal)}</span></div>${vs?`<div style="font-size:10px;padding-left:8px;color:#555;">${vs}</div>`:''}${it.addons?.length?`<div style="font-size:10px;padding-left:8px;color:#555;">+ ${it.addons.map(a=>a.name).join(', ')}</div>`:''}</div>`;
+  var now = new Date();
+  var dateStr = now.toLocaleString('id-ID');
+  var taxPct = Math.round(parseFloat(order.tax_rate||0.10)*100);
+  var html = '<div class="receipt"><h3>'+(settings.store_name||'MASU SPACE')+'</h3>';
+  html += '<div class="raddr">'+(settings.store_address||'')+'<br>'+(settings.store_phone||'')+'</div>';
+  html += '<div class="rdivider"></div>';
+  html += '<div class="rrow"><span>No:</span><span>'+orderNum+'</span></div>';
+  html += '<div class="rrow"><span>Date:</span><span>'+dateStr+'</span></div>';
+  html += '<div class="rrow"><span>Type:</span><span>'+(order.order_type==='dine-in'?'Dine-in '+(order.table_name||''):'Takeaway')+'</span></div>';
+  html += '<div class="rrow"><span>Cashier:</span><span>Kasir 1</span></div>';
+  html += '<div class="rdivider"></div>';
+  items.forEach(function(it) {
+    var vs = [it.variant_temp, it.variant_size].filter(Boolean).join(', ');
+    html += '<div style="margin:4px 0;"><div class="rrow"><span>'+it.quantity+'x '+it.menu_item_name+'</span><span>'+formatRupiah(it.subtotal)+'</span></div>'+(vs?'<div style="font-size:10px;padding-left:8px;color:#555;">'+vs+'</div>':'')+(it.addons&&it.addons.length?'<div style="font-size:10px;padding-left:8px;color:#555;">+ '+it.addons.map(function(a){return a.name;}).join(', ')+'</div>':'')+'</div>';
   });
-  html += `<div class="rdivider"></div>
-    <div class="rrow"><span>Subtotal</span><span>${formatRupiah(order.subtotal)}</span></div>
-    <div class="rrow"><span>Diskon</span><span>- ${formatRupiah(order.discount_amount)}</span></div>
-    <div class="rrow"><span>Pajak (${taxPct}%)</span><span>${formatRupiah(order.tax_amount)}</span></div>
-    <div class="rrow rtotal"><span>TOTAL</span><span>${formatRupiah(order.total)}</span></div>
-    <div class="rdivider"></div>
-    <div class="rrow"><span>${method.toUpperCase()}</span><span>${formatRupiah(paid)}</span></div>
-    <div class="rrow"><span>Kembalian</span><span>${formatRupiah(change)}</span></div>
-    <div class="rdivider"></div>
-    <div class="rfoot">${settings.receipt_footer||'Terima kasih!'}<br>😊<br><small>www.masuspace.coffee</small></div>
-  </div>`;
+  html += '<div class="rdivider"></div>';
+  html += '<div class="rrow"><span>Subtotal</span><span>'+formatRupiah(order.subtotal)+'</span></div>';
+  html += '<div class="rrow"><span>Diskon</span><span>- '+formatRupiah(order.discount_amount)+'</span></div>';
+  html += '<div class="rrow"><span>Pajak ('+taxPct+'%)</span><span>'+formatRupiah(order.tax_amount)+'</span></div>';
+  html += '<div class="rrow rtotal"><span>TOTAL</span><span>'+formatRupiah(order.total)+'</span></div>';
+  html += '<div class="rdivider"></div>';
+  html += '<div class="rrow"><span>'+method.toUpperCase()+'</span><span>'+formatRupiah(paid)+'</span></div>';
+  html += '<div class="rrow"><span>Kembalian</span><span>'+formatRupiah(change)+'</span></div>';
+  html += '<div class="rdivider"></div>';
+  html += '<div class="rfoot">'+(settings.receipt_footer||'Terima kasih!')+'<br>😊<br><small>www.masuspace.coffee</small></div>';
+  html += '</div>';
   document.getElementById('receiptContent').innerHTML = html;
   document.getElementById('receiptModal').classList.add('show');
-  if (settings.auto_print) { setTimeout(() => printReceipt(), 300); }
+  if (settings.auto_print) { setTimeout(function(){ printReceipt(); }, 300); }
 }
 
 function printReceipt() {
-  const content = document.getElementById('receiptContent').innerHTML;
-  const width = settings.print_width || 80;
-  const w = window.open('', '_blank', `width=${width+20},height=600`);
-  w.document.write(`<!DOCTYPE html><html><head><title>Struk ${settings.store_name||'POS'}</title>
-    <style>
-      @page { size: ${width}mm auto; margin: 2mm; }
-      * { margin:0; padding:0; box-sizing:border-box; }
-      body { font-family:'Courier New',monospace; font-size:11px; color:#000; width:${width}mm; margin:0 auto; padding:4px; }
-      .receipt { width:100%; padding:4px; }
-      h3 { text-align:center; font-size:14px; margin-bottom:4px; }
-      .raddr { text-align:center; font-size:10px; margin-bottom:8px; }
-      .rdivider { border-top:1px dashed #000; margin:8px 0; }
-      .rrow { display:flex; justify-content:space-between; margin:2px 0; }
-      .rtotal { font-weight:bold; font-size:13px; }
-      .rfoot { text-align:center; margin-top:8px; font-size:10px; }
-    </style></head><body>${content}</body></html>`);
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); setTimeout(() => w.close(), 500); }, 300);
+  var content = document.getElementById('receiptContent').innerHTML;
+  var width = settings.print_width || 80;
+  var w = window.open('', '_blank', 'width='+(width+20)+',height=600');
+  w.document.write('<!DOCTYPE html><html><head><title>Struk '+(settings.store_name||'POS')+'</title><style>@page{size:'+width+'mm auto;margin:2mm;}*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Courier New,monospace;font-size:11px;color:#000;width:'+width+'mm;margin:0 auto;padding:4px;}.receipt{width:100%;padding:4px;}h3{text-align:center;font-size:14px;margin-bottom:4px;}.raddr{text-align:center;font-size:10px;margin-bottom:8px;}.rdivider{border-top:1px dashed #000;margin:8px 0;}.rrow{display:flex;justify-content:space-between;margin:2px 0;}.rtotal{font-weight:bold;font-size:13px;}.rfoot{text-align:center;margin-top:8px;font-size:10px;}</style></head><body>'+content+'</body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); setTimeout(function(){ w.close(); }, 500); }, 300);
 }
 
-// ===== TABLES VIEW =====
 function renderTables() {
-  document.getElementById('mainContent').innerHTML = `<div class="view-container"><h2 class="view-title">🍽️ Manajemen Meja</h2><div class="tables-grid" id="tablesGrid"></div></div>`;
-  document.getElementById('tablesGrid').innerHTML = tables.map(t => `
-    <div class="table-card ${t.status==='held'?'held':''}" onclick="${t.status==='held'?`recallOrder(${t.id})`:`selectTableForOrder(${t.id})`}">
-      <div class="table-icon">${t.status==='held'?'📋':'🍽️'}</div>
-      <div class="table-name">${t.name}</div>
-      <div class="table-status">${t.status==='held'?'Held - Klik untuk panggil':'Available'}</div>
-      ${t.status==='held'?`<button class="btn-secondary" style="margin-top:8px;padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();clearHold(${t.id})">Bebaskan</button>`:''}
-    </div>`).join('');
+  document.getElementById('mainContent').innerHTML = '<div class="view-container"><h2 class="view-title">🍽️ Manajemen Meja</h2><div class="tables-grid" id="tablesGrid"></div></div>';
+  document.getElementById('tablesGrid').innerHTML = tables.map(function(t) {
+    return '<div class="table-card '+(t.status==='held'?'held':'')+'" onclick="'+(t.status==='held'?'recallOrder('+t.id+')':'selectTableForOrder('+t.id+')')+'"><div class="table-icon">'+(t.status==='held'?'📋':'🍽️')+'</div><div class="table-name">'+t.name+'</div><div class="table-status">'+(t.status==='held'?'Held - Klik untuk panggil':'Available')+'</div>'+(t.status==='held'?'<button class="btn-secondary" style="margin-top:8px;padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();clearHold('+t.id+')">Bebaskan</button>':'')+'</div>';
+  }).join('');
 }
 
 function selectTableForOrder(tid) { selectedTableId=tid; orderType='dine-in'; switchView('pos'); toast('Meja dipilih'); }
 
-// ===== MENU MANAGEMENT =====
 function renderMenuMgmt() {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="mgmt-container">
-      <div class="mgmt-header">
-        <h2 class="view-title" style="margin:0;">📋 Manajemen Menu</h2>
-        <div style="display:flex;gap:8px;">
-          <button class="btn-secondary" style="flex:0 0 auto;padding:10px 16px;" onclick="openCategoryModal()">📁 Kategori</button>
-          <button class="btn-primary" style="flex:0 0 auto;padding:10px 18px;" onclick="openMenuEdit()">+ Tambah Menu</button>
-        </div>
-      </div>
-      <div class="mgmt-grid" id="mgmtGrid"></div>
-    </div>`;
-  const grid = document.getElementById('mgmtGrid');
+  document.getElementById('mainContent').innerHTML = '<div class="mgmt-container"><div class="mgmt-header"><h2 class="view-title" style="margin:0;">📋 Manajemen Menu</h2><div style="display:flex;gap:8px;"><button class="btn-secondary" style="flex:0 0 auto;padding:10px 16px;" onclick="openCategoryModal()">📁 Kategori</button><button class="btn-primary" style="flex:0 0 auto;padding:10px 18px;" onclick="openMenuEdit()">+ Tambah Menu</button></div></div><div class="mgmt-grid" id="mgmtGrid"></div></div>';
+  var grid = document.getElementById('mgmtGrid');
   if (!menuData.items.length) { grid.innerHTML = '<div class="empty-state"><div class="ico">📋</div>Belum ada menu. Klik "Tambah Menu"</div>'; return; }
-  grid.innerHTML = menuData.items.map(item => {
-    const cat = menuData.categories.find(c => c.id===item.category_id);
-    return `<div class="mgmt-card">
-      <div class="mgmt-img">${getItemImageHTML(item)}</div>
-      <div class="m-name">${item.name}</div>
-      <div class="m-cat">${cat?cat.name:''}</div>
-      <div class="m-price">${formatRupiah(item.base_price)}</div>
-      <div class="mgmt-actions">
-        <button class="mgmt-edit" onclick="openMenuEdit(${item.id})">✏️ Edit</button>
-        <button class="mgmt-del" onclick="deleteMenuItem(${item.id})">🗑️ Hapus</button>
-      </div>
-    </div>`;
+  grid.innerHTML = menuData.items.map(function(item) {
+    var cat = menuData.categories.find(function(c){return c.id===item.category_id;});
+    return '<div class="mgmt-card"><div class="mgmt-img">'+getItemImageHTML(item)+'</div><div class="m-name">'+item.name+'</div><div class="m-cat">'+(cat?cat.name:'')+'</div><div class="m-price">'+formatRupiah(item.base_price)+'</div><div class="mgmt-actions"><button class="mgmt-edit" onclick="openMenuEdit('+item.id+')">✏️ Edit</button><button class="mgmt-del" onclick="deleteMenuItem('+item.id+')">🗑️ Hapus</button></div></div>';
   }).join('');
 }
 
 function openMenuEdit(id) {
   editImageData = '';
-  const sel = document.getElementById('editMenuCat');
-  sel.innerHTML = menuData.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+  var sel = document.getElementById('editMenuCat');
+  sel.innerHTML = menuData.categories.map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
   if (id) {
-    const item = menuData.items.find(i => i.id===id);
+    var item = menuData.items.find(function(i){return i.id===id;});
     document.getElementById('menuEditTitle').textContent = 'Edit Menu';
     document.getElementById('editMenuId').value = id;
     document.getElementById('editMenuName').value = item.name;
@@ -1086,182 +1004,133 @@ function openMenuEdit(id) {
 }
 
 function updateImgPreview(item) {
-  const prev = document.getElementById('imgPreview');
-  if (item.image_data) prev.innerHTML = `<img src="${item.image_data}">`;
-  else if (item.image_url) prev.innerHTML = `<img src="${item.image_url}" onerror="this.parentElement.innerHTML=getItemSVG(${JSON.stringify(item).replace(/"/g,'&quot;')})">`;
+  var prev = document.getElementById('imgPreview');
+  if (item.image_data) prev.innerHTML = '<img src="'+item.image_data+'">';
+  else if (item.image_url) prev.innerHTML = '<img src="'+item.image_url+'">';
   else prev.innerHTML = getItemSVG(item);
 }
 
 function handleImgUpload(e) {
-  const file = e.target.files[0];
+  var file = e.target.files[0];
   if (!file) return;
   if (file.size > 500000) { toast('Ukuran file maksimal 500KB', true); return; }
-  const reader = new FileReader();
+  var reader = new FileReader();
   reader.onload = function(ev) { editImageData = ev.target.result; updateImgPreview({image_data: editImageData}); };
   reader.readAsDataURL(file);
 }
 
 function handleImgUrl() {
-  const url = document.getElementById('imgUrl').value;
+  var url = document.getElementById('imgUrl').value;
   if (url) updateImgPreview({image_url: url}); else updateImgPreview({});
 }
 
-async function saveMenuItem() {
-  const id = document.getElementById('editMenuId').value;
-  const name = document.getElementById('editMenuName').value.trim();
-  const catId = parseInt(document.getElementById('editMenuCat').value);
-  const price = parseFloat(document.getElementById('editMenuPrice').value);
-  const desc = document.getElementById('editMenuDesc').value.trim();
-  const imgUrl = document.getElementById('imgUrl').value.trim();
-  const active = document.getElementById('editMenuActive').value === 'true';
+function saveMenuItem() {
+  var id = document.getElementById('editMenuId').value;
+  var name = document.getElementById('editMenuName').value.trim();
+  var catId = parseInt(document.getElementById('editMenuCat').value);
+  var price = parseFloat(document.getElementById('editMenuPrice').value);
+  var desc = document.getElementById('editMenuDesc').value.trim();
+  var imgUrl = document.getElementById('imgUrl').value.trim();
+  var active = document.getElementById('editMenuActive').value === 'true';
   if (!name) { toast('Nama menu wajib diisi', true); return; }
   if (!price || price <= 0) { toast('Harga harus valid', true); return; }
-  const payload = { name, category_id: catId, base_price: price, description: desc, image_url: imgUrl, image_data: editImageData, is_active: active };
-  let res;
-  if (id) { res = await apiPut('menu-item/'+id, payload); }
-  else { res = await apiPost('menu-item', payload); }
-  if (res && res.error) { toast('Error: '+res.error, true); return; }
-  await loadMenu(); closeModal('menuEditModal'); renderMenuMgmt(); toast('Menu disimpan');
+  var payload = { name: name, category_id: catId, base_price: price, description: desc, image_url: imgUrl, image_data: editImageData, is_active: active };
+  var p = id ? apiPut('menu-item/'+id, payload) : apiPost('menu-item', payload);
+  p.then(function(res) {
+    if (res && res.error) { toast('Error: '+res.error, true); return; }
+    loadMenu().then(function(){ closeModal('menuEditModal'); renderMenuMgmt(); toast('Menu disimpan'); });
+  });
 }
 
-async function deleteMenuItem(id) {
+function deleteMenuItem(id) {
   if (!confirm('Hapus menu ini?')) return;
-  const res = await apiDel('menu-item/'+id);
-  if (res && res.error) { toast('Error: '+res.error, true); return; }
-  await loadMenu(); renderMenuMgmt(); toast('Menu dihapus');
+  apiDel('menu-item/'+id).then(function(res) {
+    if (res && res.error) { toast('Error: '+res.error, true); return; }
+    loadMenu().then(function(){ renderMenuMgmt(); toast('Menu dihapus'); });
+  });
 }
 
-// ===== CATEGORIES =====
 function openCategoryModal() {
   renderCategoryList();
   document.getElementById('categoryModal').classList.add('show');
 }
 
 function renderCategoryList() {
-  const el = document.getElementById('categoryList');
-  el.innerHTML = menuData.categories.map(c => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel-2);border-radius:8px;margin-bottom:6px;">
-      <span style="font-size:14px;font-weight:600;">${c.icon||'☕'} ${c.name}</span>
-      <button class="btn-danger" style="padding:4px 10px;font-size:11px;" onclick="deleteCategory(${c.id})">Hapus</button>
-    </div>`).join('');
-}
-
-async function addCategory() {
-  const name = document.getElementById('newCatName').value.trim();
-  if (!name) { toast('Isi nama kategori', true); return; }
-  const res = await apiPost('categories', { name, icon: '☕', sort_order: menuData.categories.length+1 });
-  if (res && res.error) { toast('Error: '+res.error, true); return; }
-  document.getElementById('newCatName').value = '';
-  await loadMenu(); renderCategoryList(); toast('Kategori ditambah');
-}
-
-async function deleteCategory(id) {
-  if (!confirm('Hapus kategori? Semua menu di dalamnya juga akan dihapus.')) return;
-  const res = await apiDel('categories/'+id);
-  if (res && res.error) { toast('Error: '+res.error, true); return; }
-  await loadMenu(); renderCategoryList(); toast('Kategori dihapus');
-}
-
-// ===== REPORTS =====
-function renderReports() {
-  const today = new Date().toISOString().slice(0,10);
-  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  document.getElementById('mainContent').innerHTML = `
-    <div class="view-container">
-      <h2 class="view-title">📊 Laporan & Riwayat</h2>
-      <div class="date-filter">
-        <label style="font-size:13px;">Dari:</label><input type="date" id="dateFrom" value="${weekAgo}">
-        <label style="font-size:13px;">Sampai:</label><input type="date" id="dateTo" value="${today}">
-        <button onclick="loadReports()">🔄 Refresh</button>
-      </div>
-      <div class="report-cards" id="reportCards"><div class="report-card"><div class="label">Loading</div><div class="value">...</div></div></div>
-      <div id="topItems"></div>
-      <h3 style="margin:20px 0 10px;font-size:16px;">Riwayat Transaksi</h3>
-      <div class="transactions-table" id="transTable">Loading...</div>
-    </div>`;
-  loadReports();
-}
-
-async function loadReports() {
-  const from = document.getElementById('dateFrom').value;
-  const to = document.getElementById('dateTo').value;
-  const d = await apiGet(`dashboard?from=${from}&to=${to}`);
-  const dd = (d && !d.error) ? d : { totalSales:0, totalOrders:0, dineInCount:0, takeawayCount:0, daily:[], topItems:[] };
-  document.getElementById('reportCards').innerHTML = `
-    <div class="report-card"><div class="label">💰 Total Penjualan</div><div class="value">${formatRupiah(dd.totalSales||0)}</div><div class="sub">${dd.totalOrders||0} transaksi</div></div>
-    <div class="report-card"><div class="label">🍽️ Dine-in</div><div class="value">${dd.dineInCount||0}</div><div class="sub">order</div></div>
-    <div class="report-card"><div class="label">🥡 Takeaway</div><div class="value">${dd.takeawayCount||0}</div><div class="sub">order</div></div>
-    <div class="report-card"><div class="label">📈 Rata-rata</div><div class="value">${formatRupiah(dd.totalOrders?dd.totalSales/dd.totalOrders:0)}</div><div class="sub">per transaksi</div></div>`;
-  const topEl = document.getElementById('topItems');
-  if (dd.topItems && dd.topItems.length) {
-    topEl.innerHTML = `<h3 style="margin:20px 0 10px;font-size:16px;">🏆 Menu Terlaris</h3>` + dd.topItems.map((it,i) => `<div class="top-item-row"><div class="top-item-rank">${i+1}</div><div class="top-item-name">${it.name}</div><div class="top-item-qty">${it.qty} cup</div><div class="top-item-rev">${formatRupiah(it.revenue)}</div></div>`).join('');
-  } else { topEl.innerHTML = ''; }
-  const trans = await apiGet(`transactions?from=${from}&to=${to}`);
-  if (!trans || trans.error || !Array.isArray(trans) || !trans.length) { document.getElementById('transTable').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-dim);">Belum ada transaksi</div>'; return; }
-  document.getElementById('transTable').innerHTML = `<table><thead><tr><th>No. Order</th><th>Waktu</th><th>Tipe</th><th>Items</th><th>Total</th><th>Bayar</th></tr></thead><tbody>${trans.map(o => `<tr><td style="font-weight:600;">${o.order_number}</td><td>${new Date(o.created_at).toLocaleString('id-ID')}</td><td><span class="badge ${o.order_type==='dine-in'?'dine-in':'takeaway'}">${o.order_type==='dine-in'?'Dine-in':'Takeaway'}</span></td><td>${o.order_items?.length||0} item</td><td style="color:var(--accent);font-weight:700;">${formatRupiah(o.total)}</td><td>${(o.payment_method||'cash').toUpperCase()}</td></tr>`).join('')}</tbody></table>`;
-}
-
-// ===== STOCK =====
-async function renderStock() {
-  document.getElementById('mainContent').innerHTML = `<div class="view-container"><h2 class="view-title">📦 Stok Bahan Baku</h2><div class="stock-grid" id="stockGrid">Loading...</div></div>`;
-  let ings = await apiGet('ingredients');
-  if (!ings || ings.error || !Array.isArray(ings)) {
-    ings = [
-      {id:1,name:'Coffee Beans',unit:'g',stock:5000,min_stock:1000},
-      {id:2,name:'Fresh Milk',unit:'ml',stock:8000,min_stock:2000},
-      {id:3,name:'Sugar',unit:'g',stock:3000,min_stock:500},
-      {id:4,name:'Matcha Powder',unit:'g',stock:1000,min_stock:200},
-      {id:5,name:'Tea Leaves',unit:'g',stock:2000,min_stock:500},
-    ];
-  }
-  document.getElementById('stockGrid').innerHTML = ings.map(ing => {
-    const low = parseFloat(ing.stock) <= parseFloat(ing.min_stock);
-    return `<div class="stock-card ${low?'low':''}"><div class="name">${ing.name} ${low?'⚠️':''}</div><div><span class="stock-val">${ing.stock}</span><span class="unit">${ing.unit}</span></div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Min: ${ing.min_stock} ${ing.unit}</div><div class="stock-actions"><input type="number" placeholder="Tambah stok" id="stockIn-${ing.id}"><button onclick="addStock(${ing.id})">+ Tambah</button></div></div>`;
+  var el = document.getElementById('categoryList');
+  el.innerHTML = menuData.categories.map(function(c) {
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--panel-2);border-radius:8px;margin-bottom:6px;"><span style="font-size:14px;font-weight:600;">'+(c.icon||'☕')+' '+c.name+'</span><button class="btn-danger" style="padding:4px 10px;font-size:11px;" onclick="deleteCategory('+c.id+')">Hapus</button></div>';
   }).join('');
 }
 
-async function addStock(id) {
-  const qty = parseFloat(document.getElementById('stockIn-'+id).value);
+function addCategory() {
+  var name = document.getElementById('newCatName').value.trim();
+  if (!name) { toast('Isi nama kategori', true); return; }
+  apiPost('categories', { name: name, icon: '☕', sort_order: menuData.categories.length+1 }).then(function(res) {
+    if (res && res.error) { toast('Error: '+res.error, true); return; }
+    document.getElementById('newCatName').value = '';
+    loadMenu().then(function(){ renderCategoryList(); toast('Kategori ditambah'); });
+  });
+}
+
+function deleteCategory(id) {
+  if (!confirm('Hapus kategori? Semua menu di dalamnya juga akan dihapus.')) return;
+  apiDel('categories/'+id).then(function(res) {
+    if (res && res.error) { toast('Error: '+res.error, true); return; }
+    loadMenu().then(function(){ renderCategoryList(); toast('Kategori dihapus'); });
+  });
+}
+
+function renderReports() {
+  var today = new Date().toISOString().slice(0,10);
+  var weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  document.getElementById('mainContent').innerHTML = '<div class="view-container"><h2 class="view-title">📊 Laporan & Riwayat</h2><div class="date-filter"><label style="font-size:13px;">Dari:</label><input type="date" id="dateFrom" value="'+weekAgo+'"><label style="font-size:13px;">Sampai:</label><input type="date" id="dateTo" value="'+today+'"><button onclick="loadReports()">🔄 Refresh</button></div><div class="report-cards" id="reportCards"><div class="report-card"><div class="label">Loading</div><div class="value">...</div></div></div><div id="topItems"></div><h3 style="margin:20px 0 10px;font-size:16px;">Riwayat Transaksi</h3><div class="transactions-table" id="transTable">Loading...</div></div>';
+  loadReports();
+}
+
+function loadReports() {
+  var from = document.getElementById('dateFrom').value;
+  var to = document.getElementById('dateTo').value;
+  apiGet('dashboard?from='+from+'&to='+to).then(function(d) {
+    var dd = (d && !d.error) ? d : { totalSales:0, totalOrders:0, dineInCount:0, takeawayCount:0, daily:[], topItems:[] };
+    document.getElementById('reportCards').innerHTML = '<div class="report-card"><div class="label">💰 Total Penjualan</div><div class="value">'+formatRupiah(dd.totalSales||0)+'</div><div class="sub">'+(dd.totalOrders||0)+' transaksi</div></div><div class="report-card"><div class="label">🍽️ Dine-in</div><div class="value">'+(dd.dineInCount||0)+'</div><div class="sub">order</div></div><div class="report-card"><div class="label">🥡 Takeaway</div><div class="value">'+(dd.takeawayCount||0)+'</div><div class="sub">order</div></div><div class="report-card"><div class="label">📈 Rata-rata</div><div class="value">'+formatRupiah(dd.totalOrders?dd.totalSales/dd.totalOrders:0)+'</div><div class="sub">per transaksi</div></div>';
+    var topEl = document.getElementById('topItems');
+    if (dd.topItems && dd.topItems.length) {
+      topEl.innerHTML = '<h3 style="margin:20px 0 10px;font-size:16px;">🏆 Menu Terlaris</h3>'+dd.topItems.map(function(it,i){return '<div class="top-item-row"><div class="top-item-rank">'+(i+1)+'</div><div class="top-item-name">'+it.name+'</div><div class="top-item-qty">'+it.qty+' cup</div><div class="top-item-rev">'+formatRupiah(it.revenue)+'</div></div>';}).join('');
+    } else { topEl.innerHTML = ''; }
+    return apiGet('transactions?from='+from+'&to='+to);
+  }).then(function(trans) {
+    if (!trans || trans.error || !Array.isArray(trans) || !trans.length) { document.getElementById('transTable').innerHTML = '<div style="padding:30px;text-align:center;color:var(--text-dim);">Belum ada transaksi</div>'; return; }
+    document.getElementById('transTable').innerHTML = '<table><thead><tr><th>No. Order</th><th>Waktu</th><th>Tipe</th><th>Items</th><th>Total</th><th>Bayar</th></tr></thead><tbody>'+trans.map(function(o){return '<tr><td style="font-weight:600;">'+o.order_number+'</td><td>'+new Date(o.created_at).toLocaleString('id-ID')+'</td><td><span class="badge '+(o.order_type==='dine-in'?'dine-in':'takeaway')+'">'+(o.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.order_items?o.order_items.length:0)+' item</td><td style="color:var(--accent);font-weight:700;">'+formatRupiah(o.total)+'</td><td>'+(o.payment_method||'cash').toUpperCase()+'</td></tr>';}).join('')+'</tbody></table>';
+  });
+}
+
+function renderStock() {
+  document.getElementById('mainContent').innerHTML = '<div class="view-container"><h2 class="view-title">📦 Stok Bahan Baku</h2><div class="stock-grid" id="stockGrid">Loading...</div></div>';
+  apiGet('ingredients').then(function(ings) {
+    if (!ings || ings.error || !Array.isArray(ings)) {
+      ings = [{id:1,name:'Coffee Beans',unit:'g',stock:5000,min_stock:1000},{id:2,name:'Fresh Milk',unit:'ml',stock:8000,min_stock:2000},{id:3,name:'Sugar',unit:'g',stock:3000,min_stock:500},{id:4,name:'Matcha Powder',unit:'g',stock:1000,min_stock:200},{id:5,name:'Tea Leaves',unit:'g',stock:2000,min_stock:500}];
+    }
+    document.getElementById('stockGrid').innerHTML = ings.map(function(ing) {
+      var low = parseFloat(ing.stock) <= parseFloat(ing.min_stock);
+      return '<div class="stock-card '+(low?'low':'')+'"><div class="name">'+ing.name+' '+(low?'⚠️':'')+'</div><div><span class="stock-val">'+ing.stock+'</span><span class="unit">'+ing.unit+'</span></div><div style="font-size:11px;color:var(--text-dim);margin-top:4px;">Min: '+ing.min_stock+' '+ing.unit+'</div><div class="stock-actions"><input type="number" placeholder="Tambah stok" id="stockIn-'+ing.id+'"><button onclick="addStock('+ing.id+')">+ Tambah</button></div></div>';
+    }).join('');
+  });
+}
+
+function addStock(id) {
+  var qty = parseFloat(document.getElementById('stockIn-'+id).value);
   if (!qty || qty<=0) { toast('Masukkan jumlah valid', true); return; }
-  const res = await apiPost('stock-in', { ingredient_id: id, quantity: qty, note: 'Manual' });
-  if (res && res.error) { toast('Error: '+res.error, true); } else { toast('Stok ditambah'); }
-  renderStock();
+  apiPost('stock-in', { ingredient_id: id, quantity: qty, note: 'Manual' }).then(function(res) {
+    if (res && res.error) { toast('Error: '+res.error, true); } else { toast('Stok ditambah'); }
+    renderStock();
+  });
 }
 
-// ===== SETTINGS =====
 function renderSettings() {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="settings-container">
-      <h2 class="view-title">⚙️ Pengaturan Toko</h2>
-      <div class="settings-section">
-        <h3>🏪 Informasi Toko</h3>
-        <div class="form-group"><label>Nama Toko</label><input type="text" id="setStoreName" value="${settings.store_name||''}"></div>
-        <div class="form-group"><label>Logo Teks (1 huruf)</label><input type="text" id="setStoreLogo" value="${settings.store_logo||''}" maxlength="2" style="text-transform:uppercase;"></div>
-        <div class="form-group"><label>Alamat</label><textarea id="setStoreAddr" rows="2">${settings.store_address||''}</textarea></div>
-        <div class="form-row">
-          <div class="form-group"><label>Telepon</label><input type="text" id="setStorePhone" value="${settings.store_phone||''}"></div>
-          <div class="form-group"><label>Email</label><input type="text" id="setStoreEmail" value="${settings.store_email||''}"></div>
-        </div>
-      </div>
-      <div class="settings-section">
-        <h3>💰 Pajak & Pembayaran</h3>
-        <div class="form-group"><label>Rate Pajak (%)</label><input type="number" id="setTaxRate" value="${(parseFloat(settings.tax_rate||0.10)*100).toFixed(1)}" step="0.5"></div>
-        <div class="form-group"><label>Mata Uang</label><input type="text" id="setCurrency" value="${settings.currency||'Rp'}"></div>
-      </div>
-      <div class="settings-section">
-        <h3>🖨️ Pengaturan Print</h3>
-        <div class="form-group"><label>Lebar Kertas (mm)</label><select id="setPrintWidth">
-          <option value="58" ${settings.print_width==58?'selected':''}>58mm (Kecil)</option>
-          <option value="80" ${settings.print_width==80||!settings.print_width?'selected':''}>80mm (Standar)</option>
-        </select></div>
-        <div class="form-group"><label>Teks Footer Struk</label><input type="text" id="setReceiptFooter" value="${settings.receipt_footer||'Terima kasih!'}"></div>
-        <div class="form-group"><label><input type="checkbox" id="setAutoPrint" ${settings.auto_print?'checked':''}> Auto-print setelah pembayaran</label></div>
-      </div>
-      <button class="settings-save" onclick="saveSettingsForm()">💾 Simpan Pengaturan</button>
-    </div>`;
+  document.getElementById('mainContent').innerHTML = '<div class="settings-container"><h2 class="view-title">⚙️ Pengaturan Toko</h2><div class="settings-section"><h3>🏪 Informasi Toko</h3><div class="form-group"><label>Nama Toko</label><input type="text" id="setStoreName" value="'+(settings.store_name||'')+'"></div><div class="form-group"><label>Logo Teks (1 huruf)</label><input type="text" id="setStoreLogo" value="'+(settings.store_logo||'')+'" maxlength="2" style="text-transform:uppercase;"></div><div class="form-group"><label>Alamat</label><textarea id="setStoreAddr" rows="2">'+(settings.store_address||'')+'</textarea></div><div class="form-row"><div class="form-group"><label>Telepon</label><input type="text" id="setStorePhone" value="'+(settings.store_phone||'')+'"></div><div class="form-group"><label>Email</label><input type="text" id="setStoreEmail" value="'+(settings.store_email||'')+'"></div></div></div><div class="settings-section"><h3>💰 Pajak & Pembayaran</h3><div class="form-group"><label>Rate Pajak (%)</label><input type="number" id="setTaxRate" value="'+(parseFloat(settings.tax_rate||0.10)*100).toFixed(1)+'" step="0.5"></div><div class="form-group"><label>Mata Uang</label><input type="text" id="setCurrency" value="'+(settings.currency||'Rp')+'"></div></div><div class="settings-section"><h3>🖨️ Pengaturan Print</h3><div class="form-group"><label>Lebar Kertas (mm)</label><select id="setPrintWidth"><option value="58" '+(settings.print_width==58?'selected':'')+'>58mm (Kecil)</option><option value="80" '+(settings.print_width==80||!settings.print_width?'selected':'')+'>80mm (Standar)</option></select></div><div class="form-group"><label>Teks Footer Struk</label><input type="text" id="setReceiptFooter" value="'+(settings.receipt_footer||'Terima kasih!')+'"></div><div class="form-group"><label><input type="checkbox" id="setAutoPrint" '+(settings.auto_print?'checked':'')+'> Auto-print setelah pembayaran</label></div></div><button class="settings-save" onclick="saveSettingsForm()">💾 Simpan Pengaturan</button></div>';
 }
 
-async function saveSettingsForm() {
+function saveSettingsForm() {
   settings.store_name = document.getElementById('setStoreName').value.trim() || 'MASU SPACE';
   settings.store_logo = document.getElementById('setStoreLogo').value.trim() || 'M';
   settings.store_address = document.getElementById('setStoreAddr').value.trim();
@@ -1272,12 +1141,13 @@ async function saveSettingsForm() {
   settings.print_width = parseInt(document.getElementById('setPrintWidth').value);
   settings.receipt_footer = document.getElementById('setReceiptFooter').value.trim();
   settings.auto_print = document.getElementById('setAutoPrint').checked;
-  await saveSettings();
+  localStorage.setItem('pos_settings', JSON.stringify(settings));
+  applySettings();
   toast('Pengaturan disimpan');
+  apiPut('settings', settings).catch(function(){});
   renderView();
 }
 
-// ===== INIT =====
 loadAll();
 </script>
 </body>
