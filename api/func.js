@@ -23,9 +23,8 @@ export default async function handler(req) {
 
   try {
     const url = new URL(req.url);
-    const fullPath = url.pathname.replace(/^\/+|\/+$/g, '');
-    const cleanPath = fullPath.replace(/^api\/?/, '');
-    const segments = cleanPath.split('/').filter(Boolean);
+    const path = url.pathname.replace('/api/', '').replace(/^\/+|\/+$/g, '');
+    const segments = path.split('/').filter(Boolean);
     const resource = segments[0] || '';
     const id = segments[1];
 
@@ -118,19 +117,6 @@ export default async function handler(req) {
       }
       if (req.method === 'POST') {
         const body = await req.json();
-        // Delete old recipes for this menu item, then insert new ones
-        if (body.menu_item_id && body.recipes) {
-          await supabase.from('recipes').delete().eq('menu_item_id', body.menu_item_id);
-          const insertData = body.recipes.map(r => ({
-            menu_item_id: body.menu_item_id,
-            ingredient_id: r.ingredient_id,
-            quantity: r.quantity,
-          }));
-          const { data, error } = await supabase.from('recipes').insert(insertData).select();
-          if (error) return json({ error: error.message }, 500);
-          return json(data);
-        }
-        // Single insert
         const { data, error } = await supabase.from('recipes').insert(body).select();
         if (error) return json({ error: error.message }, 500);
         return json(data[0]);
@@ -205,41 +191,11 @@ export default async function handler(req) {
       return json({ success: true });
     }
 
-    // ===== PLACE ORDER (dengan validasi stok) =====
+    // ===== PLACE ORDER =====
     if (resource === 'order' && req.method === 'POST') {
       const body = await req.json();
       const { order, items, table_id } = body;
 
-      // 1. Cek stok untuk semua item
-      const stockCheck = [];
-      for (const item of items) {
-        if (!item.menu_item_id) continue;
-        const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity, ingredients(name, stock, unit)').eq('menu_item_id', item.menu_item_id);
-        if (recipes && recipes.length > 0) {
-          for (const r of recipes) {
-            const needed = parseFloat(r.quantity) * item.quantity;
-            const available = parseFloat(r.ingredients?.stock || 0);
-            stockCheck.push({
-              ingredient: r.ingredients?.name || 'Unknown',
-              needed: needed,
-              available: available,
-              unit: r.ingredients?.unit || '',
-              enough: available >= needed,
-            });
-          }
-        }
-      }
-
-      // 2. Jika ada stok yang kurang, tolak order
-      const insufficient = stockCheck.filter(s => !s.enough);
-      if (insufficient.length > 0) {
-        return json({
-          error: 'Stok tidak cukup!',
-          insufficient: insufficient.map(s => `${s.ingredient}: butuh ${s.needed}${s.unit}, tersedia ${s.available}${s.unit}`)
-        }, 400);
-      }
-
-      // 3. Generate order number
       const { data: lastOrder } = await supabase.from('orders').select('order_number').order('id', { ascending: false }).limit(1).maybeSingle();
       let orderNum = 'MS00001';
       if (lastOrder?.order_number) {
@@ -247,21 +203,17 @@ export default async function handler(req) {
         orderNum = 'MS' + String(num).padStart(5, '0');
       }
 
-      // 4. Insert order
       const { data: newOrder, error: orderErr } = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
       if (orderErr) return json({ error: orderErr.message }, 500);
 
-      // 5. Insert order items
       const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
       if (itemsErr) return json({ error: itemsErr.message }, 500);
 
-      // 6. Clear table hold
       if (table_id) {
         await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() }).eq('id', table_id);
       }
 
-      // 7. Reduce stock
       for (const item of items) {
         if (!item.menu_item_id) continue;
         const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity').eq('menu_item_id', item.menu_item_id);
@@ -270,14 +222,12 @@ export default async function handler(req) {
             const reduceQty = parseFloat(r.quantity) * item.quantity;
             const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', r.ingredient_id).single();
             if (ing) {
-              const newStock = parseFloat(ing.stock) - reduceQty;
-              await supabase.from('ingredients').update({ stock: newStock }).eq('id', r.ingredient_id);
+              await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) - reduceQty }).eq('id', r.ingredient_id);
               await supabase.from('stock_transactions').insert({ ingredient_id: r.ingredient_id, quantity: -reduceQty, type: 'out', note: `Order ${orderNum}` });
             }
           }
         }
       }
-
       return json({ order: newOrder, order_number: orderNum });
     }
 
@@ -371,24 +321,180 @@ export default async function handler(req) {
       return json({ success: true });
     }
 
-    // ===== STOCK CHECK (for a menu item) =====
-    if (resource === 'stock-check' && req.method === 'GET') {
-      const menuItemId = url.searchParams.get('menu_item_id');
-      const { data: recipes } = await supabase.from('recipes').select('quantity, ingredients(id, name, stock, unit, min_stock)').eq('menu_item_id', menuItemId);
-      if (!recipes || recipes.length === 0) return json({ available: true, items: [] });
-      const items = recipes.map(r => ({
-        name: r.ingredients?.name,
-        needed: parseFloat(r.quantity),
-        available: parseFloat(r.ingredients?.stock || 0),
-        unit: r.ingredients?.unit,
-        enough: parseFloat(r.ingredients?.stock || 0) >= parseFloat(r.quantity),
-        low: parseFloat(r.ingredients?.stock || 0) <= parseFloat(r.ingredients?.min_stock || 0),
-      }));
-      return json({ available: items.every(i => i.enough), items });
+    // ===== STOCK OPNAME =====
+    if (resource === 'stock-opname') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('stock_opname').select('*, ingredients(name, unit)').order('date', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (req.method === 'POST') {
+        const body = await req.json();
+        const { ingredient_id, actual_stock, note } = body;
+        const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
+        if (ing) {
+          const diff = parseFloat(actual_stock) - parseFloat(ing.stock);
+          await supabase.from('stock_opname').insert({
+            ingredient_id, date: new Date().toISOString().slice(0, 10),
+            system_stock: ing.stock, actual_stock, difference: diff, note
+          }).select();
+          await supabase.from('ingredients').update({ stock: parseFloat(actual_stock) }).eq('id', ingredient_id);
+          await supabase.from('stock_transactions').insert({
+            ingredient_id, quantity: diff, type: 'adjust', note: 'Stock Opname'
+          });
+        }
+        return json({ success: true });
+      }
     }
 
-    return json({ error: 'Not found: ' + cleanPath }, 404);
+    // ===== WASTE =====
+    if (resource === 'waste') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('waste').select('*, ingredients(name, unit, cost_per_unit)').order('date', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (req.method === 'POST') {
+        const body = await req.json();
+        const { ingredient_id, quantity, reason } = body;
+        const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
+        if (ing) {
+          await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) - parseFloat(quantity) }).eq('id', ingredient_id);
+          await supabase.from('stock_transactions').insert({
+            ingredient_id, quantity: -parseFloat(quantity), type: 'waste', note: reason || 'Waste'
+          });
+        }
+        const { data, error } = await supabase.from('waste').insert({ ingredient_id, date: new Date().toISOString().slice(0, 10), quantity, reason }).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('waste').delete().eq('id', id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+
+    // ===== HPP CALCULATION =====
+    if (resource === 'hpp' && req.method === 'GET') {
+      const { data: recipes } = await supabase.from('recipes').select('menu_item_id, quantity, ingredients(name, unit, cost_per_unit)');
+      const { data: items } = await supabase.from('menu_items').select('id, name, base_price');
+      if (!recipes || !items) return json({ error: 'Failed to fetch' }, 500);
+      
+      const result = items.map(item => {
+        const itemRecipes = recipes.filter(r => r.menu_item_id === item.id);
+        let totalCost = 0;
+        const breakdown = itemRecipes.map(r => {
+          const cost = parseFloat(r.quantity) * parseFloat(r.ingredients?.cost_per_unit || 0);
+          totalCost += cost;
+          return {
+            ingredient: r.ingredients?.name,
+            quantity: parseFloat(r.quantity),
+            unit: r.ingredients?.unit,
+            cost_per_unit: parseFloat(r.ingredients?.cost_per_unit || 0),
+            total_cost: cost
+          };
+        });
+        return {
+          menu_item_id: item.id,
+          name: item.name,
+          price: parseFloat(item.base_price),
+          hpp: totalCost,
+          profit: parseFloat(item.base_price) - totalCost,
+          margin: parseFloat(item.base_price) > 0 ? ((parseFloat(item.base_price) - totalCost) / parseFloat(item.base_price) * 100) : 0,
+          breakdown
+        };
+      });
+      return json(result);
+    }
+
+    // ===== EXPENSES =====
+    if (resource === 'expenses') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (req.method === 'POST') {
+        const body = await req.json();
+        const { data, error } = await supabase.from('expenses').insert(body).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('expenses').delete().eq('id', id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+
+    // ===== PAYABLES & RECEIVABLES =====
+    if (resource === 'payables' || resource === 'receivables') {
+      const table = resource === 'payables' ? 'payables' : 'receivables';
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from(table).select('*').order('date', { ascending: false });
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (req.method === 'POST') {
+        const body = await req.json();
+        const { data, error } = await supabase.from(table).insert(body).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const body = await req.json();
+        const { data, error } = await supabase.from(table).update(body).eq('id', id).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+
+    // ===== ACCOUNTING DASHBOARD =====
+    if (resource === 'acc-dashboard' && req.method === 'GET') {
+      const from = url.searchParams.get('from');
+      const to = url.searchParams.get('to');
+      
+      let expQuery = supabase.from('expenses').select('amount, category, date');
+      if (from) expQuery = expQuery.gte('date', from);
+      if (to) expQuery = expQuery.lte('date', to);
+      const { data: expenses } = await expQuery;
+
+      let ordQuery = supabase.from('orders').select('total, created_at');
+      if (from) ordQuery = ordQuery.gte('created_at', from);
+      if (to) ordQuery = ordQuery.lte('created_at', to + 'T23:59:59');
+      const { data: orders } = await ordQuery;
+
+      const totalRevenue = (orders || []).reduce((s, o) => s + parseFloat(o.total || 0), 0);
+      const totalExpenses = (expenses || []).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
+      
+      const expByCategory = {};
+      (expenses || []).forEach(e => {
+        if (!expByCategory[e.category]) expByCategory[e.category] = 0;
+        expByCategory[e.category] += parseFloat(e.amount || 0);
+      });
+
+      const { data: payables } = await supabase.from('payables').select('*').eq('status', 'unpaid');
+      const { data: receivables } = await supabase.from('receivables').select('*').eq('status', 'unpaid');
+      
+      const totalPayables = (payables || []).reduce((s, p) => s + (parseFloat(p.amount) - parseFloat(p.paid_amount || 0)), 0);
+      const totalReceivables = (receivables || []).reduce((s, r) => s + (parseFloat(r.amount) - parseFloat(r.received_amount || 0)), 0);
+
+      return json({
+        totalRevenue, totalExpenses,
+        netProfit: totalRevenue - totalExpenses,
+        expByCategory, totalPayables, totalReceivables,
+        orderCount: (orders || []).length,
+      });
+    }
+
+    return json({ error: 'Endpoint not found: ' + path }, 404);
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e.message, stack: e.stack }, 500);
   }
 }
