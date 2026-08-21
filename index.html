@@ -10,7 +10,6 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:var(--txt);height:100vh;height:100dvh;overflow:hidden;user-select:none;-webkit-tap-highlight-color:transparent}
 .app{display:flex;height:100vh;height:100dvh}
-/* SIDEBAR */
 .sb{width:230px;background:var(--sb);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s ease;z-index:1000}
 .sb.col{width:64px}
 .sb-h{padding:18px 16px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08)}
@@ -32,7 +31,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .sb.col .sb-f{display:none}
 .sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:none}
 .sb-overlay.show{display:block}
-/* MAIN */
 .mn{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 .tb{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg2);border-bottom:1px solid var(--bdr);box-shadow:var(--sh);flex-shrink:0}
 .tb-l{display:flex;align-items:center;gap:10px}
@@ -49,7 +47,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .ck{font-size:13px;font-weight:600;text-align:right}
 .ck .d{font-size:11px;color:var(--dim);font-weight:400}
 .ct{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-/* DASHBOARD */
 .dash{padding:20px}
 .dash h2{font-size:22px;font-weight:700;margin-bottom:2px}
 .dash .sub{color:var(--dim);font-size:13px;margin-bottom:20px}
@@ -73,7 +70,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .qb button{display:flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.15s}
 .qb .b1{background:var(--ac);color:#fff}.qb .b1:hover{background:var(--sb-d)}
 .qb .b2{background:var(--bg2);border:1px solid var(--bdr);color:var(--txt)}.qb .b2:hover{background:var(--bg)}
-/* POS */
 .pl{display:flex;height:100%;overflow:hidden;position:relative}
 .pl-l{flex:1;display:flex;flex-direction:column;padding:14px;overflow:hidden;min-width:0}
 .pl-s{margin-bottom:10px;position:relative}
@@ -91,7 +87,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .mc .mn{font-size:12px;font-weight:600;margin-bottom:2px}
 .mc .md{font-size:9px;color:var(--dim);margin-bottom:4px;min-height:18px}
 .mc .mp{font-size:13px;color:var(--ac);font-weight:700}
-/* CART */
 .pr{width:350px;background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0}
 .pr-h{padding:12px 14px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .pr-h h2{font-size:14px;font-weight:700}
@@ -127,7 +122,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .pr-pb:disabled{background:var(--bdr);color:var(--dim);cursor:not-allowed}
 .pr-hb{width:100%;padding:10px;margin-top:4px;background:transparent;color:var(--dim);border:1px solid var(--bdr);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
 .mobile-cart-btn{display:none;position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:var(--ac);color:#fff;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:50;border:none;cursor:pointer;font-size:24px}
-/* MODAL */
 .mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:100;display:none;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:10px}
 .mo.show{display:flex}
 .ml{background:var(--bg2);border-radius:14px;padding:20px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.15);-webkit-overflow-scrolling:touch}
@@ -160,7 +154,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .bp{flex:1;padding:12px;background:var(--ac);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}.bp:hover{background:var(--sb-d)}
 .bs{flex:1;padding:12px;background:var(--bg2);border:1px solid var(--bdr);color:var(--dim);border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}.bs:hover{background:var(--bg);color:var(--txt)}
 .bd{padding:6px 10px;background:var(--dng);color:#fff;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer}
-/* MGMT */
 .mg-c{padding:20px}
 .mg-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
 .mg-h h2{font-size:20px;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -268,7 +261,6 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .logo-prev{width:80px;height:80px;border-radius:8px;overflow:hidden;background:var(--bg);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--ac)}
 .logo-prev img{width:100%;height:100%;object-fit:contain}
 .price-input{width:90px;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:4px;font-size:12px;text-align:right}
-/* RESPONSIVE */
 @media (max-width: 1024px) {
   .sb{position:fixed;left:0;top:0;height:100vh;height:100dvh;transform:translateX(-100%);box-shadow:4px 0 20px rgba(0,0,0,.2);width:230px}
   .sb.show{transform:translateX(0)}
@@ -304,7 +296,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
       <div class="sb-sec">Sistem</div>
       <div class="sb-i" onclick="nav('settings',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Pengaturan</span></div>
     </div>
-    <div class="sb-f">v6.0 Cloud © MASU SPACE</div>
+    <div class="sb-f">v7.0 Cloud © MASU SPACE</div>
   </div>
   <div class="mn">
     <div class="tb">
@@ -462,6 +454,8 @@ function sTF(tid){sT=tid;oT='dine-in';nav('pos',document.querySelectorAll('.sb-i
 function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';var lp=document.getElementById('logoPrev');if(st.sl_img){lp.innerHTML='<img src="'+st.sl_img+'">'}else{lp.textContent=(st.sl||'M').charAt(0).toUpperCase()}}
 function hLogo(e){var f=e.target.files[0];if(!f)return;if(f.size>200000){tt('Maks 200KB',true);return}var r=new FileReader();r.onload=function(ev){st.sl_img=ev.target.result;document.getElementById('logoPrev').innerHTML='<img src="'+ev.target.result+'">';document.getElementById('favicon').href=ev.target.result};r.readAsDataURL(f)}
 function sSt(){st.sn=document.getElementById('sN').value.trim()||'MASU SPACE';st.sl=document.getElementById('sL').value.trim()||'M';st.sa=document.getElementById('sA').value.trim();st.sp=document.getElementById('sP').value.trim();st.se=document.getElementById('sE').value.trim();st.tr=parseFloat(document.getElementById('sT2').value)/100;st.pw=parseInt(document.getElementById('sPw').value);st.rf=document.getElementById('sF').value.trim();st.ap=document.getElementById('sAp').checked;localStorage.setItem('pos_settings',JSON.stringify(st));aSt();tt('Tersimpan');aU('settings',st).then(function(r){if(r&&!r.error)tt('Tersinkron ke Cloud');else tt('Tersimpan lokal (gagal sync)',true)})}
+
+function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 
 init();
 </script>
