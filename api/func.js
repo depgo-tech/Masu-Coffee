@@ -61,7 +61,7 @@ export default async function handler(req) {
       });
     }
 
-    // ===== CATEGORIES CRUD =====
+    // ===== CATEGORIES =====
     if (resource === 'categories') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('categories').select('*').order('sort_order');
@@ -87,7 +87,7 @@ export default async function handler(req) {
       }
     }
 
-    // ===== MENU ITEM CRUD =====
+    // ===== MENU ITEMS =====
     if (resource === 'menu-item') {
       if (req.method === 'POST') {
         const body = await req.json();
@@ -108,7 +108,7 @@ export default async function handler(req) {
       }
     }
 
-    // ===== RECIPES CRUD =====
+    // ===== RECIPES =====
     if (resource === 'recipes') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('recipes').select('*, ingredients(*)').order('id');
@@ -128,7 +128,7 @@ export default async function handler(req) {
       }
     }
 
-    // ===== ADDONS CRUD =====
+    // ===== ADDONS =====
     if (resource === 'addons') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('addons').select('*').order('name');
@@ -283,7 +283,7 @@ export default async function handler(req) {
       });
     }
 
-    // ===== INGREDIENTS CRUD =====
+    // ===== INGREDIENTS =====
     if (resource === 'ingredients') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('ingredients').select('*').order('name');
@@ -375,7 +375,7 @@ export default async function handler(req) {
       }
     }
 
-    // ===== HPP CALCULATION =====
+    // ===== HPP =====
     if (resource === 'hpp' && req.method === 'GET') {
       const { data: recipes } = await supabase.from('recipes').select('menu_item_id, quantity, ingredients(name, unit, cost_per_unit)');
       const { data: items } = await supabase.from('menu_items').select('id, name, base_price');
