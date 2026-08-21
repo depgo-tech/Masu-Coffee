@@ -1,23 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-const supabase = supabaseUrl ? createClient(supabaseUrl, supabaseKey) : null;
-
 export default async function handler(req, res) {
+  // Setup CORS & Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
-  if (!supabase) return res.status(500).json({ error: 'Supabase not configured' });
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ error: 'Server env vars not set' });
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // Safe parse body
+  const body = req.body && typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
-    const path = url.pathname.replace('/api/', '').replace(/^\/+|\/+$/g, '');
-    const segments = path.split('/').filter(Boolean);
-    const resource = segments[0] || '';
-    const id = segments[1];
+    const path = url.pathname.replace(/^\/api\//, '').replace(/^\/+|\/+$/g, '');
+    const parts = path.split('/').filter(Boolean);
+    const resource = parts[0] || '';
+    const id = parts[1];
 
     // ===== SETTINGS =====
     if (resource === 'settings') {
@@ -27,7 +35,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
       if (req.method === 'PUT') {
-        const body = req.body;
         const { data, error } = await supabase.from('settings').update({ ...body, updated_at: new Date().toISOString() }).eq('id', 1).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
@@ -45,7 +52,7 @@ export default async function handler(req, res) {
       ]);
       return res.status(200).json({
         categories: cats.data || [],
-        items: (items.data || []),
+        items: items.data || [],
         variants: vars.data || [],
         addons: ads.data || [],
         itemAddons: ia.data || [],
@@ -60,13 +67,11 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
       if (req.method === 'POST') {
-        const body = req.body;
         const { data, error } = await supabase.from('categories').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
       if (req.method === 'PUT' && id) {
-        const body = req.body;
         const { data, error } = await supabase.from('categories').update(body).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
@@ -78,16 +83,14 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== MENU ITEMS =====
+    // ===== MENU ITEM =====
     if (resource === 'menu-item') {
       if (req.method === 'POST') {
-        const body = req.body;
         const { data, error } = await supabase.from('menu_items').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
       if (req.method === 'PUT' && id) {
-        const body = req.body;
         const { data, error } = await supabase.from('menu_items').update(body).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
@@ -99,41 +102,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== RECIPES =====
-    if (resource === 'recipes') {
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from('recipes').select('*, ingredients(*)').order('id');
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const body = req.body;
-        const { data, error } = await supabase.from('recipes').insert(body).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('recipes').delete().eq('id', id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== ADDONS =====
-    if (resource === 'addons') {
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from('addons').select('*').order('name');
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const body = req.body;
-        const { data, error } = await supabase.from('addons').insert(body).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-    }
-
     // ===== TABLES =====
     if (resource === 'tables') {
       if (req.method === 'GET') {
@@ -142,13 +110,11 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
       if (req.method === 'POST') {
-        const body = req.body;
         const { data, error } = await supabase.from('tables').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
       if (req.method === 'PUT' && id) {
-        const body = req.body;
         const { data, error } = await supabase.from('tables').update({ ...body, updated_at: new Date().toISOString() }).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
@@ -162,21 +128,17 @@ export default async function handler(req, res) {
 
     // ===== HOLD ORDER =====
     if (resource === 'hold-order' && req.method === 'POST') {
-      const body = req.body;
       const { data, error } = await supabase.from('tables').update({ status: 'held', hold_order: body.order_data, updated_at: new Date().toISOString() }).eq('id', body.table_id).select();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data[0] || { success: true });
     }
-
     if (resource === 'recall-order' && req.method === 'GET') {
       const tableId = url.searchParams.get('table_id');
       const { data, error } = await supabase.from('tables').select('*').eq('id', tableId).single();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
-
     if (resource === 'clear-hold' && req.method === 'POST') {
-      const body = req.body;
       const { error } = await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() }).eq('id', body.table_id);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true });
@@ -184,7 +146,6 @@ export default async function handler(req, res) {
 
     // ===== PLACE ORDER =====
     if (resource === 'order' && req.method === 'POST') {
-      const body = req.body;
       const { order, items, table_id } = body;
 
       const { data: lastOrder } = await supabase.from('orders').select('order_number').order('id', { ascending: false }).limit(1).maybeSingle();
@@ -208,7 +169,7 @@ export default async function handler(req, res) {
       for (const item of items) {
         if (!item.menu_item_id) continue;
         const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity').eq('menu_item_id', item.menu_item_id);
-        if (recipes) {
+        if (recipes && recipes.length > 0) {
           for (const r of recipes) {
             const reduceQty = parseFloat(r.quantity) * item.quantity;
             const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', r.ingredient_id).single();
@@ -222,7 +183,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ order: newOrder, order_number: orderNum });
     }
 
-    // ===== TRANSACTIONS =====
+    // ===== TRANSACTIONS & DASHBOARD =====
     if (resource === 'transactions' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
@@ -234,7 +195,6 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
-    // ===== DASHBOARD =====
     if (resource === 'dashboard' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
@@ -245,36 +205,14 @@ export default async function handler(req, res) {
       if (error) return res.status(500).json({ error: error.message });
 
       const totalSales = orders.reduce((s, o) => s + parseFloat(o.total || 0), 0);
-      const dailyMap = {};
-      orders.forEach(o => {
-        const d = o.created_at.slice(0, 10);
-        if (!dailyMap[d]) dailyMap[d] = { date: d, total: 0, count: 0 };
-        dailyMap[d].total += parseFloat(o.total || 0);
-        dailyMap[d].count += 1;
-      });
-
-      let topItems = [];
-      if (from && to) {
-        const { data: topData } = await supabase.from('order_items').select('menu_item_name, quantity, subtotal, order:orders!inner(created_at)').gte('order.created_at', from).lte('order.created_at', to + 'T23:59:59');
-        const itemMap = {};
-        (topData || []).forEach(it => {
-          if (!itemMap[it.menu_item_name]) itemMap[it.menu_item_name] = { name: it.menu_item_name, qty: 0, revenue: 0 };
-          itemMap[it.menu_item_name].qty += it.quantity;
-          itemMap[it.menu_item_name].revenue += parseFloat(it.subtotal || 0);
-        });
-        topItems = Object.values(itemMap).sort((a, b) => b.qty - a.qty).slice(0, 5);
-      }
-
       return res.status(200).json({
         totalSales, totalOrders: orders.length,
         dineInCount: orders.filter(o => o.order_type === 'dine-in').length,
-        takeawayCount: orders.filter(o => o.order_type === 'takeaway').length,
-        daily: Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date)),
-        topItems,
+        takeawayCount: orders.filter(o => o.order_type === 'takeaway').length
       });
     }
 
-    // ===== INGREDIENTS =====
+    // ===== INGREDIENTS & STOCK =====
     if (resource === 'ingredients') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('ingredients').select('*').order('name');
@@ -282,27 +220,29 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
       if (req.method === 'POST') {
-        const body = req.body;
         const { data, error } = await supabase.from('ingredients').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
-      if (req.method === 'PUT' && id) {
-        const body = req.body;
-        const { data, error } = await supabase.from('ingredients').update(body).eq('id', id).select();
+    }
+    if (resource === 'recipes') {
+       if (req.method === 'GET') {
+        const { data, error } = await supabase.from('recipes').select('*, ingredients(*)').order('id');
         if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0] || { success: true });
+        return res.status(200).json(data);
       }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('ingredients').delete().eq('id', id);
+       if (req.method === 'POST') {
+        const { data, error } = await supabase.from('recipes').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+       if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('recipes').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
     }
-
-    // ===== STOCK IN =====
     if (resource === 'stock-in' && req.method === 'POST') {
-      const body = req.body;
       const { ingredient_id, quantity, note } = body;
       const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
       if (ing) {
@@ -312,94 +252,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // ===== STOCK OPNAME =====
-    if (resource === 'stock-opname') {
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from('stock_opname').select('*, ingredients(name, unit)').order('date', { ascending: false });
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const body = req.body;
-        const { ingredient_id, actual_stock, note } = body;
-        const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
-        if (ing) {
-          const diff = parseFloat(actual_stock) - parseFloat(ing.stock);
-          await supabase.from('stock_opname').insert({
-            ingredient_id, date: new Date().toISOString().slice(0, 10),
-            system_stock: ing.stock, actual_stock, difference: diff, note
-          }).select();
-          await supabase.from('ingredients').update({ stock: parseFloat(actual_stock) }).eq('id', ingredient_id);
-          await supabase.from('stock_transactions').insert({
-            ingredient_id, quantity: diff, type: 'adjust', note: 'Stock Opname'
-          });
-        }
-        return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== WASTE =====
-    if (resource === 'waste') {
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from('waste').select('*, ingredients(name, unit, cost_per_unit)').order('date', { ascending: false });
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const body = req.body;
-        const { ingredient_id, quantity, reason } = body;
-        const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
-        if (ing) {
-          await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) - parseFloat(quantity) }).eq('id', ingredient_id);
-          await supabase.from('stock_transactions').insert({
-            ingredient_id, quantity: -parseFloat(quantity), type: 'waste', note: reason || 'Waste'
-          });
-        }
-        const { data, error } = await supabase.from('waste').insert({ ingredient_id, date: new Date().toISOString().slice(0, 10), quantity, reason }).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('waste').delete().eq('id', id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== HPP =====
-    if (resource === 'hpp' && req.method === 'GET') {
-      const { data: recipes } = await supabase.from('recipes').select('menu_item_id, quantity, ingredients(name, unit, cost_per_unit)');
-      const { data: items } = await supabase.from('menu_items').select('id, name, base_price');
-      if (!recipes || !items) return res.status(500).json({ error: 'Failed to fetch' });
-      
-      const result = items.map(item => {
-        const itemRecipes = recipes.filter(r => r.menu_item_id === item.id);
-        let totalCost = 0;
-        const breakdown = itemRecipes.map(r => {
-          const cost = parseFloat(r.quantity) * parseFloat(r.ingredients?.cost_per_unit || 0);
-          totalCost += cost;
-          return {
-            ingredient: r.ingredients?.name,
-            quantity: parseFloat(r.quantity),
-            unit: r.ingredients?.unit,
-            cost_per_unit: parseFloat(r.ingredients?.cost_per_unit || 0),
-            total_cost: cost
-          };
-        });
-        return {
-          menu_item_id: item.id,
-          name: item.name,
-          price: parseFloat(item.base_price),
-          hpp: totalCost,
-          profit: parseFloat(item.base_price) - totalCost,
-          margin: parseFloat(item.base_price) > 0 ? ((parseFloat(item.base_price) - totalCost) / parseFloat(item.base_price) * 100) : 0,
-          breakdown
-        };
-      });
-      return res.status(200).json(result);
-    }
-
-    // ===== EXPENSES =====
+    // ===== EXPENSES & ACCOUNTING =====
     if (resource === 'expenses') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
@@ -407,7 +260,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data);
       }
       if (req.method === 'POST') {
-        const body = req.body;
         const { data, error } = await supabase.from('expenses').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
@@ -418,39 +270,10 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
     }
-
-    // ===== PAYABLES & RECEIVABLES =====
-    if (resource === 'payables' || resource === 'receivables') {
-      const table = resource === 'payables' ? 'payables' : 'receivables';
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from(table).select('*').order('date', { ascending: false });
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const body = req.body;
-        const { data, error } = await supabase.from(table).insert(body).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-      if (req.method === 'PUT' && id) {
-        const body = req.body;
-        const { data, error } = await supabase.from(table).update(body).eq('id', id).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0] || { success: true });
-      }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from(table).delete().eq('id', id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== ACCOUNTING DASHBOARD =====
+    
     if (resource === 'acc-dashboard' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
-      
       let expQuery = supabase.from('expenses').select('amount, category, date');
       if (from) expQuery = expQuery.gte('date', from);
       if (to) expQuery = expQuery.lte('date', to);
@@ -470,22 +293,15 @@ export default async function handler(req, res) {
         expByCategory[e.category] += parseFloat(e.amount || 0);
       });
 
-      const { data: payables } = await supabase.from('payables').select('*').eq('status', 'unpaid');
-      const { data: receivables } = await supabase.from('receivables').select('*').eq('status', 'unpaid');
-      
-      const totalPayables = (payables || []).reduce((s, p) => s + (parseFloat(p.amount) - parseFloat(p.paid_amount || 0)), 0);
-      const totalReceivables = (receivables || []).reduce((s, r) => s + (parseFloat(r.amount) - parseFloat(r.received_amount || 0)), 0);
-
       return res.status(200).json({
         totalRevenue, totalExpenses,
         netProfit: totalRevenue - totalExpenses,
-        expByCategory, totalPayables, totalReceivables,
-        orderCount: (orders || []).length,
+        expByCategory
       });
     }
 
-    return res.status(404).json({ error: 'Endpoint not found: ' + path });
+    return res.status(404).json({ error: 'Endpoint not found' });
   } catch (e) {
-    return res.status(500).json({ error: e.message, stack: e.stack });
+    return res.status(500).json({ error: e.message });
   }
 }
