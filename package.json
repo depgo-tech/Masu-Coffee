@@ -1,7 +1,12 @@
 {
   "name": "masu-space-pos",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
+  "description": "MASU SPACE - Point of Sale, Inventory & Accounting system",
+  "engines": {
+    "node": ">=18.x"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0"
   }
