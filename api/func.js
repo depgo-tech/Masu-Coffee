@@ -267,6 +267,17 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('ingredients').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        await supabase.from('recipes').delete().eq('ingredient_id', id);
+        const { error } = await supabase.from('ingredients').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
     }
     if (resource === 'recipes') {
        if (req.method === 'GET') {
@@ -281,6 +292,11 @@ export default async function handler(req, res) {
         const { data, error } = await supabase.from('recipes').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
+      }
+       if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('recipes').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
       }
        if (req.method === 'DELETE' && id) {
         const { error } = await supabase.from('recipes').delete().eq('id', id);
@@ -298,6 +314,103 @@ export default async function handler(req, res) {
       }
       return res.status(200).json({ success: true });
     }
+
+    // ===== EMPLOYEES =====
+    if (resource === 'employees') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('employees').select('*').eq('is_active', true).order('name');
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.name || !body.pin) return res.status(400).json({ error: 'name and pin are required' });
+        const { data, error } = await supabase.from('employees').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('employees').update({ is_active: false }).eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== ATTENDANCE =====
+    if (resource === 'attendance') {
+      if (req.method === 'GET') {
+        const date = url.searchParams.get('date');
+        let q = supabase.from('attendance').select('*').order('clock_in', { ascending: false });
+        if (date) q = q.eq('date', date);
+        const { data, error } = await q.limit(200);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.emp_id || !body.name || !body.date || !body.clock_in) {
+          return res.status(400).json({ error: 'emp_id, name, date and clock_in are required' });
+        }
+        const { data, error } = await supabase.from('attendance').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('attendance').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+    }
+
+    // ===== HOLDS (order tertahan, tidak terikat meja) =====
+    if (resource === 'holds') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('holds').select('*').order('created_at', { ascending: false });
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.order_number || !body.cart) return res.status(400).json({ error: 'order_number and cart are required' });
+        const { data, error } = await supabase.from('holds').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('holds').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== SHIFTS =====
+    if (resource === 'shifts') {
+      if (req.method === 'GET') {
+        const openOnly = url.searchParams.get('open');
+        let q = supabase.from('shifts').select('*').order('opened_at', { ascending: false });
+        if (openOnly) q = q.eq('status', 'open');
+        const { data, error } = await q.limit(50);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.shift_label) return res.status(400).json({ error: 'shift_label is required' });
+        const { data, error } = await supabase.from('shifts').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('shifts').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+    }
+    if (resource === 'shift-report' && req.method === 'GET') {
+      const shiftId = url.searchParams.get('shift_id');
+      if (!shiftId) return res.status(400).json({ error: 'shift_id is required' });
+      const { data: shift } = await supabase.from('shifts').select('*').eq('id', shiftId).single();
+      const { data: orders } = await supabase.from('orders').select('*').eq('shift_id', shiftId);
+      const { data: exps } = await supabase.from('expenses').select('*').eq('shift_id', shiftId);
+      return res.status(200).json({ shift, orders: orders || [], expenses: exps || [] });
+    }
+
 
     // ===== EXPENSES & ACCOUNTING =====
     if (resource === 'expenses') {
