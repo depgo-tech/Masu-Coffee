@@ -296,6 +296,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
   .dash-bn{flex-direction:column;text-align:center;gap:12px}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 <div class="mo show" id="loginScreen" style="z-index:5000;background:var(--bg)"><div class="ml" style="max-width:340px;text-align:center"><div style="width:64px;height:64px;border-radius:14px;background:var(--sb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;margin:0 auto 14px" id="loginLogo">M</div><h2 style="justify-content:center;margin-bottom:4px" id="loginTitle">MASU SPACE POS</h2><p style="color:var(--dim);font-size:12px;margin-bottom:18px">Masukkan PIN untuk masuk</p><input type="password" inputmode="numeric" id="loginPin" placeholder="PIN" maxlength="6" style="width:100%;padding:16px;text-align:center;font-size:24px;letter-spacing:8px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px" onkeydown="if(event.key==='Enter')doLogin()"><button class="bp" style="width:100%;padding:14px" onclick="doLogin()">Masuk</button><p id="loginErr" style="color:var(--dng);font-size:12px;margin-top:10px;min-height:16px"></p></div></div>
@@ -409,6 +410,7 @@ function syncBG(){
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){lHold=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});saveHold();if(cv==='pos')rHL()}});
   aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var mapped=d.map(function(o){return{order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number}});lO=mapped;localStorage.setItem('pos_orders',JSON.stringify(lO));if(cv==='dashboard')rD();if(cv==='laporan')lR();if(cv==='akuntansi')rAC()}});
   aG('shifts?open=1').then(function(d){if(d&&!d.error&&Array.isArray(d)){curShift=d[0]||null;localStorage.setItem('pos_shift',JSON.stringify(curShift));if(cv==='pos')rShiftBar()}});
+  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){lE=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,shift_id:e.shift_id,proof_image:e.proof_image}});localStorage.setItem('pos_exp',JSON.stringify(lE));if(cv==='akuntansi')rAC();if(cv==='pos')rShiftExpList()}});
 }
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
@@ -479,8 +481,30 @@ function rShiftBar(){
     el.innerHTML='<div style="background:#fce0e0;border:1px solid var(--dng);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:13px;font-weight:600;color:var(--dng)">Shift belum dibuka - transaksi belum bisa dimulai</span><button class="bp" style="flex:0 0 auto;padding:8px 16px;font-size:12px" onclick="document.getElementById(\'shiftOpenModal\').classList.add(\'show\')">Buka Shift</button></div>';
   }else{
     var t=new Date(curShift.opened_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
-    el.innerHTML='<div style="background:var(--ac-l);border:1px solid var(--ac);border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font-size:13px;font-weight:600;color:var(--sb-d)">'+curShift.shift_label+' - dibuka '+t+' - Kas awal '+rp(curShift.starting_cash)+'</span><button class="bs" style="flex:0 0 auto;padding:8px 16px;font-size:12px" onclick="oShiftCloseM()">Tutup Shift</button></div>';
+    el.innerHTML='<div style="background:var(--ac-l);border:1px solid var(--ac);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:var(--sb-d)">'+curShift.shift_label+' - dibuka '+t+' - Kas awal '+rp(curShift.starting_cash)+'</span><div style="display:flex;gap:6px"><button class="bs" style="flex:0 0 auto;padding:8px 14px;font-size:12px" onclick="oQuickExpM('+curShift.id+')">+ Pengeluaran</button><button class="bs" style="flex:0 0 auto;padding:8px 14px;font-size:12px" onclick="oShiftCloseM()">Tutup Shift</button></div></div><div id="shiftExpBox" style="margin-bottom:10px"></div>';
+    rShiftExpList();
   }
+}
+function rShiftExpList(){
+  var el=document.getElementById('shiftExpBox');if(!el||!curShift)return;
+  var exps=lE.filter(function(e){return e.shift_id==curShift.id});
+  if(!exps.length){el.innerHTML='';return}
+  var total=exps.reduce(function(s,e){return s+parseFloat(e.amount||0)},0);
+  var h='<div style="background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:10px 14px"><div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;margin-bottom:6px"><span>Pengeluaran Shift Ini ('+exps.length+')</span><span style="color:var(--dng)">-'+rp(total)+'</span></div>';
+  exps.forEach(function(e){h+='<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid var(--bdr);font-size:12px"><span>'+e.description+' <span style="color:var(--dim)">('+(e.method||'cash').toUpperCase()+(e.proof_image?' 📎':'')+')</span></span><span style="display:flex;align-items:center;gap:6px"><span style="color:var(--dng);font-weight:600">-'+rp(e.amount)+'</span><button class="px" onclick="dE('+e.id+');rShiftExpList()">×</button></span></div>'});
+  h+='</div>';
+  el.innerHTML=h;
+}
+function oQuickExpM(sid){
+  document.getElementById('eD2').value=new Date().toISOString().slice(0,10);document.getElementById('eC2').value='Bahan Baku';document.getElementById('eDs').value='';document.getElementById('eAm').value='';
+  var eModalBody=document.querySelector('#eModal .ml');
+  if(!document.getElementById('eProof')){
+    var div=document.createElement('div');div.className='fg';div.innerHTML='<label>Bukti Foto (opsional)</label><input type="file" accept="image/*" id="eProof">';
+    eModalBody.insertBefore(div,eModalBody.querySelector('.ma'));
+  }
+  document.getElementById('eModal').dataset.shiftId=sid;
+  document.getElementById('eModal').dataset.context='pos';
+  document.getElementById('eModal').classList.add('show');
 }
 function doOpenShift(){
   var label=document.getElementById('soLabel').value;
@@ -504,6 +528,7 @@ function oShiftCloseM(){
     var totalExp=exps.reduce(function(s,e){return s+parseFloat(e.amount||0)},0);
     var cashExp=exps.filter(function(e){return e.method==='cash'}).reduce(function(s,e){return s+parseFloat(e.amount||0)},0);
     var expected=parseFloat(curShift.starting_cash||0)+cashS-cashExp;
+    window._shiftReport={shift:curShift,cashS:cashS,qrisS:qrisS,cardS:cardS,ewalletS:ewalletS,totalS:totalS,exps:exps,totalExp:totalExp,cashExp:cashExp,expected:expected,counted:null,variance:null};
     var h='<h2>Tutup Shift - '+curShift.shift_label+'</h2>';
     h+='<div class="pnl"><h3>Ringkasan Penjualan</h3><div class="pnl-r"><span class="lb">Cash</span><span class="vl">'+rp(cashS)+'</span></div><div class="pnl-r"><span class="lb">QRIS</span><span class="vl">'+rp(qrisS)+'</span></div><div class="pnl-r"><span class="lb">Debit/Card</span><span class="vl">'+rp(cardS)+'</span></div><div class="pnl-r"><span class="lb">E-Wallet</span><span class="vl">'+rp(ewalletS)+'</span></div><div class="pnl-r t"><span>Total Penjualan</span><span>'+rp(totalS)+'</span></div></div>';
     h+='<div class="pnl"><h3>Pengeluaran Shift Ini ('+exps.length+')</h3>';
@@ -514,6 +539,7 @@ function oShiftCloseM(){
     h+='<div class="pnl"><h3>Rekonsiliasi Kas</h3><div class="pnl-r"><span class="lb">Kas Awal</span><span class="vl">'+rp(curShift.starting_cash)+'</span></div><div class="pnl-r"><span class="lb">+ Penjualan Cash</span><span class="vl pos">+'+rp(cashS)+'</span></div><div class="pnl-r"><span class="lb">- Pengeluaran Cash</span><span class="vl neg">-'+rp(cashExp)+'</span></div><div class="pnl-r t"><span>Kas Seharusnya (Sistem)</span><span>'+rp(expected)+'</span></div></div>';
     h+='<div class="fg"><label>Kas Fisik Dihitung (hasil hitung manual di laci)</label><input type="number" id="scCounted" placeholder="0" style="font-size:16px;font-weight:700" oninput="uShiftVariance('+expected+')"></div>';
     h+='<div class="pr-sr t" id="scVariance" style="margin-bottom:14px"><span>Selisih</span><span>Rp 0</span></div>';
+    h+='<button class="bs" style="width:100%;margin-bottom:10px" onclick="downloadShiftPDF()">📄 Download PDF</button>';
     h+='<div class="ma"><button class="bs" onclick="cm(\'shiftCloseModal\')">Batal</button><button class="bp" onclick="doCloseShift('+sid+','+expected+')">Konfirmasi Tutup Shift</button></div>';
     document.getElementById('shiftCloseC').innerHTML=h;
     document.getElementById('shiftCloseModal').classList.add('show');
@@ -529,6 +555,67 @@ function oShiftCloseM(){
     render(lo,le);
   }
 }
+function downloadShiftPDF(){
+  if(!window._shiftReport){tt('Data laporan belum siap',true);return}
+  if(!window.jspdf||!window.jspdf.jsPDF){tt('Gagal memuat modul PDF, cek koneksi internet',true);return}
+  var r=window._shiftReport;
+  var scInput=document.getElementById('scCounted');
+  var counted=(r.counted!=null)?r.counted:parseFloat(scInput?scInput.value:'');
+  var hasCounted=!isNaN(counted)&&counted!==null;
+  var variance=(r.variance!=null)?r.variance:(hasCounted?(counted-r.expected):null);
+  var doc=new window.jspdf.jsPDF({unit:'mm',format:'a4'});
+  var y=18,pw=210,ml=15,lw=pw-ml*2;
+  doc.setFontSize(16);doc.setFont(undefined,'bold');doc.text(st.sn||'MASU SPACE',ml,y);y+=6;
+  doc.setFontSize(11);doc.setFont(undefined,'normal');doc.text('Laporan Tutup Shift - '+r.shift.shift_label,ml,y);y+=6;
+  doc.setFontSize(9);doc.setTextColor(100);
+  doc.text('Dibuka: '+new Date(r.shift.opened_at).toLocaleString('id-ID'),ml,y);y+=5;
+  doc.text('Ditutup: '+new Date().toLocaleString('id-ID'),ml,y);y+=5;
+  doc.setTextColor(0);y+=3;
+  doc.setDrawColor(200);doc.line(ml,y,ml+lw,y);y+=7;
+
+  doc.setFontSize(12);doc.setFont(undefined,'bold');doc.text('Ringkasan Penjualan',ml,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');
+  var rowsSales=[['Cash',r.cashS],['QRIS',r.qrisS],['Debit/Card',r.cardS],['E-Wallet',r.ewalletS]];
+  rowsSales.forEach(function(row){doc.text(row[0],ml,y);doc.text(rp(row[1]),ml+lw,y,{align:'right'});y+=6});
+  doc.setFont(undefined,'bold');doc.text('Total Penjualan',ml,y);doc.text(rp(r.totalS),ml+lw,y,{align:'right'});y+=9;
+  doc.setDrawColor(220);doc.line(ml,y-4,ml+lw,y-4);
+
+  doc.setFontSize(12);doc.text('Pengeluaran Shift Ini ('+r.exps.length+')',ml,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');
+  if(!r.exps.length){doc.setTextColor(120);doc.text('Tidak ada pengeluaran tercatat',ml,y);doc.setTextColor(0);y+=6}
+  else{r.exps.forEach(function(e){
+    if(y>270){doc.addPage();y=18}
+    var label=e.description+' ('+(e.method||'cash').toUpperCase()+')'+(e.proof_image?' [ada bukti foto]':'');
+    var lines=doc.splitTextToSize(label,lw-35);
+    doc.text(lines,ml,y);doc.text('-'+rp(e.amount),ml+lw,y,{align:'right'});
+    y+=6*lines.length;
+  })}
+  doc.setFont(undefined,'bold');doc.text('Total Pengeluaran',ml,y);doc.text('-'+rp(r.totalExp),ml+lw,y,{align:'right'});y+=9;
+  doc.setDrawColor(220);doc.line(ml,y-4,ml+lw,y-4);
+
+  if(y>250){doc.addPage();y=18}
+  doc.setFontSize(12);doc.text('Rekonsiliasi Kas',ml,y);y+=7;
+  doc.setFontSize(10);doc.setFont(undefined,'normal');
+  var rowsCash=[['Kas Awal',r.shift.starting_cash],['+ Penjualan Cash',r.cashS],['- Pengeluaran Cash',-r.cashExp]];
+  rowsCash.forEach(function(row){doc.text(row[0],ml,y);doc.text((row[1]<0?'-':'')+rp(Math.abs(row[1])),ml+lw,y,{align:'right'});y+=6});
+  doc.setFont(undefined,'bold');doc.text('Kas Seharusnya (Sistem)',ml,y);doc.text(rp(r.expected),ml+lw,y,{align:'right'});y+=8;
+  doc.setFont(undefined,'normal');
+  if(hasCounted){
+    doc.text('Kas Fisik Dihitung',ml,y);doc.text(rp(counted),ml+lw,y,{align:'right'});y+=6;
+    doc.setFont(undefined,'bold');
+    var vColor=variance===0?[26,58,10]:variance>0?[26,58,10]:[199,80,80];
+    doc.setTextColor(vColor[0],vColor[1],vColor[2]);
+    doc.text('Selisih ('+(variance===0?'Pas':variance>0?'Lebih':'Kurang')+')',ml,y);
+    doc.text((variance>=0?'+':'')+rp(variance),ml+lw,y,{align:'right'});
+    doc.setTextColor(0);y+=8;
+  }else{
+    doc.setTextColor(150);doc.text('(Kas fisik belum diinput saat PDF ini dibuat)',ml,y);doc.setTextColor(0);y+=8;
+  }
+  doc.setFontSize(8);doc.setTextColor(150);doc.text('Dicetak: '+new Date().toLocaleString('id-ID')+' oleh '+(role||'-'),ml,285);
+
+  var fname='Shift-'+r.shift.shift_label.replace(/\s+/g,'')+'-'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fname);
+}
 function uShiftVariance(expected){
   var counted=parseFloat(document.getElementById('scCounted').value)||0;
   var v=counted-expected;
@@ -543,6 +630,7 @@ function oShiftExpM(sid){
     eModalBody.insertBefore(div,eModalBody.querySelector('.ma'));
   }
   document.getElementById('eModal').dataset.shiftId=sid;
+  document.getElementById('eModal').dataset.context='close';
   document.getElementById('eModal').classList.add('show');
 }
 function doCloseShift(sid,expected){
@@ -552,7 +640,13 @@ function doCloseShift(sid,expected){
   var payload={closed_by:role,closed_at:new Date().toISOString(),counted_cash:counted,expected_cash:expected,variance:variance,status:'closed'};
   if(apiOn){
     aU('shifts/'+sid,payload).then(function(r){
-      if(r&&!r.error){curShift=null;localStorage.removeItem('pos_shift');cm('shiftCloseModal');rShiftBar();tt('Shift ditutup. Selisih: '+rp(variance))}
+      if(r&&!r.error){
+        if(window._shiftReport){window._shiftReport.counted=counted;window._shiftReport.variance=variance}
+        curShift=null;localStorage.removeItem('pos_shift');rShiftBar();
+        var vLabel=variance===0?'Pas':(variance>0?'Lebih '+rp(variance):'Kurang '+rp(Math.abs(variance)));
+        var h='<div style="text-align:center;padding:10px 0"><div style="font-size:40px;margin-bottom:8px">✓</div><h2 style="justify-content:center">Shift Ditutup</h2><p style="color:var(--dim);font-size:13px;margin-bottom:16px">Kas seharusnya '+rp(expected)+' • Kas fisik '+rp(counted)+'<br>Selisih: <strong style="color:'+(variance===0?'var(--suc)':variance<0?'var(--dng)':'var(--suc)')+'">'+vLabel+'</strong></p><button class="bp" style="width:100%;margin-bottom:8px" onclick="downloadShiftPDF()">📄 Download PDF Laporan</button><button class="bs" style="width:100%" onclick="cm(\'shiftCloseModal\')">Tutup</button></div>';
+        document.getElementById('shiftCloseC').innerHTML=h;
+      }
       else{tt('Gagal tutup shift - cek koneksi',true)}
     });
   }else{
@@ -732,18 +826,25 @@ function dR(rid,mid){lRcp=lRcp.filter(function(r){return r.id!=rid});saveRcp();i
 function rA(){var td=new Date().toISOString().slice(0,10);var ms=new Date();ms.setDate(1);ms=ms.toISOString().slice(0,10);var rev=0,orders=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=ms&&d<=td});orders.forEach(function(o){rev+=parseFloat(o.order.total||0)});var exps=lE.filter(function(e){return e.date>=ms&&e.date<=td});var tE2=exps.reduce(function(s,e){return s+parseFloat(e.amount||0)},0);var np=rev-tE2;var h='<div class="acc-c"><div class="mg-h"><h2>Akuntansi</h2><button class="bp" style="flex:0 0 auto;padding:10px 14px;font-size:12px" onclick="oEM()">+ Pengeluaran</button></div>';h+='<div class="acc-cd"><div class="acc-cd2 rev"><div class="al">Pendapatan</div><div class="av">'+rp(rev)+'</div><div class="as">'+orders.length+' transaksi</div></div><div class="acc-cd2 exp"><div class="al">Pengeluaran</div><div class="av">'+rp(tE2)+'</div><div class="as">'+exps.length+' catatan</div></div><div class="acc-cd2 '+(np>=0?'profit':'')+'"><div class="al">Laba/Rugi</div><div class="av" style="color:'+(np>=0?'var(--suc)':'var(--dng)')+'">'+rp(np)+'</div><div class="as">'+(np>=0?'Untung':'Rugi')+'</div></div><div class="acc-cd2"><div class="al">Saldo Kas</div><div class="av">'+rp(rev-tE2)+'</div><div class="as">masuk - keluar</div></div></div>';var tabs=[['dashboard','Dashboard'],['pnl','Laba Rugi'],['cashflow','Arus Kas'],['expenses','Pengeluaran'],['payables','Hutang'],['receivables','Piutang'],['journal','Jurnal']];h+='<div class="acc-t" style="margin-bottom:16px" id="accTabs">';tabs.forEach(function(t){h+='<div class="acc-t2 '+(aT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sAT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="aC"></div></div>';document.getElementById('ct').innerHTML=h;rAC()}
 function sAT(t){aT=t;document.querySelectorAll('#accTabs .acc-t2').forEach(function(el){el.classList.toggle('act',el.dataset.tab===t)});rAC()}
 function rAC(){var el=document.getElementById('aC');if(!el)return;var td=new Date().toISOString().slice(0,10);var ms=new Date();ms.setDate(1);ms=ms.toISOString().slice(0,10);if(aT==='dashboard'){var allE=lE.filter(function(e){return e.date>=ms});var bc={};allE.forEach(function(e){if(!bc[e.category])bc[e.category]=0;bc[e.category]+=parseFloat(e.amount)});var rev=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=ms}).reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);var tE2=allE.reduce(function(s,e){return s+parseFloat(e.amount)},0);var h='<div class="pnl"><h3>Ringkasan Bulan Ini</h3><div class="pnl-r"><span class="lb">Pendapatan</span><span class="vl pos">'+rp(rev)+'</span></div><div class="pnl-r"><span class="lb">Pengeluaran</span><span class="vl neg">'+rp(tE2)+'</span></div><div class="pnl-r t"><span class="lb">Laba/Rugi</span><span class="vl '+(rev-tE2>=0?'pos':'neg')+'">'+rp(rev-tE2)+'</span></div></div><div class="pnl"><h3>Per Kategori</h3>';Object.keys(bc).forEach(function(cat){h+='<div class="pnl-r"><span class="lb">'+cat+'</span><span class="vl neg">'+rp(bc[cat])+'</span></div>'});h+='</div>';el.innerHTML=h}else if(aT==='pnl'){var rev=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=ms}).reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);var exp=lE.filter(function(e){return e.date>=ms}).reduce(function(s,e){return s+parseFloat(e.amount)},0);var cogs=exp*0.4;var h='<div class="pnl"><h3>Laba Rugi</h3><div class="pnl-r"><span class="lb">Pendapatan</span><span class="vl pos">'+rp(rev)+'</span></div><div class="pnl-r"><span class="lb">HPP (40%)</span><span class="vl neg">- '+rp(cogs)+'</span></div><div class="pnl-r t"><span class="lb">Laba Kotor</span><span class="vl '+(rev-cogs>=0?'pos':'neg')+'">'+rp(rev-cogs)+'</span></div><div class="pnl-r"><span class="lb">Beban Operasional</span><span class="vl neg">- '+rp(exp-cogs)+'</span></div><div class="pnl-r t"><span class="lb">Laba Bersih</span><span class="vl '+(rev-exp>=0?'pos':'neg')+'">'+rp(rev-exp)+'</span></div></div>';el.innerHTML=h}else if(aT==='cashflow'){var ci=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=ms}).reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);var co=lE.filter(function(e){return e.date>=ms}).reduce(function(s,e){return s+parseFloat(e.amount)},0);var h='<div class="pnl"><h3>Arus Kas</h3><div class="pnl-r"><span class="lb">Kas Masuk</span><span class="vl pos">+ '+rp(ci)+'</span></div><div class="pnl-r"><span class="lb">Kas Keluar</span><span class="vl neg">- '+rp(co)+'</span></div><div class="pnl-r t"><span class="lb">Saldo</span><span class="vl '+(ci-co>=0?'pos':'neg')+'">'+rp(ci-co)+'</span></div></div>';el.innerHTML=h}else if(aT==='expenses'){var h='<div class="acc-tb"><table><thead><tr><th>Tanggal</th><th>Kategori</th><th>Deskripsi</th><th>Jumlah</th><th>Metode</th><th>Aksi</th></tr></thead><tbody>';lE.forEach(function(e){h+='<tr><td>'+e.date+'</td><td>'+e.category+'</td><td>'+e.description+'</td><td class="nm neg">'+rp(e.amount)+'</td><td>'+(e.method||'cash').toUpperCase()+'</td><td><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dE('+e.id+')">Hapus</button></td></tr>'});h+='</tbody></table></div>';el.innerHTML=h}else if(aT==='payables'){var h='<div style="margin-bottom:10px"><button class="bp" style="padding:10px 14px;font-size:12px" onclick="oDM(\'payable\')">+ Hutang</button></div><div class="acc-tb"><table><thead><tr><th>Tgl</th><th>Supplier</th><th>Desc</th><th>Jumlah</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';lPa.forEach(function(p){h+='<tr><td>'+p.date+'</td><td>'+(p.supplier||'-')+'</td><td>'+(p.description||'-')+'</td><td class="nm neg">'+rp(parseFloat(p.amount)-parseFloat(p.paid_amount||0))+'</td><td><span class="sbg '+(p.status==='paid'?'paid':'unpaid')+'">'+(p.status==='paid'?'Lunas':'Belum')+'</span></td><td>'+(p.status!=='paid'?'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="pD2('+p.id+',\'payable\')">Lunasi</button> ':'')+'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="dD2('+p.id+',\'payable\')">Hapus</button></td></tr>'});h+='</tbody></table></div>';el.innerHTML=h}else if(aT==='receivables'){var h='<div style="margin-bottom:10px"><button class="bp" style="padding:10px 14px;font-size:12px" onclick="oDM(\'receivable\')">+ Piutang</button></div><div class="acc-tb"><table><thead><tr><th>Tgl</th><th>Pelanggan</th><th>Desc</th><th>Jumlah</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';lRe.forEach(function(r){h+='<tr><td>'+r.date+'</td><td>'+(r.customer||'-')+'</td><td>'+(r.description||'-')+'</td><td class="nm pos">'+rp(parseFloat(r.amount)-parseFloat(r.received_amount||0))+'</td><td><span class="sbg '+(r.status==='paid'?'paid':'unpaid')+'">'+(r.status==='paid'?'Lunas':'Belum')+'</span></td><td>'+(r.status!=='paid'?'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="pD2('+r.id+',\'receivable\')">Lunasi</button> ':'')+'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="dD2('+r.id+',\'receivable\')">Hapus</button></td></tr>'});h+='</tbody></table></div>';el.innerHTML=h}else if(aT==='journal'){var j=[];lO.forEach(function(o){j.push({date:o.order.created_at?o.order.created_at.slice(0,10):td,acc:'Kas',desc:'Penjualan '+o.order_number,debit:parseFloat(o.order.total||0),credit:0});j.push({date:o.order.created_at?o.order.created_at.slice(0,10):td,acc:'Pendapatan',desc:'Penjualan '+o.order_number,debit:0,credit:parseFloat(o.order.total||0)})});lE.forEach(function(e){j.push({date:e.date,acc:'Beban '+e.category,desc:e.description,debit:parseFloat(e.amount),credit:0});j.push({date:e.date,acc:'Kas',desc:e.description,debit:0,credit:parseFloat(e.amount)})});j.sort(function(a,b){return b.date.localeCompare(a.date)});var td2=0,tc=0;var h='<div class="acc-tb"><table><thead><tr><th>Tgl</th><th>Akun</th><th>Desc</th><th class="nm">Debit</th><th class="nm">Kredit</th></tr></thead><tbody>';j.forEach(function(je){td2+=je.debit;tc+=je.credit;h+='<tr><td>'+je.date+'</td><td>'+je.acc+'</td><td>'+je.desc+'</td><td class="nm pos">'+(je.debit?rp(je.debit):'-')+'</td><td class="nm neg">'+(je.credit?rp(je.credit):'-')+'</td></tr>'});h+='<tr style="font-weight:700;background:var(--bg)"><td colspan="3">TOTAL</td><td class="nm pos">'+rp(td2)+'</td><td class="nm neg">'+rp(tc)+'</td></tr></tbody></table></div>';el.innerHTML=h}}
-function oEM(){document.getElementById('eD2').value=new Date().toISOString().slice(0,10);document.getElementById('eC2').value='Sewa Tempat';document.getElementById('eDs').value='';document.getElementById('eAm').value='';delete document.getElementById('eModal').dataset.shiftId;document.getElementById('eModal').classList.add('show')}
+function oEM(){document.getElementById('eD2').value=new Date().toISOString().slice(0,10);document.getElementById('eC2').value='Sewa Tempat';document.getElementById('eDs').value='';document.getElementById('eAm').value='';delete document.getElementById('eModal').dataset.shiftId;delete document.getElementById('eModal').dataset.context;document.getElementById('eModal').classList.add('show')}
 function sE(){
   var d=document.getElementById('eD2').value;var cat=document.getElementById('eC2').value;var desc=document.getElementById('eDs').value.trim();var amt=parseFloat(document.getElementById('eAm').value);var method=document.getElementById('eMt').value;
   if(!d||!cat||!amt||amt<=0){tt('Lengkapi',true);return}
   var shiftId=document.getElementById('eModal').dataset.shiftId||null;
+  var context=document.getElementById('eModal').dataset.context||'';
   var proofInput=document.getElementById('eProof');
   var finish=function(proofDataUrl){
-    var rec={id:Date.now(),date:d,category:cat,description:desc,amount:amt,method:method,shift_id:shiftId?parseInt(shiftId):null,proof_image:proofDataUrl||null};
+    var tempId=Date.now();
+    var rec={id:tempId,date:d,category:cat,description:desc,amount:amt,method:method,shift_id:shiftId?parseInt(shiftId):null,proof_image:proofDataUrl||null};
     lE.push(rec);localStorage.setItem('pos_exp',JSON.stringify(lE));
-    if(apiOn)aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,shift_id:rec.shift_id,proof_image:proofDataUrl||null});
     cm('eModal');tt('Pengeluaran dicatat');
-    if(shiftId){oShiftCloseM()}else{rAC()}
+    if(context==='close'){oShiftCloseM()}else if(context==='pos'){rShiftExpList()}else{rAC()}
+    if(apiOn){
+      aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,shift_id:rec.shift_id,proof_image:proofDataUrl||null}).then(function(r){
+        if(r&&!r.error&&r.id){var idx=lE.findIndex(function(e){return e.id===tempId});if(idx>-1){lE[idx].id=r.id;localStorage.setItem('pos_exp',JSON.stringify(lE));if(context==='pos')rShiftExpList()}}
+        else{tt('Gagal sync pengeluaran ke cloud',true)}
+      });
+    }
   };
   if(proofInput&&proofInput.files&&proofInput.files[0]){
     var f=proofInput.files[0];
