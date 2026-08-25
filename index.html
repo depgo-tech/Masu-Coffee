@@ -546,7 +546,10 @@ function oShiftCloseM(){
   };
   if(apiOn){
     aG('shift-report?shift_id='+sid).then(function(d){
-      if(d&&!d.error){render(d.orders||[],d.expenses||[])}
+      if(d&&!d.error){
+        var normExps=(d.expenses||[]).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,shift_id:e.shift_id,proof_image:e.proof_image}});
+        render(d.orders||[],normExps);
+      }
       else{var lo=lO.filter(function(o){return o.order.shift_id==sid}).map(function(o){return o.order});var le=lE.filter(function(e){return e.shift_id==sid});render(lo,le)}
     });
   }else{
