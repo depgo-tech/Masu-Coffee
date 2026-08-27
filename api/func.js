@@ -411,11 +411,147 @@ export default async function handler(req, res) {
       return res.status(200).json({ shift, orders: orders || [], expenses: exps || [] });
     }
 
+    // ===== CHART OF ACCOUNTS =====
+    if (resource === 'accounts') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('accounts').select('*').eq('is_active', true).order('sort_order');
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.name || !body.group_label) return res.status(400).json({ error: 'name and group_label are required' });
+        const { data, error } = await supabase.from('accounts').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('accounts').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('accounts').update({ is_active: false }).eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== INVESTORS =====
+    if (resource === 'investors') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('investors').select('*').order('id');
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.name || body.percentage == null) return res.status(400).json({ error: 'name and percentage are required' });
+        const { data, error } = await supabase.from('investors').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('investors').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('investors').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== PROFIT DISTRIBUTIONS =====
+    if (resource === 'profit-distributions') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('profit_distributions').select('*, profit_distribution_items(*)').order('created_at', { ascending: false });
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        const { items, ...dist } = body;
+        if (!dist.period_label || dist.net_profit == null || !Array.isArray(items)) {
+          return res.status(400).json({ error: 'period_label, net_profit and items[] are required' });
+        }
+        const { data: newDist, error: distErr } = await supabase.from('profit_distributions').insert(dist).select().single();
+        if (distErr) return res.status(500).json({ error: distErr.message });
+        const rows = items.map(it => ({ ...it, distribution_id: newDist.id }));
+        const { error: itemsErr } = await supabase.from('profit_distribution_items').insert(rows);
+        if (itemsErr) return res.status(500).json({ error: itemsErr.message });
+        return res.status(200).json(newDist);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('profit_distributions').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== AUDIT LOG =====
+    if (resource === 'audit-log') {
+      if (req.method === 'GET') {
+        const limit = parseInt(url.searchParams.get('limit') || '100');
+        const { data, error } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(limit);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.action) return res.status(400).json({ error: 'action is required' });
+        const { error } = await supabase.from('audit_log').insert(body);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== FINANCIAL SUMMARY (real P&L data for a period) =====
+    if (resource === 'financial-summary' && req.method === 'GET') {
+      const from = url.searchParams.get('from');
+      const to = url.searchParams.get('to');
+      if (!from || !to) return res.status(400).json({ error: 'from and to are required (YYYY-MM-DD)' });
+
+      let ordQuery = supabase.from('orders').select('id, total, created_at').gte('created_at', from).lte('created_at', to + 'T23:59:59');
+      const { data: orders, error: ordErr } = await ordQuery;
+      if (ordErr) return res.status(500).json({ error: ordErr.message });
+      const orderIds = (orders || []).map(o => o.id);
+
+      let cogsTotal = 0;
+      if (orderIds.length) {
+        const { data: items } = await supabase.from('order_items').select('cogs_amount, order_id').in('order_id', orderIds);
+        cogsTotal = (items || []).reduce((s, it) => s + parseFloat(it.cogs_amount || 0), 0);
+      }
+
+      const { data: exps, error: expErr } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').gte('date', from).lte('date', to);
+      if (expErr) return res.status(500).json({ error: expErr.message });
+
+      const totalSales = (orders || []).reduce((s, o) => s + parseFloat(o.total || 0), 0);
+      const byAccount = {};
+      let operatingTotal = 0, otherCogsFromExpenses = 0;
+      (exps || []).forEach(e => {
+        const acc = e.accounts;
+        const label = acc ? acc.name : (e.category || 'Tanpa Akun');
+        const type = acc ? acc.type : 'operating';
+        if (!byAccount[label]) byAccount[label] = { amount: 0, type };
+        byAccount[label].amount += parseFloat(e.amount || 0);
+        if (type === 'operating') operatingTotal += parseFloat(e.amount || 0);
+        else if (type === 'cogs') otherCogsFromExpenses += parseFloat(e.amount || 0);
+      });
+
+      return res.status(200).json({
+        totalSales,
+        cogs: cogsTotal + otherCogsFromExpenses,
+        grossProfit: totalSales - (cogsTotal + otherCogsFromExpenses),
+        byAccount,
+        operatingTotal,
+        netProfit: totalSales - (cogsTotal + otherCogsFromExpenses) - operatingTotal,
+        orderCount: (orders || []).length
+      });
+    }
+
 
     // ===== EXPENSES & ACCOUNTING =====
     if (resource === 'expenses') {
       if (req.method === 'GET') {
-        const { data, error } = await supabase.from('expenses').select('*').order('date', { ascending: false });
+        const { data, error } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').order('date', { ascending: false });
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data);
       }
@@ -424,6 +560,11 @@ export default async function handler(req, res) {
         const { data, error } = await supabase.from('expenses').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('expenses').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
         const { error } = await supabase.from('expenses').delete().eq('id', id);
