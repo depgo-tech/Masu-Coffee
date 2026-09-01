@@ -673,22 +673,45 @@ function doCloseShift(sid,expected){
   }
 }
 
+  function checkStockOk(){
+  for(var idx=0;idx<ca.length;idx++){
+    var item=ca[idx];
+    var recipes=lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id});
+    for(var j=0;j<recipes.length;j++){
+      var r=recipes[j];
+      var ing=lI.find(function(i){return i.id==r.ingredient_id});
+      if(ing){
+        var need=parseFloat(r.quantity)*item.quantity;
+        if(parseFloat(ing.stock)<need){
+          tt('Stok '+ing.name+' tidak cukup untuk '+item.menu_item_name,true);
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 function rHL(){var el=document.getElementById('holdList');if(!el)return;if(!lHold.length){el.innerHTML='';return}el.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">ORDER DITAHAN ('+lHold.length+')</div>'+lHold.map(function(h){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:4px;cursor:pointer" onclick="rCO('+h.id+')"><div><div style="font-size:12px;font-weight:600">#'+h.order_number+(h.note?' - '+h.note:'')+'</div><div style="font-size:10px;color:var(--dim)">'+h.cart.length+' item</div></div><button class="px" onclick="event.stopPropagation();dHO('+h.id+')">×</button></div>'}).join('')}
-function oP2(st2,disc,tax,total){if(!ca.length)return;if(!curShift){tt('Buka shift dulu sebelum transaksi',true);document.getElementById('shiftOpenModal').classList.add('show');return}pT2=total;pD={st:st2,disc:disc,tax:tax,total:total};document.getElementById('pT').textContent=rp(total);document.getElementById('pR').value='';document.getElementById('pC').textContent='Rp 0';document.getElementById('pModal').classList.add('show')}
+function oP2(st2,disc,tax,total){if(!ca.length)return;if(!curShift){tt('Buka shift dulu sebelum transaksi',true);document.getElementById('shiftOpenModal').classList.add('show');return}if(!checkStockOk())return;pT2=total;pD={st:st2,disc:disc,tax:tax,total:total};document.getElementById('pT').textContent=rp(total);document.getElementById('pR').value='';document.getElementById('pC').textContent='Rp 0';document.getElementById('pModal').classList.add('show')}
+  
 function sC(a){document.getElementById('pR').value=a;cC()}
 function cC(){var r=parseFloat(document.getElementById('pR').value)||0;document.getElementById('pC').textContent=rp(Math.max(0,r-pT2))}
 
 function dP(){
   if(!lockSave('dP')){tt('Transaksi sebelumnya masih diproses, tunggu sebentar',true);return}
   var recv=parseFloat(document.getElementById('pR').value)||0;
-  if(recv<pT2&&document.getElementById('pM').value==='cash'){tt('Uang tidak cukup',true);unlockSave('dP');return}
   var method=document.getElementById('pM').value;
+  if(recv<pT2&&method==='cash'){tt('Uang tidak cukup',true);unlockSave('dP');return}
+  if(method!=='cash')recv=pT2; // non-cash (QRIS/kartu/e-wallet) dianggap lunas sesuai total
   var change=Math.max(0,recv-pT2);
-  var op={order_type:oT,shift_id:curShift?curShift.id:null,subtotal:pD.st,discount_value:parseFloat(document.getElementById('dI').value)||0,discount_type:document.getElementById('dT2').value,discount_amount:pD.disc,tax_rate:st.taxOn?(st.tr||0.10):0,tax_amount:pD.tax,total:pD.total,payment_method:method,amount_paid:recv,change_amount:change,status:'completed',created_at:new Date().toISOString()};
-  
-  lO.push({order:op,items:ca,order_number:oN});
-  
-  ca.forEach(function(item){
+  var op={order_type:oT,shift_id:curShift?curShift.id:null,discount_value:parseFloat(document.getElementById('dI').value)||0,discount_type:document.getElementById('dT2').value,discount_amount:pD.disc,subtotal:pD.st,tax_rate:st.taxOn?(st.tr||0.10):0,tax_amount:pD.tax,total:pD.total,payment_method:method,amount_paid:recv,change_amount:change,status:'completed',created_at:new Date().toISOString()};
+
+  var cartSnap=ca,localNum=oN;
+  var rec={order:op,items:cartSnap,order_number:localNum};
+  lO.push(rec);
+
+  cartSnap.forEach(function(item){
     var recipes=lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id});
     var itemCogs=0;
     recipes.forEach(function(r){
@@ -702,22 +725,29 @@ function dP(){
   });
   saveIngs();
   localStorage.setItem('pos_orders',JSON.stringify(lO));
-  
-  if(apiOn){
-    var ip=ca.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
-    aP('order',{order:op,items:ip}).then(function(result){
-      if(result&&!result.error){tt('Tersinkron ke Cloud!');syncBG();}
-      else tt('Disimpan lokal (gagal sync)',true);
-    });
-  } else {
-    tt('Order tersimpan lokal!');
-  }
-  
+
   cm('pModal');
-  sR(oN,op,ca,change,recv,method);
   ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);
   rOP();
-  unlockSave('dP');
+
+  if(apiOn){
+    var ip=cartSnap.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
+    aP('order',{order:op,items:ip}).then(function(result){
+      if(result&&!result.error&&result.order_number){
+        rec.order_number=result.order_number; // samakan no. struk dgn no. di server
+        localStorage.setItem('pos_orders',JSON.stringify(lO));
+        tt('Tersinkron ke Cloud!');
+      }else{
+        tt('Disimpan lokal (gagal sync)',true);
+      }
+      sR(rec.order_number,op,cartSnap,change,recv,method);
+      unlockSave('dP');
+    });
+  }else{
+    tt('Order tersimpan lokal!');
+    sR(localNum,op,cartSnap,change,recv,method);
+    unlockSave('dP');
+  }
 }
 function sR(on,order,items,change,paid,method){var now=new Date();var ds=now.toLocaleString('id-ID');var taxOn=parseFloat(order.tax_rate||0)>0;var tp=Math.round(parseFloat(order.tax_rate||0)*100);var h='<div class="rt"><h3>'+(st.sn||'MASU SPACE')+'</h3><div class="ra">'+(st.sa||'')+'<br>'+(st.sp||'')+'</div><div class="rd"></div><div class="rr"><span>No:</span><span>'+on+'</span></div><div class="rr"><span>Date:</span><span>'+ds+'</span></div><div class="rr"><span>Type:</span><span>'+(order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></div><div class="rd"></div>';items.forEach(function(it){var vs=[it.variant_temp,it.variant_size].filter(Boolean).join(', ');h+='<div style="margin:3px 0"><div class="rr"><span>'+it.quantity+'x '+it.menu_item_name+'</span><span>'+rp(it.subtotal)+'</span></div>'+(vs?'<div style="font-size:9px;padding-left:6px;color:#555">'+vs+'</div>':'')+(it.addons&&it.addons.length?'<div style="font-size:9px;padding-left:6px;color:#555">+ '+it.addons.map(function(a){return a.name}).join(', ')+'</div>':'')+'</div>'});h+='<div class="rd"></div><div class="rr"><span>Subtotal</span><span>'+rp(order.subtotal)+'</span></div><div class="rr"><span>Diskon</span><span>- '+rp(order.discount_amount)+'</span></div>'+(taxOn?'<div class="rr"><span>Pajak ('+tp+'%)</span><span>'+rp(order.tax_amount)+'</span></div>':'')+'<div class="rr rtl"><span>TOTAL</span><span>'+rp(order.total)+'</span></div><div class="rd"></div><div class="rr"><span>'+method.toUpperCase()+'</span><span>'+rp(paid)+'</span></div><div class="rr"><span>Kembalian</span><span>'+rp(change)+'</span></div><div class="rd"></div><div class="rf">'+(st.rf||'Terima kasih!')+'<br><small>www.masuspace.coffee</small></div></div>';document.getElementById('rC').innerHTML=h;document.getElementById('rModal').classList.add('show');if(st.ap)setTimeout(pR2,300)}
 function pR2(){var content=document.getElementById('rC').innerHTML;var w=st.pw||80;var win=window.open('','_blank','width='+(w+20)+',height=600');win.document.write('<!DOCTYPE html><html><head><title>Struk</title><style>@page{size:'+w+'mm auto;margin:2mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Courier New,monospace;font-size:11px;color:#000;width:'+w+'mm;margin:0 auto;padding:4px}.rt{width:100%;padding:4px}h3{text-align:center;font-size:14px;margin-bottom:4px}.ra{text-align:center;font-size:10px;margin-bottom:6px}.rd{border-top:1px dashed #000;margin:6px 0}.rr{display:flex;justify-content:space-between;margin:2px 0}.rtl{font-weight:bold;font-size:13px}.rf{text-align:center;margin-top:6px;font-size:10px}</style></head><body>'+content+'</body></html>');win.document.close();win.focus();setTimeout(function(){win.print();setTimeout(function(){win.close()},500)},300)}
