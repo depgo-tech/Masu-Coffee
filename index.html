@@ -367,6 +367,7 @@ var lOp=JSON.parse(localStorage.getItem('pos_op')||'[]');
 var lW=JSON.parse(localStorage.getItem('pos_w')||'[]');
 var lPa=JSON.parse(localStorage.getItem('pos_pa')||'[]');
 var lRe=JSON.parse(localStorage.getItem('pos_re')||'[]');
+var lCF=JSON.parse(localStorage.getItem('pos_cf')||'[]'); // kas keluar/masuk di luar Laba Rugi: beli bahan, lunasi hutang/piutang
 var lI=JSON.parse(localStorage.getItem('pos_ings')||'null');
 if(!lI){lI=[{id:1,name:'Coffee Beans',unit:'g',stock:5000,min_stock:1000,cost:200},{id:2,name:'Fresh Milk',unit:'ml',stock:8000,min_stock:2000,cost:25},{id:3,name:'Sugar',unit:'g',stock:3000,min_stock:500,cost:15},{id:4,name:'Matcha Powder',unit:'g',stock:1000,min_stock:200,cost:500},{id:5,name:'Tea Leaves',unit:'g',stock:2000,min_stock:500,cost:100},{id:6,name:'Cup Hot 8oz',unit:'pcs',stock:500,min_stock:100,cost:500},{id:7,name:'Cup Ice 12oz',unit:'pcs',stock:500,min_stock:100,cost:700},{id:8,name:'Lid Cup',unit:'pcs',stock:800,min_stock:100,cost:200},{id:9,name:'Straw',unit:'pcs',stock:1000,min_stock:200,cost:100},{id:10,name:'Plastic Bag',unit:'pcs',stock:300,min_stock:50,cost:300},{id:11,name:'Food Box',unit:'pcs',stock:200,min_stock:50,cost:1000},{id:12,name:'Tissue',unit:'pcs',stock:2000,min_stock:500,cost:50}];localStorage.setItem('pos_ings',JSON.stringify(lI))}
 function saveIngs(){localStorage.setItem('pos_ings',JSON.stringify(lI))}
@@ -406,7 +407,8 @@ function saveAtt(){localStorage.setItem('pos_att',JSON.stringify(lAtt))}
 function saveAcc(){localStorage.setItem('pos_acc',JSON.stringify(lAcc))}
 function saveInv(){localStorage.setItem('pos_inv',JSON.stringify(lInv))}
 function savePD(){localStorage.setItem('pos_pd',JSON.stringify(lPD))}
-// ===== ANTI DOUBLE-SUBMIT GUARD =====
+function saveCF(){localStorage.setItem('pos_cf',JSON.stringify(lCF))}
+  // ===== ANTI DOUBLE-SUBMIT GUARD =====
 // Mencegah transaksi tercatat dobel kalau tombol Simpan/Bayar kepencet 2x
 // (koneksi lemot, device lag, dsb). Setiap fungsi simpan transaksi wajib
 // panggil lockSave(key) di awal; kalau false berarti masih diproses, batalkan.
@@ -886,8 +888,23 @@ function dPDist(id){
 }
 
 function rPb(){document.getElementById('ct').innerHTML='<div class="sc"><div class="mg-h"><h2>Pembelian Bahan</h2><button class="bp" style="flex:0 0 auto;padding:10px 14px;font-size:12px" onclick="oBM()">+ Tambah Bahan</button></div><p style="color:var(--dim);font-size:13px;margin-bottom:16px">Beli stok. Stok bertambah otomatis dan tersimpan.</p><div class="sg">'+lI.map(function(ing){return'<div class="scd"><div class="nm">'+ing.name+'</div><div><span class="sv">'+ing.stock+'</span><span class="un">'+ing.unit+'</span></div><div style="font-size:11px;color:var(--dim)">Min: '+ing.min_stock+' '+ing.unit+'</div><div class="sa"><input type="number" placeholder="Qty" id="buy-'+ing.id+'"><button onclick="dB('+ing.id+')">Beli</button></div></div>'}).join('')+'</div></div>'}
-function dB(id){if(!lockSave('dB'+id)){tt('Tunggu sebentar, masih diproses',true);return}var q=parseFloat(document.getElementById('buy-'+id).value);if(!q||q<=0){tt('Isi qty',true);unlockSave('dB'+id);return}var ing=lI.find(function(i){return i.id===id});if(ing)ing.stock=parseFloat(ing.stock)+q;saveIngs();if(apiOn){aP('stock-in',{ingredient_id:id,quantity:q,note:'Pembelian'}).then(function(){unlockSave('dB'+id)})}else{unlockSave('dB'+id)}tt('Stok ditambah');rPb()}
-function oBM(){var h='<div class="ml"><h2>Tambah Bahan Baku</h2><div class="fg"><label>Nama Bahan</label><input type="text" id="bN" placeholder="Contoh: Syrup Vanilla"></div><div class="fr"><div class="fg"><label>Satuan</label><input type="text" id="bU" placeholder="ml / pcs / g" value="pcs"></div><div class="fg"><label>Stok Awal</label><input type="number" id="bS" value="0"></div></div><div class="fr"><div class="fg"><label>Min. Stok</label><input type="number" id="bM" value="0"></div><div class="fg"><label>Harga Beli (per satuan)</label><input type="number" id="bC" placeholder="0"></div></div><div class="ma"><button class="bs" onclick="cm(\'bModal\')">Batal</button><button class="bp" onclick="sBM()">Simpan</button></div></div>';document.getElementById('bC2').innerHTML=h;document.getElementById('bModal').classList.add('show')}
+function dB(id){
+  if(!lockSave('dB'+id)){tt('Tunggu sebentar, masih diproses',true);return}
+  var q=parseFloat(document.getElementById('buy-'+id).value);
+  if(!q||q<=0){tt('Isi qty',true);unlockSave('dB'+id);return}
+  var ing=lI.find(function(i){return i.id===id});
+  var cost=0;
+  if(ing){
+    ing.stock=parseFloat(ing.stock)+q;
+    cost=q*parseFloat(ing.cost||0);
+    if(cost>0){lCF.push({id:Date.now(),date:new Date().toISOString().slice(0,10),type:'out',category:'stock_purchase',desc:'Beli bahan: '+ing.name+' ('+q+' '+ing.unit+')',amount:cost});saveCF()}
+  }
+  saveIngs();
+  if(apiOn){aP('stock-in',{ingredient_id:id,quantity:q,note:'Pembelian'}).then(function(){unlockSave('dB'+id)})}else{unlockSave('dB'+id)}
+  tt('Stok ditambah'+(cost>0?' & tercatat di Arus Kas':''));
+  rPb();
+}
+  function oBM(){var h='<div class="ml"><h2>Tambah Bahan Baku</h2><div class="fg"><label>Nama Bahan</label><input type="text" id="bN" placeholder="Contoh: Syrup Vanilla"></div><div class="fr"><div class="fg"><label>Satuan</label><input type="text" id="bU" placeholder="ml / pcs / g" value="pcs"></div><div class="fg"><label>Stok Awal</label><input type="number" id="bS" value="0"></div></div><div class="fr"><div class="fg"><label>Min. Stok</label><input type="number" id="bM" value="0"></div><div class="fg"><label>Harga Beli (per satuan)</label><input type="number" id="bC" placeholder="0"></div></div><div class="ma"><button class="bs" onclick="cm(\'bModal\')">Batal</button><button class="bp" onclick="sBM()">Simpan</button></div></div>';document.getElementById('bC2').innerHTML=h;document.getElementById('bModal').classList.add('show')}
 function sBM(){if(!lockSave('sBM')){tt('Tunggu sebentar, masih diproses',true);return}var n=document.getElementById('bN').value.trim();var u=document.getElementById('bU').value.trim()||'pcs';var s=parseFloat(document.getElementById('bS').value)||0;var m=parseFloat(document.getElementById('bM').value)||0;var c=parseFloat(document.getElementById('bC').value)||0;if(!n){tt('Isi nama bahan',true);unlockSave('sBM');return}var nid=Date.now();lI.push({id:nid,name:n,unit:u,stock:s,min_stock:m,cost:c});saveIngs();if(apiOn){aP('ingredients',{name:n,unit:u,stock:s,min_stock:m,cost:c}).then(function(){unlockSave('sBM')})}else{unlockSave('sBM')}cm('bModal');tt('Bahan ditambahkan');rPb()}
 
 function rSt(){var tabs=[['dashboard','Dashboard'],['stock','Stok'],['opname','Opname'],['movement','Pergerakan'],['hpp','HPP'],['waste','Waste'],['recipe','Resep']];var h='<div class="sc"><div class="mg-h"><h2>Inventory</h2></div><div class="acc-t" style="margin-bottom:14px" id="invTabs">';tabs.forEach(function(t){h+='<div class="acc-t2 '+(iT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sIT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="iC"></div></div>';document.getElementById('ct').innerHTML=h;rIC()}
@@ -1051,8 +1068,7 @@ function rA(){
   h+='<div class="acc-cd2 '+(f.netProfit>=0?'profit':'')+'"><div class="al">Laba Bersih</div><div class="av" style="color:'+(f.netProfit>=0?'var(--suc)':'var(--dng)')+'">'+rp(f.netProfit)+'</div><div class="as">'+(f.netProfit>=0?'Untung':'Rugi')+'</div></div>';
   h+='<div class="acc-cd2"><div class="al">Margin Laba Bersih</div><div class="av" style="color:'+(f.margin>=0?'var(--suc)':'var(--dng)')+'">'+f.margin.toFixed(1)+'%</div><div class="as">laba bersih / penjualan</div></div>';
   h+='</div>';
-  var tabs=[['dashboard','Dashboard'],['pnl','Laba Rugi'],['cashflow','Arus Kas'],['expenses','Pengeluaran'],['accounts','Akun'],['payables','Hutang'],['receivables','Piutang'],['investor','Investor'],['journal','Jurnal']];
-  h+='<div class="acc-t" style="margin-bottom:16px" id="accTabs">';tabs.forEach(function(t){h+='<div class="acc-t2 '+(aT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sAT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="aC"></div></div>';
+  var tabs=[['dashboard','Dashboard'],['pnl','Laba Rugi'],['neraca','Neraca'],['cashflow','Arus Kas'],['expenses','Pengeluaran'],['accounts','Akun'],['payables','Hutang'],['receivables','Piutang'],['investor','Investor'],['journal','Jurnal']];  h+='<div class="acc-t" style="margin-bottom:16px" id="accTabs">';tabs.forEach(function(t){h+='<div class="acc-t2 '+(aT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sAT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="aC"></div></div>';
   document.getElementById('ct').innerHTML=h;rAC();
 }
 function sAT(t){aT=t;document.querySelectorAll('#accTabs .acc-t2').forEach(function(el){el.classList.toggle('act',el.dataset.tab===t)});rAC()}
@@ -1099,10 +1115,51 @@ function rAC(){
     h+='</div>';
     h+='<div class="df"><label>Custom Periode:</label><input type="date" id="pnlFrom" value="'+m.start+'"><label>s/d</label><input type="date" id="pnlTo" value="'+m.end+'"><button onclick="rPnlCustom()">Tampilkan</button></div><div id="pnlCustomResult"></div>';
     el.innerHTML=h;
+   }else if(aT==='neraca'){
+    var allSalesIn=lO.reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);
+    var allExpOut=lE.reduce(function(s,e){return s+parseFloat(e.amount||0)},0);
+    var allCFIn=lCF.filter(function(c){return c.type==='in'}).reduce(function(s,c){return s+parseFloat(c.amount||0)},0);
+    var allCFOut=lCF.filter(function(c){return c.type==='out'}).reduce(function(s,c){return s+parseFloat(c.amount||0)},0);
+    var allDistOut=lPD.reduce(function(s,pd){return s+parseFloat(pd.net_profit||0)},0);
+    var kas=allSalesIn+allCFIn-allExpOut-allCFOut-allDistOut;
+    var piutang=lRe.filter(function(r){return r.status!=='paid'}).reduce(function(s,r){return s+(parseFloat(r.amount)-parseFloat(r.received_amount||0))},0);
+    var persediaan=lI.reduce(function(s,i){return s+parseFloat(i.stock||0)*parseFloat(i.cost||0)},0);
+    var totalAset=kas+piutang+persediaan;
+    var hutang=lPa.filter(function(p){return p.status!=='paid'}).reduce(function(s,p){return s+(parseFloat(p.amount)-parseFloat(p.paid_amount||0))},0);
+    var modal=totalAset-hutang;
+    var h='<div class="pnl"><h3>Neraca (Posisi Keuangan) - per '+new Date().toLocaleDateString('id-ID')+'</h3>';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;margin:6px 0 4px">Aset</div>';
+    h+='<div class="pnl-r"><span class="lb">Kas & Setara Kas</span><span class="vl">'+rp(kas)+'</span></div>';
+    h+='<div class="pnl-r"><span class="lb">Piutang Usaha</span><span class="vl">'+rp(piutang)+'</span></div>';
+    h+='<div class="pnl-r"><span class="lb">Persediaan Bahan Baku</span><span class="vl">'+rp(persediaan)+'</span></div>';
+    h+='<div class="pnl-r t"><span>Total Aset</span><span>'+rp(totalAset)+'</span></div>';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;margin:12px 0 4px">Liabilitas</div>';
+    h+='<div class="pnl-r"><span class="lb">Hutang Usaha</span><span class="vl neg">'+rp(hutang)+'</span></div>';
+    h+='<div class="pnl-r t"><span>Total Liabilitas</span><span>'+rp(hutang)+'</span></div>';
+    h+='<div style="font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;margin:12px 0 4px">Modal</div>';
+    h+='<div class="pnl-r"><span class="lb">Modal & Laba Ditahan (akumulasi)</span><span class="vl">'+rp(modal)+'</span></div>';
+    h+='<div class="pnl-r t"><span>Total Liabilitas + Modal</span><span>'+rp(hutang+modal)+'</span></div>';
+    h+='</div>';
+    h+='<p style="font-size:11px;color:var(--dim);margin-top:8px">Catatan: Kas dihitung otomatis dari akumulasi transaksi di sistem ini, bukan dari mutasi rekening bank asli. "Modal & Laba Ditahan" adalah angka penyeimbang (Aset − Liabilitas). Kas/modal di luar sistem ini (setoran awal pemilik dll) belum ikut terhitung.</p>';
+    el.innerHTML=h;
   }else if(aT==='cashflow'){
-    var ci=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=m.start&&d<=m.end}).reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);
-    var co=lE.filter(function(e){return e.date>=m.start&&e.date<=m.end}).reduce(function(s,e){return s+parseFloat(e.amount)},0);
-    var h='<div class="pnl"><h3>Arus Kas - '+m.label+'</h3><div class="pnl-r"><span class="lb">Kas Masuk</span><span class="vl pos">+ '+rp(ci)+'</span></div><div class="pnl-r"><span class="lb">Kas Keluar</span><span class="vl neg">- '+rp(co)+'</span></div><div class="pnl-r t"><span class="lb">Saldo</span><span class="vl '+(ci-co>=0?'pos':'neg')+'">'+rp(ci-co)+'</span></div></div>';
+    var cfIn=lCF.filter(function(c){return c.type==='in'&&c.date>=m.start&&c.date<=m.end});
+    var cfOut=lCF.filter(function(c){return c.type==='out'&&c.date>=m.start&&c.date<=m.end});
+    var salesIn=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):td;return d>=m.start&&d<=m.end}).reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);
+    var cfInTotal=cfIn.reduce(function(s,c){return s+parseFloat(c.amount||0)},0);
+    var ci=salesIn+cfInTotal;
+    var coExp=lE.filter(function(e){return e.date>=m.start&&e.date<=m.end}).reduce(function(s,e){return s+parseFloat(e.amount)},0);
+    var coCF=cfOut.reduce(function(s,c){return s+parseFloat(c.amount||0)},0);
+    var co=coExp+coCF;
+    var h='<div class="pnl"><h3>Arus Kas - '+m.label+'</h3><div class="pnl-r"><span class="lb">Penjualan</span><span class="vl pos">+ '+rp(salesIn)+'</span></div>';
+    if(cfInTotal>0)h+='<div class="pnl-r"><span class="lb">Piutang Diterima</span><span class="vl pos">+ '+rp(cfInTotal)+'</span></div>';
+    h+='<div class="pnl-r"><span class="lb">Pengeluaran (Beban)</span><span class="vl neg">- '+rp(coExp)+'</span></div>';
+    if(cfOut.length){
+      var byCat={};
+      cfOut.forEach(function(c){var lbl=c.category==='stock_purchase'?'Pembelian Bahan':'Bayar Hutang';if(!byCat[lbl])byCat[lbl]=0;byCat[lbl]+=parseFloat(c.amount||0)});
+      Object.keys(byCat).forEach(function(k){h+='<div class="pnl-r"><span class="lb">'+k+'</span><span class="vl neg">- '+rp(byCat[k])+'</span></div>'});
+    }
+    h+='<div class="pnl-r t"><span class="lb">Saldo Kas Periode Ini</span><span class="vl '+(ci-co>=0?'pos':'neg')+'">'+rp(ci-co)+'</span></div></div>';
     el.innerHTML=h;
   }else if(aT==='expenses'){
     var h='<div class="acc-tb"><table><thead><tr><th>Tanggal</th><th>Akun</th><th>Deskripsi</th><th>Jumlah</th><th>Metode</th><th>Aksi</th></tr></thead><tbody>';
@@ -1193,8 +1250,24 @@ function sE(){
 function dE(id){if(!confirm('Hapus?'))return;lE=lE.filter(function(e){return e.id!==id});localStorage.setItem('pos_exp',JSON.stringify(lE));if(apiOn)aD('expenses/'+id);rAC();tt('Dihapus')}
 function oDM(type){var isP=type==='payable';document.getElementById('dT').textContent=isP?'Tambah Hutang':'Tambah Piutang';document.getElementById('dPL').textContent=isP?'Supplier':'Pelanggan';document.getElementById('dD').value=new Date().toISOString().slice(0,10);document.getElementById('dP2').value='';document.getElementById('dDs').value='';document.getElementById('dAm').value='';document.getElementById('dDue').value='';document.getElementById('dModal').dataset.type=type;document.getElementById('dModal').classList.add('show')}
 function sD(){if(!lockSave('sD')){tt('Tunggu sebentar, masih diproses',true);return}var type=document.getElementById('dModal').dataset.type;var d=document.getElementById('dD').value;var party=document.getElementById('dP2').value.trim();var desc=document.getElementById('dDs').value.trim();var amt=parseFloat(document.getElementById('dAm').value);var due=document.getElementById('dDue').value;if(!d||!amt||amt<=0){tt('Lengkapi',true);unlockSave('sD');return}var item={id:Date.now(),date:d,supplier:party,customer:party,description:desc,amount:amt,paid_amount:0,received_amount:0,due_date:due,status:'unpaid'};if(type==='payable'){lPa.push(item);localStorage.setItem('pos_pa',JSON.stringify(lPa))}else{lRe.push(item);localStorage.setItem('pos_re',JSON.stringify(lRe))}cm('dModal');tt('Tersimpan');rAC();unlockSave('sD')}
-function pD2(id,type){if(type==='payable'){var p=lPa.find(function(x){return x.id===id});if(p){p.status='paid';p.paid_amount=p.amount;localStorage.setItem('pos_pa',JSON.stringify(lPa))}}else{var r=lRe.find(function(x){return x.id===id});if(r){r.status='paid';r.received_amount=r.amount;localStorage.setItem('pos_re',JSON.stringify(lRe))}}tt('Dilunasi');rAC()}
-function dD2(id,type){if(!confirm('Hapus?'))return;if(type==='payable'){lPa=lPa.filter(function(x){return x.id!==id});localStorage.setItem('pos_pa',JSON.stringify(lPa))}else{lRe=lRe.filter(function(x){return x.id!==id});localStorage.setItem('pos_re',JSON.stringify(lRe))}tt('Dihapus');rAC()}
+function pD2(id,type){
+  if(type==='payable'){
+    var p=lPa.find(function(x){return x.id===id});
+    if(p){
+      var sisa=parseFloat(p.amount)-parseFloat(p.paid_amount||0);
+      p.status='paid';p.paid_amount=p.amount;localStorage.setItem('pos_pa',JSON.stringify(lPa));
+      if(sisa>0){lCF.push({id:Date.now(),date:new Date().toISOString().slice(0,10),type:'out',category:'payable_paid',desc:'Bayar hutang: '+(p.supplier||'-')+' ('+(p.description||'')+')',amount:sisa});saveCF()}
+    }
+  }else{
+    var r=lRe.find(function(x){return x.id===id});
+    if(r){
+      var sisa2=parseFloat(r.amount)-parseFloat(r.received_amount||0);
+      r.status='paid';r.received_amount=r.amount;localStorage.setItem('pos_re',JSON.stringify(lRe));
+      if(sisa2>0){lCF.push({id:Date.now(),date:new Date().toISOString().slice(0,10),type:'in',category:'receivable_received',desc:'Terima piutang: '+(r.customer||'-')+' ('+(r.description||'')+')',amount:sisa2});saveCF()}
+    }
+  }
+  tt('Dilunasi');rAC();
+}function dD2(id,type){if(!confirm('Hapus?'))return;if(type==='payable'){lPa=lPa.filter(function(x){return x.id!==id});localStorage.setItem('pos_pa',JSON.stringify(lPa))}else{lRe=lRe.filter(function(x){return x.id!==id});localStorage.setItem('pos_re',JSON.stringify(lRe))}tt('Dihapus');rAC()}
 
 function rL(){var td=new Date().toISOString().slice(0,10);var wa=new Date(Date.now()-7*86400000).toISOString().slice(0,10);document.getElementById('ct').innerHTML='<div class="rc"><div class="mg-h"><h2>Laporan</h2></div><div class="df"><label>Dari:</label><input type="date" id="dF" value="'+wa+'"><label>Sampai:</label><input type="date" id="dT3" value="'+td+'"><button onclick="lR()">Refresh</button></div><div class="rc-c" id="rC2"></div><h3 style="margin:16px 0 8px;font-size:14px">Riwayat</h3><div class="tt2" id="tT"></div></div>';lR()}
 function lR(){var from=document.getElementById('dF').value;var to=document.getElementById('dT3').value;var f=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):new Date().toISOString().slice(0,10);return(!from||d>=from)&&(!to||d<=to)});var ts=f.reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);var di=f.filter(function(o){return o.order.order_type==='dine-in'}).length;var ta=f.filter(function(o){return o.order.order_type==='takeaway'}).length;document.getElementById('rC2').innerHTML='<div class="rc-cd"><div class="lb">Total</div><div class="vl">'+rp(ts)+'</div><div class="sb2">'+f.length+' trx</div></div><div class="rc-cd"><div class="lb">Dine-in</div><div class="vl">'+di+'</div></div><div class="rc-cd"><div class="lb">Takeaway</div><div class="vl">'+ta+'</div></div><div class="rc-cd"><div class="lb">Rata-rata</div><div class="vl">'+rp(f.length?ts/f.length:0)+'</div></div>';if(!f.length){document.getElementById('tT').innerHTML='<div style="padding:20px;text-align:center;color:var(--dim)">Belum ada transaksi</div>';return}document.getElementById('tT').innerHTML='<table><thead><tr><th>No. Order</th><th>Waktu</th><th>Tipe</th><th>Items</th><th>Total</th><th>Bayar</th></tr></thead><tbody>'+f.reverse().map(function(o){return'<tr><td style="font-weight:600">'+o.order_number+'</td><td>'+(o.order.created_at?new Date(o.order.created_at).toLocaleString('id-ID'):'-')+'</td><td><span class="bg2 '+(o.order.order_type==='dine-in'?'dine':'take')+'">'+(o.order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.items?o.items.length:0)+'</td><td style="color:var(--ac);font-weight:700">'+rp(o.order.total)+'</td><td>'+(o.order.payment_method||'cash').toUpperCase()+'</td></tr>'}).join('')+'</tbody></table>'}
