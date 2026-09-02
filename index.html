@@ -893,19 +893,53 @@ function dB(id){
   var q=parseFloat(document.getElementById('buy-'+id).value);
   if(!q||q<=0){tt('Isi qty',true);unlockSave('dB'+id);return}
   var ing=lI.find(function(i){return i.id===id});
-  var cost=0;
-  if(ing){
-    ing.stock=parseFloat(ing.stock)+q;
-    cost=q*parseFloat(ing.cost||0);
+  if(!ing){unlockSave('dB'+id);return}
+  var prevStock=parseFloat(ing.stock);
+  var cost=q*parseFloat(ing.cost||0);
+  ing.stock=prevStock+q;
+  saveIngs();rPb();
+  if(apiOn){
+    aP('stock-in',{ingredient_id:id,quantity:q,note:'Pembelian'}).then(function(r){
+      if(r&&!r.error){
+        if(cost>0){lCF.push({id:Date.now(),date:new Date().toISOString().slice(0,10),type:'out',category:'stock_purchase',desc:'Beli bahan: '+ing.name+' ('+q+' '+ing.unit+')',amount:cost});saveCF()}
+        tt('Stok ditambah & tercatat di Arus Kas');
+      }else{
+        ing.stock=prevStock;saveIngs();rPb();
+        tt('Gagal sync ke cloud, stok DIBATALKAN. Coba lagi (mungkin bahan ini belum tersinkron sejak dibuat)',true);
+      }
+      unlockSave('dB'+id);
+    });
+  }else{
     if(cost>0){lCF.push({id:Date.now(),date:new Date().toISOString().slice(0,10),type:'out',category:'stock_purchase',desc:'Beli bahan: '+ing.name+' ('+q+' '+ing.unit+')',amount:cost});saveCF()}
+    tt('Stok ditambah (lokal — akan sync saat online)');
+    unlockSave('dB'+id);
   }
-  saveIngs();
-  if(apiOn){aP('stock-in',{ingredient_id:id,quantity:q,note:'Pembelian'}).then(function(){unlockSave('dB'+id)})}else{unlockSave('dB'+id)}
-  tt('Stok ditambah'+(cost>0?' & tercatat di Arus Kas':''));
-  rPb();
 }
+  
   function oBM(){var h='<div class="ml"><h2>Tambah Bahan Baku</h2><div class="fg"><label>Nama Bahan</label><input type="text" id="bN" placeholder="Contoh: Syrup Vanilla"></div><div class="fr"><div class="fg"><label>Satuan</label><input type="text" id="bU" placeholder="ml / pcs / g" value="pcs"></div><div class="fg"><label>Stok Awal</label><input type="number" id="bS" value="0"></div></div><div class="fr"><div class="fg"><label>Min. Stok</label><input type="number" id="bM" value="0"></div><div class="fg"><label>Harga Beli (per satuan)</label><input type="number" id="bC" placeholder="0"></div></div><div class="ma"><button class="bs" onclick="cm(\'bModal\')">Batal</button><button class="bp" onclick="sBM()">Simpan</button></div></div>';document.getElementById('bC2').innerHTML=h;document.getElementById('bModal').classList.add('show')}
-function sBM(){if(!lockSave('sBM')){tt('Tunggu sebentar, masih diproses',true);return}var n=document.getElementById('bN').value.trim();var u=document.getElementById('bU').value.trim()||'pcs';var s=parseFloat(document.getElementById('bS').value)||0;var m=parseFloat(document.getElementById('bM').value)||0;var c=parseFloat(document.getElementById('bC').value)||0;if(!n){tt('Isi nama bahan',true);unlockSave('sBM');return}var nid=Date.now();lI.push({id:nid,name:n,unit:u,stock:s,min_stock:m,cost:c});saveIngs();if(apiOn){aP('ingredients',{name:n,unit:u,stock:s,min_stock:m,cost:c}).then(function(){unlockSave('sBM')})}else{unlockSave('sBM')}cm('bModal');tt('Bahan ditambahkan');rPb()}
+function sBM(){
+  if(!lockSave('sBM')){tt('Tunggu sebentar, masih diproses',true);return}
+  var n=document.getElementById('bN').value.trim();
+  var u=document.getElementById('bU').value.trim()||'pcs';
+  var s=parseFloat(document.getElementById('bS').value)||0;
+  var m=parseFloat(document.getElementById('bM').value)||0;
+  var c=parseFloat(document.getElementById('bC').value)||0;
+  if(!n){tt('Isi nama bahan',true);unlockSave('sBM');return}
+  var nid=Date.now();
+  lI.push({id:nid,name:n,unit:u,stock:s,min_stock:m,cost:c});
+  saveIngs();cm('bModal');tt('Bahan ditambahkan');rPb();
+  if(apiOn){
+    aP('ingredients',{name:n,unit:u,stock:s,min_stock:m,cost:c}).then(function(r){
+      if(r&&!r.error&&r.id){
+        var idx=lI.findIndex(function(i){return i.id===nid});
+        if(idx>-1){lI[idx].id=r.id;saveIngs();rPb()}
+      }else{
+        tt('Bahan tersimpan lokal tapi GAGAL sync ke cloud — jangan pakai "Beli Bahan" utk item ini sampai online lagi',true);
+      }
+      unlockSave('sBM');
+    });
+  }else{unlockSave('sBM')}
+}
 
 function rSt(){var tabs=[['dashboard','Dashboard'],['stock','Stok'],['opname','Opname'],['movement','Pergerakan'],['hpp','HPP'],['waste','Waste'],['recipe','Resep']];var h='<div class="sc"><div class="mg-h"><h2>Inventory</h2></div><div class="acc-t" style="margin-bottom:14px" id="invTabs">';tabs.forEach(function(t){h+='<div class="acc-t2 '+(iT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sIT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="iC"></div></div>';document.getElementById('ct').innerHTML=h;rIC()}
 function sIT(t){iT=t;document.querySelectorAll('#invTabs .acc-t2').forEach(function(el){el.classList.toggle('act',el.dataset.tab===t)});rIC()}
