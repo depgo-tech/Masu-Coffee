@@ -873,10 +873,11 @@ function sPDist(){
   var rec={id:tempId,period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,created_at:new Date().toISOString(),profit_distribution_items:items};
   lPD.push(rec);savePD();cm('opModal');tt('Bagi hasil disimpan');rAC();
   if(apiOn){
-    aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){
+       aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){
       if(r&&!r.error&&r.id){var idx=lPD.findIndex(function(p){return p.id===tempId});if(idx>-1){lPD[idx].id=r.id;savePD();rAC()}}
-      else{tt('Gagal sync bagi hasil ke cloud',true)}
+      else{tt('Gagal sync bagi hasil: '+(r&&r.error?r.error:'tidak diketahui'),true);console.error('Profit-dist sync error:',r)}
       unlockSave('sPDist');
+    });
     });
   }else{unlockSave('sPDist')}
 }
