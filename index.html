@@ -823,10 +823,11 @@ function sInvM(){
     lInv.push({id:tempId,name:name,percentage:pct,note:note});
     saveInv();cm('opModal');tt('Investor ditambahkan');rAC();
     if(apiOn){
-      aP('investors',{name:name,percentage:pct,note:note}).then(function(r){
+           aP('investors',{name:name,percentage:pct,note:note}).then(function(r){
         if(r&&!r.error&&r.id){var idx=lInv.findIndex(function(i){return i.id===tempId});if(idx>-1){lInv[idx].id=r.id;saveInv();rAC()}}
-        else{tt('Gagal sync investor ke cloud',true)}
+        else{tt('Gagal sync investor: '+(r&&r.error?r.error:'tidak diketahui'),true);console.error('Investor sync error:',r)}
         unlockSave('sInvM');
+      });
       });
     }else{unlockSave('sInvM')}
   }
