@@ -304,14 +304,13 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
     }
-    if (resource === 'stock-in' && req.method === 'POST') {
+        if (resource === 'stock-in' && req.method === 'POST') {
       const { ingredient_id, quantity, note } = body;
       if (!ingredient_id || !quantity) return res.status(400).json({ error: 'ingredient_id and quantity are required' });
       const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
-      if (ing) {
-        await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) + parseFloat(quantity) }).eq('id', ingredient_id);
-        await supabase.from('stock_transactions').insert({ ingredient_id, quantity: parseFloat(quantity), type: 'in', note: note || 'Stock in' });
-      }
+      if (!ing) return res.status(404).json({ error: 'Bahan tidak ditemukan di server (belum tersinkron?)' });
+      await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) + parseFloat(quantity) }).eq('id', ingredient_id);
+      await supabase.from('stock_transactions').insert({ ingredient_id, quantity: parseFloat(quantity), type: 'in', note: note || 'Stock in' });
       return res.status(200).json({ success: true });
     }
 
