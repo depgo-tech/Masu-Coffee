@@ -416,20 +416,92 @@ var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
 function unlockSave(key){_busySave[key]=false}
 function syncBG(){
-  aG('menu').then(function(d){if(d&&!d.error&&d.i){md=d;saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';rnd();}});
-  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){lI=d;saveIngs();rnd();}});
-  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rnd();}});
-  aG('settings').then(function(d){if(d&&!d.error){Object.assign(st,d);localStorage.setItem('pos_settings',JSON.stringify(st));aSt()}}).catch(function(){});
-  aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
-  aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAtt=d;saveAtt();if(cv==='absensi')rAb()}});
-  aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){lHold=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});saveHold();if(cv==='pos')rHL()}});
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var mapped=d.map(function(o){return{order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number}});lO=mapped;localStorage.setItem('pos_orders',JSON.stringify(lO));if(cv==='dashboard')rD();if(cv==='laporan')lR();if(cv==='akuntansi')rAC()}});
-  aG('shifts?open=1').then(function(d){if(d&&!d.error&&Array.isArray(d)){curShift=d[0]||null;localStorage.setItem('pos_shift',JSON.stringify(curShift));if(cv==='pos')rShiftBar()}});
-  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){lE=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,shift_id:e.shift_id,proof_image:e.proof_image,account_id:e.account_id,account:e.accounts||null}});localStorage.setItem('pos_exp',JSON.stringify(lE));if(cv==='akuntansi')rAC();if(cv==='pos')rShiftExpList()}});
-  aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
-  aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
-  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){lPD=d;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
+  // ============================================================
+  // SINKRON AMAN (LOCAL-FIRST)
+  // ATURAN: data lokal TIDAK PERNAH ditimpa/dihapus oleh server.
+  //  - List lokal yang sudah ada isinya -> data server DIABAIKAN untuk list itu.
+  //  - Server hanya dipakai kalau lokal masih kosong (device/browser baru).
+  //  - Transaksi (order) tetap digabung (merge) karena tidak ada fitur hapus order.
+  // ============================================================
+  aG('menu').then(function(d){
+    if(d&&!d.error&&d.i){
+      apiOn=true;
+      var ab=document.getElementById('ab');
+      if(ab){ab.innerHTML='<div class="dt"></div><span>Online</span>';ab.className='ab on'}
+      if(!md.i.length&&!md.c.length){
+        md=d;
+        if(!md.c)md.c=[];if(!md.i)md.i=[];if(!md.v)md.v=[];if(!md.a)md.a=[];if(!md.ia)md.ia=[];
+        saveMenu();rnd();
+      }
+    }
+  });
+  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lI.length){lI=d;saveIngs();rnd()}});
+  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lRcp.length){lRcp=d;saveRcp();rnd()}});
+  aG('settings').then(function(d){
+    // Settings hanya diambil dari server kalau lokal BELUM PERNAH simpan settings,
+    // supaya pengaturan di device ini tidak berubah balik sendiri.
+    if(d&&!d.error&&!localStorage.getItem('pos_settings')){
+      Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==undefined)st[k]=d[k]});
+      if(!st.tr)st.tr=0.10;
+      localStorage.setItem('pos_settings',JSON.stringify(st));aSt();
+    }
+  }).catch(function(){});
+  aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lEmp.length){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
+  aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lAtt.length){lAtt=d;saveAtt();if(cv==='absensi')rAb()}});
+  aG('holds').then(function(d){
+    if(d&&!d.error&&Array.isArray(d)&&!lHold.length){
+      lHold=d.map(function(h){
+        var cart=h.cart;if(typeof cart==='string'){try{cart=JSON.parse(cart)}catch(e){cart=[]}}
+        return{id:h.id,cart:cart||[],orderType:h.order_type||h.orderType,order_number:h.order_number,note:h.note,created_at:h.created_at};
+      });
+      saveHold();if(cv==='pos')rHL();
+    }
+  });
+  aG('transactions').then(function(d){
+    if(d&&!d.error&&Array.isArray(d)&&d.length){
+      var before=lO.length;
+      var seen={};
+      lO.forEach(function(o){
+        if(o.order_number)seen['n_'+o.order_number]=1;
+        if(o.order&&o.order.id!=null)seen['i_'+o.order.id]=1;
+      });
+      d.forEach(function(o){
+        var dupe=(o.order_number&&seen['n_'+o.order_number])||(o.id!=null&&seen['i_'+o.id]);
+        if(dupe)return;
+        var items=(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c});
+        lO.push({order:o,items:items,order_number:o.order_number});
+        if(o.order_number)seen['n_'+o.order_number]=1;
+        if(o.id!=null)seen['i_'+o.id]=1;
+      });
+      if(lO.length!==before){
+        localStorage.setItem('pos_orders',JSON.stringify(lO));
+        if(cv==='dashboard')rD();if(cv==='laporan')lR();if(cv==='akuntansi')rAC();
+      }
+    }
+  });
+  aG('shifts?open=1').then(function(d){
+    if(d&&!d.error&&Array.isArray(d)){
+      var s=d[0]||null;
+      if(s){
+        curShift=s;localStorage.setItem('pos_shift',JSON.stringify(curShift));
+        if(cv==='pos')rShiftBar();
+      }
+      // PENTING: kalau server bilang tidak ada shift buka, shift lokal TIDAK ditutup paksa.
+      // (dulu: curShift = d[0]||null -> shift bisa hilang sendiri saat server blank)
+    }
+  });
+  aG('expenses').then(function(d){
+    if(d&&!d.error&&Array.isArray(d)&&!lE.length){
+      lE=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,shift_id:e.shift_id,proof_image:e.proof_image,account_id:e.account_id,account:e.accounts||null}});
+      localStorage.setItem('pos_exp',JSON.stringify(lE));
+      if(cv==='akuntansi')rAC();if(cv==='pos')rShiftExpList();
+    }
+  });
+  aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lAcc.length){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
+  aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lInv.length){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
+  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)&&!lPD.length){lPD=d;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
 }
+  
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 
@@ -873,11 +945,10 @@ function sPDist(){
   var rec={id:tempId,period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,created_at:new Date().toISOString(),profit_distribution_items:items};
   lPD.push(rec);savePD();cm('opModal');tt('Bagi hasil disimpan');rAC();
   if(apiOn){
-       aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){
+    aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){
       if(r&&!r.error&&r.id){var idx=lPD.findIndex(function(p){return p.id===tempId});if(idx>-1){lPD[idx].id=r.id;savePD();rAC()}}
       else{tt('Gagal sync bagi hasil: '+(r&&r.error?r.error:'tidak diketahui'),true);console.error('Profit-dist sync error:',r)}
       unlockSave('sPDist');
-    });
     });
   }else{unlockSave('sPDist')}
 }
