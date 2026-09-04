@@ -510,7 +510,7 @@ function rD(){
   h+='</div></div>';
   h+='<div class="pnl"><h3>⚠️ Bahan Perlu Restock</h3>';
   if(!low.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Semua stok aman. Beli bahan lewat tombol "+ Pengeluaran" (jenis: Pembelian Bahan Baku).</div>'}
-  else{h+='<div class="acc-tb"><table><thead><tr><th>Bahan</th><th>Stok</th><th>Min</th><th>Status</th></tr></thead><tbody>';low.forEach(function(i){h+='<tr><td>'+i.name+'</td><td class="nm">'+i.stock+' '+i.unit+'</td><td class="nm">'+i.min_stock+' '+i.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(i.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
+  else{h+='<div class="acc-tb"><table style="min-width:640px"><thead><tr><th style="width:34%">Bahan</th><th style="text-align:right;width:22%">Stok</th><th style="text-align:right;width:20%">Min</th><th style="width:24%">Status</th></tr></thead><tbody>';low.forEach(function(i){h+='<tr><td>'+i.name+'</td><td class="nm">'+i.stock+' '+i.unit+'</td><td class="nm">'+i.min_stock+' '+i.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(i.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
   h+='</div></div>';
   document.getElementById('ct').innerHTML=h;
 }
@@ -1304,10 +1304,10 @@ function rIC(){
     var nr=lI.filter(function(ing){return parseFloat(ing.stock)<=parseFloat(ing.min_stock)});
     h+='<div class="pnl"><h3>Perlu Restock</h3>';
     if(!nr.length){h+='<div style="color:var(--dim);padding:10px">Semua stok aman. Beli bahan lewat "+ Pengeluaran" (jenis: Pembelian Bahan Baku) agar stok bertambah otomatis.</div>'}
-    else{h+='<div class="acc-tb"><table><thead><tr><th>Bahan</th><th>Stok</th><th>Min</th><th>Status</th></tr></thead><tbody>';nr.forEach(function(ing){h+='<tr><td>'+ing.name+'</td><td class="nm">'+ing.stock+' '+ing.unit+'</td><td class="nm">'+ing.min_stock+' '+ing.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(ing.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
+    else{h+='<div class="acc-tb">h+='<div class="pnl"><h3>Prediksi Stok (30 hari terakhir)</h3><div class="acc-tb"><table style="min-width:700px"><thead><tr><th style="width:32%">Bahan</th><th style="text-align:right;width:20%">Stok</th><th style="text-align:right;width:22%">Pakai/Hari</th><th style="width:26%">Estimasi Sisa</th></tr></thead><tbody>';';nr.forEach(function(ing){h+='<tr><td>'+ing.name+'</td><td class="nm">'+ing.stock+' '+ing.unit+'</td><td class="nm">'+ing.min_stock+' '+ing.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(ing.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
     h+='</div>';
     var pred=predictStock().sort(function(a,b){var da=a.daysLeft===null?9999:a.daysLeft;var db=b.daysLeft===null?9999:b.daysLeft;return da-db});
-    h+='<div class="pnl"><h3>Prediksi Stok (30 hari terakhir)</h3><div class="acc-tb"><table><thead><tr><th>Bahan</th><th>Stok</th><th>Pakai/Hari</th><th>Estimasi Sisa</th></tr></thead><tbody>';
+    h+='<div class="pnl"><h3>Prediksi Stok (30 hari terakhir)</h3><div class="acc-tb"><table style="min-width:700px"><thead><tr><th style="width:32%">Bahan</th><th style="text-align:right;width:20%">Stok</th><th style="text-align:right;width:22%">Pakai/Hari</th><th style="width:26%">Estimasi Sisa</th></tr></thead><tbody>';
     pred.forEach(function(p){var badge,dl=p.daysLeft;
       if(dl===null){badge='<span class="sbg paid">Belum ada data</span>'}
       else if(dl<=2){badge='<span class="sbg unpaid">'+dl.toFixed(1)+' hari - SEGERA BELI</span>'}
