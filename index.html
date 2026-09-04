@@ -466,12 +466,12 @@ function syncBG(){
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');if(!resetAt){lsSet('pos_reset_at',new Date().toISOString());resetAt=lsGet('pos_reset_at','')}var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
-  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
+   aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');;if(!resetAt){lsSet('pos_reset_at',new Date().toISOString());resetAt=lsGet('pos_reset_at','')}var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
+    aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
   aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});lPD=srv;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
-function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
+function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncBG()})}}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
@@ -1504,16 +1504,29 @@ function hLogo(e){var f=e.target.files[0];if(!f)return;if(f.size>200000){tt('Mak
 function sSt(){st.sn=document.getElementById('sN').value.trim()||'MASU SPACE';st.sl=document.getElementById('sL').value.trim()||'M';st.sa=document.getElementById('sA').value.trim();st.sp=document.getElementById('sP').value.trim();st.se=document.getElementById('sE2').value.trim();st.taxOn=document.getElementById('sTaxOn').checked;st.tr=parseFloat(document.getElementById('sT2').value)/100;st.pw=parseInt(document.getElementById('sPw').value);st.rf=document.getElementById('sF').value.trim();st.ap=document.getElementById('sAp').checked;var pa=document.getElementById('sPinAdmin').value.trim();var pk=document.getElementById('sPinKaryawan').value.trim();if(pa)st.pinAdmin=pa;if(pk)st.pinKaryawan=pk;lsSet('pos_settings',st);aSt();tt('Tersimpan');if(apiOn)aU('settings',st)}
 
 function resetTxns(){
-  showConfirm('HAPUS SEMUA TRANSAKSI & KAS?\nOrder, kas, tutup kasir, pengeluaran, hutang/piutang dihapus permanen di perangkat ini.',function(){
+  showConfirm('HAPUS SEMUA TRANSAKSI & KAS di SEMUA DEVICE?\nOrder, kas, tutup kasir, pengeluaran, hutang/piutang dihapus permanen — termasuk di cloud, jadi device lain ikut bersih.',function(){
     showConfirm('Yakin? Tidak bisa dibatalkan.',function(){
-      ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re','pos_pd'].forEach(function(k){localStorage.removeItem(k)});
-      lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];lPD=[];
-      lsSet('pos_reset_at',new Date().toISOString());
-      window._syncPausedUntil=Date.now()+15000;
-      tt('Semua transaksi dihapus. Laporan mulai dari 0.');rnd();
+      var doLocal=function(){
+        ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re','pos_pd'].forEach(function(k){localStorage.removeItem(k)});
+        lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];lPD=[];
+        lsSet('pos_reset_at',new Date().toISOString());
+        window._syncPausedUntil=Date.now()+8000;
+        tt('Semua transaksi dihapus di semua device. Mulai dari 0.');rnd();
+      };
+      if(apiOn){
+        tt('Menghapus data di cloud...');
+        aP('reset-data',{}).then(function(r){
+          if(r&&!r.error){tt('Cloud dibersihkan ✓')}
+          doLocal();
+        });
+      }else{
+        lOb=[{path:'reset-data',payload:{},ref:null,queued_at:Date.now()}];saveOb();
+        doLocal();
+      }
     },{title:'Konfirmasi Akhir',yesLabel:'Ya, Hapus Semua'});
   },{title:'Zona Berbahaya',yesLabel:'Lanjutkan'});
 }
+  
 init();
 </script>
 </body>
