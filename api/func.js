@@ -40,9 +40,9 @@ export default async function handler(req, res) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA (dipanggil saat "Mulai dari 0") =====
-    // Hapus semua transaksi di cloud. Chunk 500 supaya tidak kena batas PostgREST
-    // (delete ribuan baris sekaligus bisa diam-diam gagal → data "bangkit lagi").
+    // ===== RESET DATA: hapus semua transaksi di cloud (dipanggil "Mulai dari 0") =====
+    // Chunk 500 per delete supaya tidak kena batas PostgREST (delete ribuan baris
+    // sekaligus bisa diam-diam gagal → data "bangkit lagi" setelah reset).
     if (resource === 'reset-data' && req.method === 'POST') {
       const results = {};
       const wipe = async (table, col) => {
@@ -121,6 +121,7 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
+        // Cascade: menu di kategori ini + varian/addon/resepnya ikut terhapus
         const { data: itemsInCat } = await supabase.from('menu_items').select('id').eq('category_id', id);
         const itemIds = (itemsInCat || []).map(i => i.id);
         if (itemIds.length) {
@@ -149,6 +150,7 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
+        // Cascade: varian, addon link, resep ikut terhapus
         await supabase.from('menu_variants').delete().eq('menu_item_id', id);
         await supabase.from('menu_item_addons').delete().eq('menu_item_id', id);
         await supabase.from('recipes').delete().eq('menu_item_id', id);
@@ -165,7 +167,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'order and a non-empty items array are required' });
       }
 
-      // IDEMPOTENSI: created_at identik = sudah pernah masuk. Balikin yang lama.
+      // IDEMPOTENSI: created_at identik = sudah pernah masuk. Balikin yang lama,
+      // JANGAN bikin baru. Kirim-ulang dari antrian tidak pernah jadi duplikat.
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
@@ -194,6 +197,8 @@ export default async function handler(req, res) {
           break;
         }
         orderErr = result.error;
+        // 23505 = unique violation. Kalau bentrok created_at (constraint DB),
+        // berarti order sudah pernah masuk — ambil yang lama, bukan error.
         if (result.error.code === '23505' && order.created_at) {
           const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
           if (existing) {
@@ -232,6 +237,7 @@ export default async function handler(req, res) {
 
     // ===== TRANSACTIONS =====
     if (resource === 'transactions' && req.method === 'GET') {
+      // Filter tanggal dari frontend = tanggal lokal WIB → diubah ke rentang UTC benar
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
@@ -250,6 +256,7 @@ export default async function handler(req, res) {
       return res.status(200).json(data[0] || { success: true });
     }
     if (resource === 'transactions' && req.method === 'DELETE' && id) {
+      // Hapus order (pesanan batal): stok bahan dikembalikan dulu
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -409,7 +416,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== SHIFTS (legacy) =====
+    // ===== SHIFTS (legacy — tidak dipakai frontend, biarkan) =====
     if (resource === 'shifts') {
       if (req.method === 'GET') {
         const openOnly = url.searchParams.get('open');
