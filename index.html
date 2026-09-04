@@ -386,24 +386,49 @@ function pRp(el){return parseInt(((el&&el.value)||'').replace(/\D/g,''))||0}
 function tt(m,e){var t=document.getElementById('tt');t.textContent=m;t.className='tt3 show'+(e?' error':'');setTimeout(function(){t.className='tt3'},2200)}
 function ck(){var n=new Date();document.getElementById('ckT').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');document.getElementById('ckD').textContent=n.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}
 setInterval(ck,1000);ck();
-function aG(p){return Promise.race([fetch(A+'/'+p).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
-function aP(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
+function aG(p){return Promise.race([fetch(A+'/'+p).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},8000)})]).catch(function(){return{error:'offline'}})}
+function aP(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},15000)})]).catch(function(){return{error:'offline'}})}
 function aU(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
 function aD(p){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'DELETE'}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
 function flushOb(){
-  if(!apiOn||!lOb.length)return;
-  var q=lOb.slice();lOb=[];saveOb();
-  var left=[],done=0;
-  q.forEach(function(it){
-    aP(it.path,it.payload).then(function(r){
-      if(r&&!r.error){
-        if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}
-      }
-      else{left.push(it)}
-      done++;
-      if(done===q.length){if(left.length){lOb=left.concat(lOb);saveOb()}else{tt(q.length+' data tertunda terkirim ke cloud')}}
+  if(!apiOn||!lOb.length||window._flushing)return;
+  window._flushing=true;
+  aG('transactions').then(function(d){
+    if(d&&!d.error&&Array.isArray(d)){
+      d.forEach(function(o){if(o.order&&o.order.created_at)srvCts[o.order.created_at]=o.order_number});
+      var still=[];
+      lOb.forEach(function(it){
+        if(it.path==='order'&&it.payload&&it.payload.order){
+          var cts=it.payload.order.created_at;
+          if(cts&&srvCts[cts]){
+            var rr=lO.find(function(x){return x.order_number===it.ref});
+            if(rr&&srvCts[cts]!==rr.order_number){rr.order_number=srvCts[cts];lsSet('pos_orders',lO)}
+            return;
+          }
+        }
+        still.push(it);
+      });
+      lOb=still;saveOb();
+    }
+    var q=lOb.slice();lOb=[];saveOb();
+    if(!q.length){window._flushing=false;if(cv==='riwayat')rRO();return}
+    var left=[],done=0;
+    q.forEach(function(it){
+      aP(it.path,it.payload).then(function(r){
+        if(r&&!r.error){
+          if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}
+        }
+        else{left.push(it)}
+        done++;
+        if(done===q.length){
+          if(left.length){lOb=left.concat(lOb);saveOb()}
+          else{tt(q.length+' data tertunda terkirim ke cloud')}
+          if(cv==='riwayat')rRO();
+          window._flushing=false;
+        }
+      });
     });
-  });
+  }).catch(function(){window._flushing=false});
 }
 window.addEventListener('online',flushOb);
 function llm(){md={c:[{id:1,name:'Coffee'},{id:2,name:'Tea'},{id:3,name:'Snack'},{id:4,name:'Pastry'},{id:5,name:'Makanan'}],i:[{id:1,category_id:1,name:'Espresso',description:'Single shot',base_price:18000,image_url:'',image_data:''},{id:2,category_id:1,name:'Americano',description:'Espresso + water',base_price:22000,image_url:'',image_data:''},{id:3,category_id:1,name:'Cappuccino',description:'Espresso + milk',base_price:28000,image_url:'',image_data:''},{id:4,category_id:1,name:'Caffe Latte',description:'Espresso + foam',base_price:32000,image_url:'',image_data:''},{id:5,category_id:1,name:'Caramel Latte',description:'Latte + caramel',base_price:35000,image_url:'',image_data:''},{id:6,category_id:1,name:'Mocha',description:'Chocolate latte',base_price:36000,image_url:'',image_data:''},{id:7,category_id:1,name:'Flat White',description:'Double shot + milk',base_price:33000,image_url:'',image_data:''},{id:8,category_id:2,name:'Green Tea Latte',description:'Matcha + milk',base_price:30000,image_url:'',image_data:''},{id:9,category_id:2,name:'Lemon Tea',description:'Fresh lemon tea',base_price:20000,image_url:'',image_data:''},{id:10,category_id:2,name:'Jasmine Tea',description:'Hot jasmine',base_price:18000,image_url:'',image_data:''},{id:11,category_id:3,name:'French Fries',description:'Crispy fries',base_price:25000,image_url:'',image_data:''},{id:12,category_id:3,name:'Pisang Goreng',description:'Fried banana',base_price:20000,image_url:'',image_data:''},{id:13,category_id:4,name:'Croissant',description:'Butter croissant',base_price:25000,image_url:'',image_data:''},{id:14,category_id:4,name:'Cheesecake',description:'NY cheesecake',base_price:30000,image_url:'',image_data:''},{id:15,category_id:5,name:'Nasi Goreng',description:'Fried rice',base_price:35000,image_url:'',image_data:''},{id:16,category_id:5,name:'Mie Goreng',description:'Fried noodles',base_price:32000,image_url:'',image_data:''}],v:[],a:[{id:1,name:'Extra Shot',price:8000},{id:2,name:'Less Ice',price:0},{id:3,name:'Whip Cream',price:5000},{id:4,name:'Caramel Syrup',price:5000},{id:5,name:'Vanilla Syrup',price:5000},{id:6,name:'Almond Milk',price:6000}],ia:[]};
@@ -428,7 +453,7 @@ function syncBG(){
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lEmp,d);saveEmp();if(cv==='absensi')rAb()}});
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added)lsSet('pos_orders',lO);if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
+  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added)lsSet('pos_orders',lO);if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
   aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAcc,d);saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){var n0=lInv.length;mrg(lInv,d);if(lInv.length!==n0){saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
