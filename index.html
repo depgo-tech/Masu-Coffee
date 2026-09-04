@@ -13,8 +13,8 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .sb{width:230px;background:var(--sb);display:flex;flex-direction:column;flex-shrink:0;transition:transform .3s ease, width .2s;z-index:1000}
 .sb.col{width:64px}
 .sb-h{padding:18px 16px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08)}
-.sb-l{width:42px;height:42px;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-weight:800;font-size:18px;color:var(--sb);overflow:hidden}
-.sb-l img{width:90%;height:90%;object-fit:contain}
+.sb-l{width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-weight:800;font-size:18px;color:var(--sb);overflow:hidden}
+.sb-l img{width:100%;height:100%;object-fit:cover}
 .sb-n{color:#fff;font-size:14px;font-weight:700}
 .sb-s{color:rgba(255,255,255,.4);font-size:9px;letter-spacing:2px;text-transform:uppercase}
 .sb.col .sb-n,.sb.col .sb-s{display:none}
@@ -243,8 +243,8 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .tt3.error{background:var(--dng)}
 .es{text-align:center;padding:40px 20px;color:var(--dim)}
 .logo-up{display:flex;gap:10px;align-items:flex-start}
-.logo-prev{width:80px;height:80px;border-radius:8px;overflow:hidden;background:var(--bg);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--ac)}
-.logo-prev img{width:100%;height:100%;object-fit:contain}
+.logo-prev{width:80px;height:80px;border-radius:50%;overflow:hidden;background:var(--bg);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:var(--ac)}
+.logo-prev img{width:100%;height:100%;object-fit:cover}
 .price-input{width:90px;padding:6px;background:var(--bg);border:1px solid var(--bdr);border-radius:4px;font-size:12px;text-align:right}
 .kasir-top{padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:var(--sh);flex-shrink:0}
 .kb-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -279,7 +279,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-<div class="mo show" id="loginScreen" style="z-index:5000;background:var(--bg)"><div class="ml" style="max-width:340px;text-align:center"><div style="width:64px;height:64px;border-radius:14px;background:var(--sb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;margin:0 auto 14px" id="loginLogo">M</div><h2 style="justify-content:center;margin-bottom:4px" id="loginTitle">MASU SPACE POS</h2><p style="color:var(--dim);font-size:12px;margin-bottom:18px">Masukkan PIN untuk masuk</p><input type="password" inputmode="numeric" id="loginPin" placeholder="PIN" maxlength="6" style="width:100%;padding:16px;text-align:center;font-size:24px;letter-spacing:8px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px" onkeydown="if(event.key==='Enter')doLogin()"><button class="bp" style="width:100%;padding:14px" onclick="doLogin()">Masuk</button><p id="loginErr" style="color:var(--dng);font-size:12px;margin-top:10px;min-height:16px"></p></div></div>
+<div class="mo show" id="loginScreen" style="z-index:5000;background:var(--bg)"><div class="ml" style="max-width:340px;text-align:center"><div style="width:64px;height:64px;border-radius:50%;background:var(--sb);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:26px;margin:0 auto 14px;overflow:hidden" id="loginLogo">M</div><h2 style="justify-content:center;margin-bottom:4px" id="loginTitle">MASU SPACE POS</h2><p style="color:var(--dim);font-size:12px;margin-bottom:18px">Masukkan PIN untuk masuk</p><input type="password" inputmode="numeric" id="loginPin" placeholder="PIN" maxlength="6" style="width:100%;padding:16px;text-align:center;font-size:24px;letter-spacing:8px;background:var(--bg);border:1px solid var(--bdr);border-radius:8px;margin-bottom:12px" onkeydown="if(event.key==='Enter')doLogin()"><button class="bp" style="width:100%;padding:14px" onclick="doLogin()">Masuk</button><p id="loginErr" style="color:var(--dng);font-size:12px;margin-top:10px;min-height:16px"></p></div></div>
 
 <div class="app">
   <div class="sb-overlay" id="sbOv" onclick="closeSidebar()"></div>
@@ -465,18 +465,17 @@ function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.fo
 function syncBG(){
   if(window._syncing)return;
   window._syncing=true;setTimeout(function(){window._syncing=false},10000);
-  var resetAt=lsGet('pos_reset_at','');
   aG('menu').then(function(d){if(d&&!d.error&&d.i){md.c=mrg(md.c,d.c||[]);md.i=mrg(md.i,d.i||[]);md.v=mrg(md.v,d.v||[]);md.a=mrg(md.a,d.a||[]);md.ia=mrg(md.ia,d.ia||[]);saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
   aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lI,d);saveIngs();rnd();}});
   aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lRcp,d);saveRcp();rnd();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lEmp,d);saveEmp();if(cv==='absensi')rAb()}});
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
-  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
+  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
+  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAcc,d);saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){var n0=lInv.length;mrg(lInv,d);if(lInv.length!==n0){saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
-  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lPD,d);savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
+  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});var n0=lPD.length;mrg(lPD,srv);if(lPD.length!==n0){savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
@@ -491,7 +490,7 @@ function init(){
   if(!checkSession())showLogin();
 }
 function showLogin(){
-  var lg=document.getElementById('loginLogo');if(st.sl_img){lg.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:contain;border-radius:14px">'}else{lg.textContent=(st.sl||'M').charAt(0).toUpperCase()}
+  var lg=document.getElementById('loginLogo');if(st.sl_img){lg.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">'}else{lg.textContent=(st.sl||'M').charAt(0).toUpperCase()}
   document.getElementById('loginTitle').textContent=st.sn||'MASU SPACE POS';
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('loginPin').value='';
@@ -1517,8 +1516,8 @@ function sSt(){st.sn=document.getElementById('sN').value.trim()||'MASU SPACE';st
 function resetTxns(){
   showConfirm('HAPUS SEMUA TRANSAKSI & KAS?\nOrder, kas, tutup kasir, pengeluaran, hutang/piutang dihapus permanen.',function(){
     showConfirm('Yakin? Tidak bisa dibatalkan.',function(){
-      ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re'].forEach(function(k){localStorage.removeItem(k)});
-      lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];
+      ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re','pos_pd'].forEach(function(k){localStorage.removeItem(k)});
+      lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];lPD=[];
       lsSet('pos_reset_at',new Date().toISOString());
       tt('Semua transaksi dihapus. Laporan mulai dari 0.');rnd();
     },{title:'Konfirmasi Akhir',yesLabel:'Ya, Hapus Semua'});
