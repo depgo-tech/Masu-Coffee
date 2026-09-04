@@ -301,7 +301,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
       <div class="sb-i" data-role="admin" data-nav="settings" onclick="nav('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Pengaturan</span></div>
       <div class="sb-i" onclick="doLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Keluar</span></div>
     </div>
-    <div class="sb-f">v7.2 © MASU SPACE</div>
+    <div class="sb-f">v7.3 © MASU SPACE</div>
   </div>
   <div class="mn">
     <div class="tb">
@@ -409,7 +409,6 @@ window.addEventListener('online',flushOb);
 function llm(){md={c:[{id:1,name:'Coffee'},{id:2,name:'Tea'},{id:3,name:'Snack'},{id:4,name:'Pastry'},{id:5,name:'Makanan'}],i:[{id:1,category_id:1,name:'Espresso',description:'Single shot',base_price:18000,image_url:'',image_data:''},{id:2,category_id:1,name:'Americano',description:'Espresso + water',base_price:22000,image_url:'',image_data:''},{id:3,category_id:1,name:'Cappuccino',description:'Espresso + milk',base_price:28000,image_url:'',image_data:''},{id:4,category_id:1,name:'Caffe Latte',description:'Espresso + foam',base_price:32000,image_url:'',image_data:''},{id:5,category_id:1,name:'Caramel Latte',description:'Latte + caramel',base_price:35000,image_url:'',image_data:''},{id:6,category_id:1,name:'Mocha',description:'Chocolate latte',base_price:36000,image_url:'',image_data:''},{id:7,category_id:1,name:'Flat White',description:'Double shot + milk',base_price:33000,image_url:'',image_data:''},{id:8,category_id:2,name:'Green Tea Latte',description:'Matcha + milk',base_price:30000,image_url:'',image_data:''},{id:9,category_id:2,name:'Lemon Tea',description:'Fresh lemon tea',base_price:20000,image_url:'',image_data:''},{id:10,category_id:2,name:'Jasmine Tea',description:'Hot jasmine',base_price:18000,image_url:'',image_data:''},{id:11,category_id:3,name:'French Fries',description:'Crispy fries',base_price:25000,image_url:'',image_data:''},{id:12,category_id:3,name:'Pisang Goreng',description:'Fried banana',base_price:20000,image_url:'',image_data:''},{id:13,category_id:4,name:'Croissant',description:'Butter croissant',base_price:25000,image_url:'',image_data:''},{id:14,category_id:4,name:'Cheesecake',description:'NY cheesecake',base_price:30000,image_url:'',image_data:''},{id:15,category_id:5,name:'Nasi Goreng',description:'Fried rice',base_price:35000,image_url:'',image_data:''},{id:16,category_id:5,name:'Mie Goreng',description:'Fried noodles',base_price:32000,image_url:'',image_data:''}],v:[],a:[{id:1,name:'Extra Shot',price:8000},{id:2,name:'Less Ice',price:0},{id:3,name:'Whip Cream',price:5000},{id:4,name:'Caramel Syrup',price:5000},{id:5,name:'Vanilla Syrup',price:5000},{id:6,name:'Almond Milk',price:6000}],ia:[]};
 md.i.forEach(function(it){if(it.category_id===1||it.category_id===2){['Hot','Iced'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Temperature',variant_value:v,price_modifier:i*3000})});['Reg','Large'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Size',variant_value:v,price_modifier:i*5000})});md.a.forEach(function(a){md.ia.push({menu_item_id:it.id,addon_id:a.id})})}})}
 function initRecipes(){if(lRcp.length)return;md.i.forEach(function(it){if(it.category_id===1){lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:1,quantity:18});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:2,quantity:150});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:6,quantity:1});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:12,quantity:1})}else if(it.category_id===2){lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:5,quantity:5});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:6,quantity:1});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:12,quantity:1})}else{lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:11,quantity:1});lRcp.push({id:Date.now()+Math.random(),menu_item_id:it.id,ingredient_id:12,quantity:2})}});saveRcp()}
-// Anti-duplikat order: 1 order hanya boleh 1x, dikenali dari nomor ATAU waktu transaksinya
 function dedupeOrders(){
   var seen={},out=[];
   lO.forEach(function(o){
@@ -420,6 +419,7 @@ function dedupeOrders(){
   if(out.length!==lO.length){lO=out;lsSet('pos_orders',lO)}
 }
 function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.forEach(function(x){if(x&&x.id!=null)have[String(x.id)]=1});srv.forEach(function(x){if(x&&x.id!=null&&!have[String(x.id)])local.push(x)});return local}
+// Garis waktu reset: data cloud lebih tua dari momen reset diabaikan selamanya
 function syncBG(){
   var resetAt=lsGet('pos_reset_at','');
   aG('menu').then(function(d){if(d&&!d.error&&d.i){md.c=mrg(md.c,d.c||[]);md.i=mrg(md.i,d.i||[]);md.v=mrg(md.v,d.v||[]);md.a=mrg(md.a,d.a||[]);md.ia=mrg(md.ia,d.ia||[]);saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
@@ -435,7 +435,6 @@ function syncBG(){
   aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lPD,d);savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
-  
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 var _busySave={};
@@ -489,7 +488,7 @@ function nav(v){
 }
 function rnd(){var c=document.getElementById('ct');c.innerHTML='';if(cv==='dashboard')rD();else if(cv==='pos')rP();else if(cv==='riwayat')rRO();else if(cv==='produk')rPr();else if(cv==='kas')rKas();else if(cv==='stok')rSt();else if(cv==='akuntansi')rA();else if(cv==='laporan')rL();else if(cv==='absensi')rAb();else if(cv==='settings')rSe()}
 
-// ===== DASHBOARD PRODUK (order void diabaikan) =====
+// ===== DASHBOARD PRODUK =====
 function rD(){
   var since=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
   var qty={};
@@ -515,7 +514,7 @@ function rD(){
   document.getElementById('ct').innerHTML=h;
 }
 
-// ===== POS / KASIR =====
+// ===== POS / KASIR (bar menampilkan aktivitas SEJAK TUTUP KASIR TERAKHIR) =====
 function rP(){document.getElementById('ct').innerHTML='<div style="display:flex;flex-direction:column;height:100%"><div class="kasir-top" id="kasirBar"></div><div class="pl" style="flex:1;min-height:0"><div class="pl-l"><div class="pl-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="sIn" placeholder="Cari..." oninput="rMG()"></div><div class="ct-tab" id="cT2"></div><div id="holdList" style="margin-bottom:8px"></div><div class="mg" id="mG2"></div></div><div class="pr" id="oP"></div><button class="mobile-cart-btn" onclick="toggleCart()">🛒</button></div></div>';renderKasirBar();rCT();rMG();rOP();rHL()}
 function lastCloseTs(){
   var t='';
@@ -808,8 +807,6 @@ function cetakTutupKasir(id){
 function dCl(id){if(!confirm('Hapus catatan tutup kasir ini? (mutasi kas tidak ikut berubah)'))return;lCl=lCl.filter(function(c){return c.id!==id});saveCl();rKas();tt('Dihapus')}
 
 // ===== PENGELUARAN (TERPISAH: kasir vs kas&bank) =====
-// exCtx='kasir' → sumber terkunci Cash Kasir (dari halaman Penjualan)
-// exCtx='admin' → hanya Bank Kecil / Bank Besar / Cash Umum (dari Kas & Bank / Akuntansi)
 function oEMK(){
   exCtx='kasir';
   document.getElementById('eMT').textContent='Pengeluaran Kasir (dari Laci)';
@@ -1229,7 +1226,7 @@ function pD2(id,type){
 }
 function dD2(id,type){if(!confirm('Hapus?'))return;if(type==='payable'){lPa=lPa.filter(function(x){return x.id!==id});lsSet('pos_pa',lPa)}else{lRe=lRe.filter(function(x){return x.id!==id});lsSet('pos_re',lRe)}tt('Dihapus');rAC()}
 
-// ===== LAPORAN PENJUALAN (order void diabaikan) =====
+// ===== LAPORAN PENJUALAN =====
 function rL(){
   var y=new Date().getFullYear();
   var td=new Date().toISOString().slice(0,10);
@@ -1285,7 +1282,7 @@ function lpR(){
   el.innerHTML=h;
 }
 
-// ===== INVENTORY (order void diabaikan) =====
+// ===== INVENTORY =====
 function rSt(){var h='<div class="sc"><div class="mg-h"><h2>Inventory</h2><button class="bp" style="flex:0 0 auto;padding:10px 14px;font-size:12px" onclick="oBM()">+ Tambah Bahan</button></div><div class="acc-t" style="margin-bottom:14px" id="invTabs">';var tabs=[['dashboard','Dashboard'],['stock','Stok'],['opname','Opname'],['movement','Pergerakan'],['hpp','HPP'],['waste','Waste'],['recipe','Resep']];tabs.forEach(function(t){h+='<div class="acc-t2 '+(iT===t[0]?'act':'')+'" data-tab="'+t[0]+'" onclick="sIT(\''+t[0]+'\')">'+t[1]+'</div>'});h+='</div><div id="iC"></div></div>';document.getElementById('ct').innerHTML=h;rIC()}
 function sIT(t){iT=t;document.querySelectorAll('#invTabs .acc-t2').forEach(function(el){el.classList.toggle('act',el.dataset.tab===t)});rIC()}
 function predictStock(){
@@ -1304,7 +1301,7 @@ function rIC(){
     var nr=lI.filter(function(ing){return parseFloat(ing.stock)<=parseFloat(ing.min_stock)});
     h+='<div class="pnl"><h3>Perlu Restock</h3>';
     if(!nr.length){h+='<div style="color:var(--dim);padding:10px">Semua stok aman. Beli bahan lewat "+ Pengeluaran" (jenis: Pembelian Bahan Baku) agar stok bertambah otomatis.</div>'}
-    else{h+='<div class="acc-tb">h+='<div class="pnl"><h3>Prediksi Stok (30 hari terakhir)</h3><div class="acc-tb"><table style="min-width:700px"><thead><tr><th style="width:32%">Bahan</th><th style="text-align:right;width:20%">Stok</th><th style="text-align:right;width:22%">Pakai/Hari</th><th style="width:26%">Estimasi Sisa</th></tr></thead><tbody>';';nr.forEach(function(ing){h+='<tr><td>'+ing.name+'</td><td class="nm">'+ing.stock+' '+ing.unit+'</td><td class="nm">'+ing.min_stock+' '+ing.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(ing.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
+    else{h+='<div class="acc-tb"><table style="min-width:640px"><thead><tr><th style="width:34%">Bahan</th><th style="text-align:right;width:22%">Stok</th><th style="text-align:right;width:20%">Min</th><th style="width:24%">Status</th></tr></thead><tbody>';nr.forEach(function(ing){h+='<tr><td>'+ing.name+'</td><td class="nm">'+ing.stock+' '+ing.unit+'</td><td class="nm">'+ing.min_stock+' '+ing.unit+'</td><td><span class="sbg unpaid">'+(parseFloat(ing.stock)<=0?'HABIS':'MENIPIS')+'</span></td></tr>'});h+='</tbody></table></div>'}
     h+='</div>';
     var pred=predictStock().sort(function(a,b){var da=a.daysLeft===null?9999:a.daysLeft;var db=b.daysLeft===null?9999:b.daysLeft;return da-db});
     h+='<div class="pnl"><h3>Prediksi Stok (30 hari terakhir)</h3><div class="acc-tb"><table style="min-width:700px"><thead><tr><th style="width:32%">Bahan</th><th style="text-align:right;width:20%">Stok</th><th style="text-align:right;width:22%">Pakai/Hari</th><th style="width:26%">Estimasi Sisa</th></tr></thead><tbody>';
@@ -1443,22 +1440,19 @@ function dEmp(id){
   if(apiOn)aD('employees/'+id);
 }
 
-// ===== PENGATURAN (+ Zona Berbahaya) =====
-function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE2" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label><input type="checkbox" id="sTaxOn" '+(st.taxOn?'checked':'')+' onchange="document.getElementById(\'sT2wrap\').style.display=this.checked?\'\':\'none\'"> Aktifkan Pajak</label></div><div class="fg" id="sT2wrap" style="display:'+(st.taxOn?'':'none')+'"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Akses & PIN</h3><div class="fr"><div class="fg"><label>PIN Admin</label><input type="text" id="sPinAdmin" value="'+(st.pinAdmin||'')+'" maxlength="6"></div><div class="fg"><label>PIN Karyawan</label><input type="text" id="sPinKaryawan" value="'+(st.pinKaryawan||'')+'" maxlength="6"></div></div><p style="font-size:11px;color:var(--dim)">Admin bisa lihat semua menu. Karyawan hanya bisa akses Penjualan & Riwayat Order.</p></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><div class="set-s" style="border-color:var(--dng)"><h3 style="color:var(--dng)">⚠ Zona Berbahaya</h3><p style="font-size:11px;color:var(--dim);margin-bottom:10px">Hapus SEMUA transaksi, kas, tutup kasir, pengeluaran, hutang/piutang. Menu, bahan & pengaturan tetap aman.</p><button class="bp" style="background:var(--dng)" onclick="resetTxns()">Hapus Semua Transaksi (Mulai dari 0)</button></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';var lp2=document.getElementById('logoPrev');if(st.sl_img){lp2.innerHTML='<img src="'+st.sl_img+'">'}else{lp2.textContent=(st.sl||'M').charAt(0).toUpperCase()}}
+// ===== PENGATURAN + RESET =====
+function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE2" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label><input type="checkbox" id="sTaxOn" '+(st.taxOn?'checked':'')+' onchange="document.getElementById(\'sT2wrap\').style.display=this.checked?\'\':\'none\'"> Aktifkan Pajak</label></div><div class="fg" id="sT2wrap" style="display:'+(st.taxOn?'':'none')+'"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Akses & PIN</h3><div class="fr"><div class="fg"><label>PIN Admin</label><input type="text" id="sPinAdmin" value="'+(st.pinAdmin||'')+'" maxlength="6"></div><div class="fg"><label>PIN Karyawan</label><input type="text" id="sPinKaryawan" value="'+(st.pinKaryawan||'')+'" maxlength="6"></div></div><p style="font-size:11px;color:var(--dim)">Admin bisa lihat semua menu. Karyawan hanya bisa akses Penjualan & Riwayat Order.</p></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><div class="set-s" style="border-color:var(--dng)"><h3 style="color:var(--dng)">⚠ Zona Berbahaya</h3><p style="font-size:11px;color:var(--dim);margin-bottom:10px">Hapus SEMUA transaksi, kas, tutup kasir, pengeluaran, hutang/piutang. Data lama dari cloud yang lebih tua dari momen reset juga akan diabaikan. Menu, bahan & pengaturan tetap aman.</p><button class="bp" style="background:var(--dng)" onclick="resetTxns()">Hapus Semua Transaksi (Mulai dari 0)</button></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';var lp2=document.getElementById('logoPrev');if(st.sl_img){lp2.innerHTML='<img src="'+st.sl_img+'">'}else{lp2.textContent=(st.sl||'M').charAt(0).toUpperCase()}}
 function hLogo(e){var f=e.target.files[0];if(!f)return;if(f.size>200000){tt('Maks 200KB',true);return}var r=new FileReader();r.onload=function(ev){st.sl_img=ev.target.result;document.getElementById('logoPrev').innerHTML='<img src="'+ev.target.result+'">';document.getElementById('favicon').href=ev.target.result};r.readAsDataURL(f)}
 function sSt(){st.sn=document.getElementById('sN').value.trim()||'MASU SPACE';st.sl=document.getElementById('sL').value.trim()||'M';st.sa=document.getElementById('sA').value.trim();st.sp=document.getElementById('sP').value.trim();st.se=document.getElementById('sE2').value.trim();st.taxOn=document.getElementById('sTaxOn').checked;st.tr=parseFloat(document.getElementById('sT2').value)/100;st.pw=parseInt(document.getElementById('sPw').value);st.rf=document.getElementById('sF').value.trim();st.ap=document.getElementById('sAp').checked;var pa=document.getElementById('sPinAdmin').value.trim();var pk=document.getElementById('sPinKaryawan').value.trim();if(pa)st.pinAdmin=pa;if(pk)st.pinKaryawan=pk;lsSet('pos_settings',st);aSt();tt('Tersimpan');if(apiOn)aU('settings',st)}
 
-// ===== RESET & MIGRASI =====
 function resetTxns(){
   if(!confirm('HAPUS SEMUA TRANSAKSI & KAS?\nOrder, kas, tutup kasir, pengeluaran, hutang/piutang dihapus permanen.'))return;
   if(!confirm('Yakin? Tidak bisa dibatalkan.'))return;
   ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re'].forEach(function(k){localStorage.removeItem(k)});
   lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];
-  // Garis waktu reset: semua data lama dari cloud (lebih tua dari sekarang) akan DIABAIKAN saat sinkron
   lsSet('pos_reset_at',new Date().toISOString());
   tt('Semua transaksi dihapus. Laporan mulai dari 0.');rnd();
 }
-  
 function migrateKas(){
   if(lsGet('pos_kas_migrated',false))return;
   if(lST.length===0&&(lO.length>0||lE.length>0||lCF.length>0)){
