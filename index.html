@@ -421,19 +421,21 @@ function dedupeOrders(){
 }
 function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.forEach(function(x){if(x&&x.id!=null)have[String(x.id)]=1});srv.forEach(function(x){if(x&&x.id!=null&&!have[String(x.id)])local.push(x)});return local}
 function syncBG(){
+  var resetAt=lsGet('pos_reset_at','');
   aG('menu').then(function(d){if(d&&!d.error&&d.i){md.c=mrg(md.c,d.c||[]);md.i=mrg(md.i,d.i||[]);md.v=mrg(md.v,d.v||[]);md.a=mrg(md.a,d.a||[]);md.ia=mrg(md.ia,d.ia||[]);saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
   aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lI,d);saveIngs();rnd();}});
   aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lRcp,d);saveRcp();rnd();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lEmp,d);saveEmp();if(cv==='absensi')rAb()}});
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added)lsSet('pos_orders',lO);if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
-  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
+  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added)lsSet('pos_orders',lO);if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
+  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAcc,d);saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){var n0=lInv.length;mrg(lInv,d);if(lInv.length!==n0){saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
   aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lPD,d);savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
+  
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 var _busySave={};
@@ -1445,8 +1447,11 @@ function resetTxns(){
   if(!confirm('Yakin? Tidak bisa dibatalkan.'))return;
   ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re'].forEach(function(k){localStorage.removeItem(k)});
   lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];
-  tt('Semua transaksi dihapus. Mulai dari 0.');nav('dashboard');
+  // Garis waktu reset: semua data lama dari cloud (lebih tua dari sekarang) akan DIABAIKAN saat sinkron
+  lsSet('pos_reset_at',new Date().toISOString());
+  tt('Semua transaksi dihapus. Laporan mulai dari 0.');rnd();
 }
+  
 function migrateKas(){
   if(lsGet('pos_kas_migrated',false))return;
   if(lST.length===0&&(lO.length>0||lE.length>0||lCF.length>0)){
