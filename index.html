@@ -635,7 +635,7 @@ function uDisc(){var el=document.getElementById('prTotals');if(el)el.innerHTML=c
 function sOT(t){oT=t;rOP()}
 function cQ(i,d){ca[i].quantity+=d;if(ca[i].quantity<=0)ca.splice(i,1);else ca[i].subtotal=ca[i].unit_price*ca[i].quantity;rOP()}
 function rI(i){ca.splice(i,1);rOP()}
-function hO(){if(!ca.length||!lockSave('hO'))return;var note=prompt('Catatan untuk order ini (nama pelanggan / keterangan):','')||'';var savedCart=ca,savedType=oT,savedNum=oN;var tempId=Date.now();var h={id:tempId,cart:savedCart,orderType:savedType,order_number:savedNum,note:note,created_at:new Date().toISOString()};lHold.push(h);saveHold();ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);rOP();rHL();tt('Order ditahan (hold)');if(apiOn){aP('holds',{order_number:savedNum,note:note,order_type:savedType,cart:savedCart}).then(function(r){if(r&&!r.error&&r.id){var idx=lHold.findIndex(function(x){return x.id===tempId});if(idx>-1){lHold[idx].id=r.id;saveHold();rHL()}}})}}
+function hO(){if(!ca.length||!lockSave('hO'))return;var note=prompt('Catatan untuk order ini (nama pelanggan / keterangan):','')||'';var savedCart=ca,savedType=oT,savedNum=oN;var tempId=Date.now();var h={id:tempId,cart:savedCart,orderType:savedType,order_number:savedNum,note:note,created_at:new Date().toISOString()};  lHold.push(h);saveHold();ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';rOP();rHL();tt('Order ditahan (hold)');;if(apiOn){aP('holds',{order_number:savedNum,note:note,order_type:savedType,cart:savedCart}).then(function(r){if(r&&!r.error&&r.id){var idx=lHold.findIndex(function(x){return x.id===tempId});if(idx>-1){lHold[idx].id=r.id;saveHold();rHL()}}})}}
 function rCO(hid){var h=lHold.find(function(x){return x.id===hid});if(!h)return;ca=h.cart;oT=h.orderType;oN=h.order_number;lHold=lHold.filter(function(x){return x.id!==hid});saveHold();if(apiOn)aD('holds/'+hid);nav('pos');tt('Order dipanggil')}
 function dHO(hid){showConfirm('Hapus order tertahan ini?',function(){lHold=lHold.filter(function(x){return x.id!==hid});saveHold();if(apiOn)aD('holds/'+hid);rHL();tt('Dihapus')})}
 function rHL(){var el=document.getElementById('holdList');if(!el)return;if(!lHold.length){el.innerHTML='';return}el.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">ORDER DITAHAN ('+lHold.length+')</div>'+lHold.map(function(h){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:4px;cursor:pointer" onclick="rCO('+h.id+')"><div><div style="font-size:12px;font-weight:600">#'+h.order_number+(h.note?' - '+h.note:'')+'</div><div style="font-size:10px;color:var(--dim)">'+h.cart.length+' item</div></div><button class="px" onclick="event.stopPropagation();dHO('+h.id+')">×</button></div>'}).join('')}
@@ -714,8 +714,8 @@ function dP(){
   var srcAcc=method==='cash'?'cash_kasir':'bank_kecil';
   lST.push({id:Date.now(),date:nowIso.slice(0,10),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method});
   saveIngs();lsSet('pos_orders',lO);saveST();
-  cm('pModal');
-  ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);
+   cm('pModal');
+  ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';
   rOP();renderKasirBar();
   tt('Order tersimpan!');
   sR(localNum,op,cartSnap,change,recv,method);
@@ -963,20 +963,45 @@ function sE2(d,src,jenis,method,amt,desc){
 function dE(id){showConfirm('Hapus catatan pengeluaran ini? (mutasi kas tidak ikut berubah)',function(){lE=lE.filter(function(e){return e.id!==id});lsSet('pos_exp',lE);if(apiOn)aD('expenses/'+id);if(cv==='akuntansi')rAC();tt('Dihapus')})}
 
 // ===== RIWAYAT ORDER + VOID =====
+// ===== RIWAYAT ORDER + HAPUS ORDER =====
 function rRO(){
   var td=new Date().toISOString().slice(0,10);if(!roDate)roDate=td;
   var f=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):'';return d===roDate}).slice().reverse();
   var cash=0,non=0;
-  f.forEach(function(o){if(o.order.status==='void')return;var m=o.order.payment_method||'cash';if(m==='cash')cash+=parseFloat(o.order.total||0);else non+=parseFloat(o.order.total||0)});
+  f.forEach(function(o){var m=o.order.payment_method||'cash';if(m==='cash')cash+=parseFloat(o.order.total||0);else non+=parseFloat(o.order.total||0)});
   var h='<div class="rc"><div class="mg-h"><h2>Riwayat Order</h2></div>';
   h+='<div class="df"><label>Tanggal:</label><input type="date" id="roD" value="'+roDate+'" onchange="roDate=this.value;rRO()"><button onclick="roDate=\''+td+'\';rRO()">Hari Ini</button></div>';
-  h+='<div class="rc-c"><div class="rc-cd"><div class="lb">Jumlah Order</div><div class="vl">'+f.filter(function(o){return o.order.status!=='void'}).length+'</div></div><div class="rc-cd"><div class="lb">Total Cash</div><div class="vl" style="color:var(--gold)">'+rp(cash)+'</div><div class="sb2">harus = uang cash di laci</div></div><div class="rc-cd"><div class="lb">Total Non-Tunai</div><div class="vl">'+rp(non)+'</div><div class="sb2">QRIS + Debit (Bank Kecil)</div></div></div>';
+  h+='<div class="rc-c"><div class="rc-cd"><div class="lb">Jumlah Order</div><div class="vl">'+f.length+'</div></div><div class="rc-cd"><div class="lb">Total Cash</div><div class="vl" style="color:var(--gold)">'+rp(cash)+'</div><div class="sb2">harus = uang cash di laci</div></div><div class="rc-cd"><div class="lb">Total Non-Tunai</div><div class="vl">'+rp(non)+'</div><div class="sb2">QRIS + Debit (Bank Kecil)</div></div></div>';
   h+='<div class="tt2"><table><thead><tr><th>No. Order</th><th>Waktu</th><th>Tipe</th><th>Bayar</th><th>Total</th><th>Aksi</th></tr></thead><tbody>';
   if(!f.length){h+='<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:16px">Tidak ada order pada tanggal ini.</td></tr>'}
-  else{f.forEach(function(o){var isV=o.order.status==='void';
-    h+='<tr'+(isV?' style="opacity:.5"':'')+'><td style="font-weight:600">'+o.order_number+(isV?' <span class="sbg unpaid">VOID</span>':'')+'</td><td>'+fmtDT(o.order.created_at)+'</td><td><span class="bg2 '+(o.order.order_type==='dine-in'?'dine':'take')+'">'+(o.order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.order.payment_method||'cash').toUpperCase()+'</td><td style="color:var(--ac);font-weight:700">'+rp(o.order.total)+'</td><td>'+(isV?'-':(role==='admin'?'<button class="bd" style="padding:4px 8px;font-size:10px" onclick="voidOrderAsk(\''+o.order_number+'\')">Batalkan</button>':'-'))+'</td></tr>'})}
+  else{f.forEach(function(o){
+    h+='<tr><td style="font-weight:600">'+o.order_number+'</td><td>'+fmtDT(o.order.created_at)+'</td><td><span class="bg2 '+(o.order.order_type==='dine-in'?'dine':'take')+'">'+(o.order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.order.payment_method||'cash').toUpperCase()+'</td><td style="color:var(--ac);font-weight:700">'+rp(o.order.total)+'</td><td><button class="bd" style="padding:4px 8px;font-size:10px" onclick="deleteOrderAsk(\''+o.order_number+'\')">Hapus</button></td></tr>'})}
   h+='</tbody></table></div></div>';
   document.getElementById('ct').innerHTML=h;
+}
+function deleteOrderAsk(num){
+  var rec=lO.find(function(x){return x.order_number===num});
+  if(!rec)return;
+  showConfirm('Hapus order '+num+'?\nStok bahan dikembalikan, kas dikoreksi otomatis (uang sudah dibalikin ke konsumen), dan order hilang total dari riwayat.',function(){
+    (rec.items||[]).forEach(function(item){
+      lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id}).forEach(function(r){
+        var ing=lI.find(function(i){return i.id==r.ingredient_id});
+        if(ing)ing.stock=parseFloat(ing.stock)+parseFloat(r.quantity)*item.quantity;
+      });
+    });
+    saveIngs();
+    var idx=-1;
+    for(var i=lST.length-1;i>=0;i--){
+      var t=lST[i];
+      if((t.cat==='sale_cash'||t.cat==='sale_noncash')&&(t.desc||'').indexOf(num)>-1){idx=i;break}
+    }
+    if(idx>-1){lST.splice(idx,1);saveST()}
+    lO=lO.filter(function(x){return x.order_number!==num});
+    lsSet('pos_orders',lO);
+    tt('Order '+num+' dihapus - stok & kas dikoreksi');
+    rRO();if(cv==='pos')renderKasirBar();
+    if(apiOn&&rec.order&&rec.order.id)aD('transactions/'+rec.order.id);
+  },{title:'Hapus Order',yesLabel:'Ya, Hapus'});
 }
 function voidOrderAsk(num){
   var rec=lO.find(function(x){return x.order_number===num});
