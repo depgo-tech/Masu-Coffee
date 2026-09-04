@@ -83,9 +83,7 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // FIX: cascade delete — hapus semua menu di kategori ini beserta anak-anaknya
-        // (varian, item-addons, resep) supaya tidak ada data "pocong" yang bikin
-        // sinkronisasi antar device aneh.
+        // Cascade: hapus semua menu di kategori ini beserta varian/addon/resepnya
         const { data: itemsInCat } = await supabase.from('menu_items').select('id').eq('category_id', id);
         const itemIds = (itemsInCat || []).map(i => i.id);
         if (itemIds.length) {
@@ -114,9 +112,7 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // FIX: cascade delete — varian, item-addons, dan resep ikut dihapus.
-        // Tanpa ini, produk yang dihapus masih "beranak" di server dan
-        // muncul lagi di device lain saat sinkronisasi.
+        // Cascade: varian, addon link, dan resep ikut dihapus supaya tidak ada data pocong
         await supabase.from('menu_variants').delete().eq('menu_item_id', id);
         await supabase.from('menu_item_addons').delete().eq('menu_item_id', id);
         await supabase.from('recipes').delete().eq('menu_item_id', id);
@@ -133,24 +129,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'order and a non-empty items array are required' });
       }
 
-      // ================================================================
-      // FIX UTAMA — IDEMPOTENSI (pembunuh duplikat transaksi):
-      // Sebelum insert, cek dulu apakah order dengan created_at yang sama
-      // SUDAH ada di server. Kalau ada, balikin order yang lama — JANGAN
-      // bikin baru. Ini membuat kirim-ulang dari antrian frontend tidak
-      // pernah menghasilkan duplikat, sebab payload retry identik byte
-      // per byte (created_at & total sama persis).
-      // ================================================================
+      // IDEMPOTENSI: order dengan created_at identik = sudah pernah masuk.
+      // Balikin yang lama, JANGAN bikin baru. Ini membunuh duplikat di sumbernya:
+      // kirim-ulang dari antrian frontend tidak pernah menghasilkan order kedua.
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
         const { data: existing } = await dupQuery.maybeSingle();
         if (existing) {
-          return res.status(200).json({
-            order: existing,
-            order_number: existing.order_number,
-            duplicate: true
-          });
+          return res.status(200).json({ order: existing, order_number: existing.order_number, duplicate: true });
         }
       }
 
@@ -173,9 +160,8 @@ export default async function handler(req, res) {
           break;
         }
         orderErr = result.error;
-        // 23505 = unique_violation. Kalau yang bentrok adalah created_at
-        // (constraint UNIQUE(created_at) di database), berarti order ini
-        // sudah pernah masuk — ambil yang lama dan balikin, JANGAN error.
+        // 23505 = unique violation. Kalau yang bentrok created_at (constraint
+        // UNIQUE di database), berarti order ini sudah pernah masuk — ambil yang lama.
         if (result.error.code === '23505' && order.created_at) {
           const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
           if (existing) {
@@ -212,7 +198,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ order: newOrder, order_number: newOrder.order_number });
     }
 
-    // ===== TRANSACTIONS & DASHBOARD =====
+    // ===== TRANSACTIONS =====
     if (resource === 'transactions' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
@@ -223,7 +209,7 @@ export default async function handler(req, res) {
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
-       if (resource === 'transactions' && req.method === 'PUT' && id) {
+    if (resource === 'transactions' && req.method === 'PUT' && id) {
       const allowed = {};
       if (body.status !== undefined) allowed.status = body.status;
       if (Object.keys(allowed).length === 0) return res.status(400).json({ error: 'no updatable fields sent' });
@@ -232,6 +218,7 @@ export default async function handler(req, res) {
       return res.status(200).json(data[0] || { success: true });
     }
     if (resource === 'transactions' && req.method === 'DELETE' && id) {
+      // Hapus order dari device (pesanan batal): stok bahan dikembalikan dulu
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -391,7 +378,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== SHIFTS (legacy — tidak dipakai frontend lagi, biarkan) =====
+    // ===== SHIFTS (legacy) =====
     if (resource === 'shifts') {
       if (req.method === 'GET') {
         const openOnly = url.searchParams.get('open');
@@ -492,7 +479,6 @@ export default async function handler(req, res) {
         return res.status(200).json(newDist);
       }
       if (req.method === 'DELETE' && id) {
-        // FIX: hapus dulu items-nya supaya tidak jadi data yatim
         await supabase.from('profit_distribution_items').delete().eq('distribution_id', id);
         const { error } = await supabase.from('profit_distributions').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
@@ -514,50 +500,6 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
-    }
-
-    // ===== FINANCIAL SUMMARY =====
-    if (resource === 'financial-summary' && req.method === 'GET') {
-      const from = url.searchParams.get('from');
-      const to = url.searchParams.get('to');
-      if (!from || !to) return res.status(400).json({ error: 'from and to are required (YYYY-MM-DD)' });
-
-      let ordQuery = supabase.from('orders').select('id, total, created_at').gte('created_at', from).lte('created_at', to + 'T23:59:59');
-      const { data: orders, error: ordErr } = await ordQuery;
-      if (ordErr) return res.status(500).json({ error: ordErr.message });
-      const orderIds = (orders || []).map(o => o.id);
-
-      let cogsTotal = 0;
-      if (orderIds.length) {
-        const { data: items } = await supabase.from('order_items').select('cogs_amount, order_id').in('order_id', orderIds);
-        cogsTotal = (items || []).reduce((s, it) => s + parseFloat(it.cogs_amount || 0), 0);
-      }
-
-      const { data: exps, error: expErr } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').gte('date', from).lte('date', to);
-      if (expErr) return res.status(500).json({ error: expErr.message });
-
-      const totalSales = (orders || []).reduce((s, o) => s + parseFloat(o.total || 0), 0);
-      const byAccount = {};
-      let operatingTotal = 0, otherCogsFromExpenses = 0;
-      (exps || []).forEach(e => {
-        const acc = e.accounts;
-        const label = acc ? acc.name : (e.category || 'Tanpa Akun');
-        const type = acc ? acc.type : 'operating';
-        if (!byAccount[label]) byAccount[label] = { amount: 0, type };
-        byAccount[label].amount += parseFloat(e.amount || 0);
-        if (type === 'operating') operatingTotal += parseFloat(e.amount || 0);
-        else if (type === 'cogs') otherCogsFromExpenses += parseFloat(e.amount || 0);
-      });
-
-      return res.status(200).json({
-        totalSales,
-        cogs: cogsTotal + otherCogsFromExpenses,
-        grossProfit: totalSales - (cogsTotal + otherCogsFromExpenses),
-        byAccount,
-        operatingTotal,
-        netProfit: totalSales - (cogsTotal + otherCogsFromExpenses) - operatingTotal,
-        orderCount: (orders || []).length
-      });
     }
 
     // ===== EXPENSES =====
@@ -583,35 +525,6 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
-    }
-
-    if (resource === 'acc-dashboard' && req.method === 'GET') {
-      const from = url.searchParams.get('from');
-      const to = url.searchParams.get('to');
-      let expQuery = supabase.from('expenses').select('amount, category, date');
-      if (from) expQuery = expQuery.gte('date', from);
-      if (to) expQuery = expQuery.lte('date', to);
-      const { data: expenses } = await expQuery;
-
-      let ordQuery = supabase.from('orders').select('total, created_at');
-      if (from) ordQuery = ordQuery.gte('created_at', from);
-      if (to) ordQuery = ordQuery.lte('created_at', to + 'T23:59:59');
-      const { data: orders } = await ordQuery;
-
-      const totalRevenue = (orders || []).reduce((s, o) => s + parseFloat(o.total || 0), 0);
-      const totalExpenses = (expenses || []).reduce((s, e) => s + parseFloat(e.amount || 0), 0);
-
-      const expByCategory = {};
-      (expenses || []).forEach(e => {
-        if (!expByCategory[e.category]) expByCategory[e.category] = 0;
-        expByCategory[e.category] += parseFloat(e.amount || 0);
-      });
-
-      return res.status(200).json({
-        totalRevenue, totalExpenses,
-        netProfit: totalRevenue - totalExpenses,
-        expByCategory
-      });
     }
 
     return res.status(404).json({ error: `Endpoint not found: ${req.method} /${path}` });
