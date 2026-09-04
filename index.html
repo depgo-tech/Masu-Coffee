@@ -466,17 +466,23 @@ function syncBG(){
   if(window._syncing)return;
   if(window._syncPausedUntil&&Date.now()<window._syncPausedUntil)return;
   window._syncing=true;setTimeout(function(){window._syncing=false},10000);
-  aG('menu').then(function(d){if(d&&!d.error&&d.i){md.c=mrg(md.c,d.c||[]);md.i=mrg(md.i,d.i||[]);md.v=mrg(md.v,d.v||[]);md.a=mrg(md.a,d.a||[]);md.ia=mrg(md.ia,d.ia||[]);saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
-  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lI,d);saveIngs();rnd();}});
-  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lRcp,d);saveRcp();rnd();}});
-  aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lEmp,d);saveEmp();if(cv==='absensi')rAb()}});
+  // MASTER DATA: server = sumber kebenaran (REPLACE) → hapus/edit ikut ke semua device
+  aG('menu').then(function(d){
+    if(d&&!d.error&&d.i){
+      md={c:d.c||[],i:d.i||[],v:d.v||[],a:d.a||[],ia:d.ia||[]};
+      saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();
+    }
+  });
+  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){lI=d;saveIngs();rnd();}});
+  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rnd();}});
+  aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
+  aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
+  aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
   aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
-  aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAcc,d);saveAcc();if(cv==='akuntansi')rAC()}});
-  aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){var n0=lInv.length;mrg(lInv,d);if(lInv.length!==n0){saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
-  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});var n0=lPD.length;mrg(lPD,srv);if(lPD.length!==n0){savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}}});
+  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});lPD=srv;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000)}
