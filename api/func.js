@@ -223,16 +223,30 @@ export default async function handler(req, res) {
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
-    if (resource === 'transactions' && req.method === 'PUT' && id) {
-      // FIX BARU: frontend memanggil ini saat void order
-      // (aU('transactions/'+id, {status:'void'})) tapi endpoint-nya belum ada,
-      // jadi status void tidak pernah tersinkron ke cloud. Sekarang ada.
+       if (resource === 'transactions' && req.method === 'PUT' && id) {
       const allowed = {};
       if (body.status !== undefined) allowed.status = body.status;
       if (Object.keys(allowed).length === 0) return res.status(400).json({ error: 'no updatable fields sent' });
       const { data, error } = await supabase.from('orders').update(allowed).eq('id', id).select();
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data[0] || { success: true });
+    }
+    if (resource === 'transactions' && req.method === 'DELETE' && id) {
+      const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
+      for (const item of (oItems || [])) {
+        if (!item.menu_item_id) continue;
+        const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity').eq('menu_item_id', item.menu_item_id);
+        for (const r of (recipes || [])) {
+          const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', r.ingredient_id).single();
+          if (ing) {
+            await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) + parseFloat(r.quantity) * item.quantity }).eq('id', r.ingredient_id);
+          }
+        }
+      }
+      await supabase.from('order_items').delete().eq('order_id', id);
+      const { error } = await supabase.from('orders').delete().eq('id', id);
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json({ success: true });
     }
 
     if (resource === 'dashboard' && req.method === 'GET') {
