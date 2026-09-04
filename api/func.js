@@ -32,6 +32,44 @@ export default async function handler(req, res) {
     const resource = parts[0] || '';
     const id = parts[1];
 
+    // Konversi tanggal lokal (WIB) ke rentang ISO UTC yang benar
+    const toWibStart = (d) => new Date(d + 'T00:00:00+07:00').toISOString();
+    const toWibEnd = (d) => {
+      const t = new Date(d + 'T00:00:00+07:00');
+      t.setUTCDate(t.getUTCDate() + 1);
+      return t.toISOString();
+    };
+
+    // ===== RESET DATA (dipanggil saat "Mulai dari 0") =====
+    // Hapus semua transaksi di cloud. Chunk 500 supaya tidak kena batas PostgREST
+    // (delete ribuan baris sekaligus bisa diam-diam gagal → data "bangkit lagi").
+    if (resource === 'reset-data' && req.method === 'POST') {
+      const results = {};
+      const wipe = async (table, col) => {
+        try {
+          const { data: rows, error: selErr } = await supabase.from(table).select(col).limit(50000);
+          if (selErr) { results[table] = selErr.message; return; }
+          if (!rows || !rows.length) { results[table] = 'empty'; return; }
+          const ids = rows.map(r => r[col]);
+          const CHUNK = 500;
+          for (let i = 0; i < ids.length; i += CHUNK) {
+            const { error } = await supabase.from(table).delete().in(col, ids.slice(i, i + CHUNK));
+            if (error) { results[table] = error.message; return; }
+          }
+          results[table] = 'ok';
+        } catch (e) { results[table] = e.message; }
+      };
+      await wipe('order_items', 'id');
+      await wipe('orders', 'id');
+      await wipe('expenses', 'id');
+      await wipe('holds', 'id');
+      await wipe('profit_distribution_items', 'id');
+      await wipe('profit_distributions', 'id');
+      await wipe('stock_transactions', 'id');
+      await wipe('journal_entries', 'id');
+      return res.status(200).json({ success: true, results });
+    }
+
     // ===== SETTINGS =====
     if (resource === 'settings') {
       if (req.method === 'GET') {
@@ -83,7 +121,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // Cascade: hapus semua menu di kategori ini beserta varian/addon/resepnya
         const { data: itemsInCat } = await supabase.from('menu_items').select('id').eq('category_id', id);
         const itemIds = (itemsInCat || []).map(i => i.id);
         if (itemIds.length) {
@@ -112,7 +149,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // Cascade: varian, addon link, dan resep ikut dihapus supaya tidak ada data pocong
         await supabase.from('menu_variants').delete().eq('menu_item_id', id);
         await supabase.from('menu_item_addons').delete().eq('menu_item_id', id);
         await supabase.from('recipes').delete().eq('menu_item_id', id);
@@ -129,9 +165,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'order and a non-empty items array are required' });
       }
 
-      // IDEMPOTENSI: order dengan created_at identik = sudah pernah masuk.
-      // Balikin yang lama, JANGAN bikin baru. Ini membunuh duplikat di sumbernya:
-      // kirim-ulang dari antrian frontend tidak pernah menghasilkan order kedua.
+      // IDEMPOTENSI: created_at identik = sudah pernah masuk. Balikin yang lama.
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
@@ -160,8 +194,6 @@ export default async function handler(req, res) {
           break;
         }
         orderErr = result.error;
-        // 23505 = unique violation. Kalau yang bentrok created_at (constraint
-        // UNIQUE di database), berarti order ini sudah pernah masuk — ambil yang lama.
         if (result.error.code === '23505' && order.created_at) {
           const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
           if (existing) {
@@ -203,9 +235,9 @@ export default async function handler(req, res) {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
-      if (from) query = query.gte('created_at', from);
-      if (to) query = query.lte('created_at', to + 'T23:59:59');
-      const { data, error } = await query.limit(200);
+      if (from) query = query.gte('created_at', toWibStart(from));
+      if (to) query = query.lte('created_at', toWibEnd(to));
+      const { data, error } = await query.limit(500);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
@@ -218,7 +250,6 @@ export default async function handler(req, res) {
       return res.status(200).json(data[0] || { success: true });
     }
     if (resource === 'transactions' && req.method === 'DELETE' && id) {
-      // Hapus order dari device (pesanan batal): stok bahan dikembalikan dulu
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -240,8 +271,8 @@ export default async function handler(req, res) {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
       let query = supabase.from('orders').select('id, total, order_type, created_at');
-      if (from) query = query.gte('created_at', from);
-      if (to) query = query.lte('created_at', to + 'T23:59:59');
+      if (from) query = query.gte('created_at', toWibStart(from));
+      if (to) query = query.lte('created_at', toWibEnd(to));
       const { data: orders, error } = await query;
       if (error) return res.status(500).json({ error: error.message });
 
@@ -400,14 +431,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
     }
-    if (resource === 'shift-report' && req.method === 'GET') {
-      const shiftId = url.searchParams.get('shift_id');
-      if (!shiftId) return res.status(400).json({ error: 'shift_id is required' });
-      const { data: shift } = await supabase.from('shifts').select('*').eq('id', shiftId).single();
-      const { data: orders } = await supabase.from('orders').select('*').eq('shift_id', shiftId);
-      const { data: exps } = await supabase.from('expenses').select('*').eq('shift_id', shiftId);
-      return res.status(200).json({ shift, orders: orders || [], expenses: exps || [] });
-    }
 
     // ===== CHART OF ACCOUNTS =====
     if (resource === 'accounts') {
@@ -526,31 +549,7 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
     }
-    // ===== RESET DATA: hapus semua transaksi di cloud (dipanggil saat "Mulai dari 0") =====
-    if (resource === 'reset-data' && req.method === 'POST') {
-      const results = {};
-      const wipe = async (table) => {
-        try {
-          const { data: rows } = await supabase.from(table).select('id').limit(10000);
-          if (rows && rows.length) {
-            const ids = rows.map(r => r.id);
-            const { error } = await supabase.from(table).delete().in('id', ids);
-            if (error) { results[table] = error.message; return; }
-          }
-          results[table] = 'ok';
-        } catch (e) { results[table] = e.message; }
-      };
-      await wipe('order_items');
-      await wipe('orders');
-      await wipe('expenses');
-      await wipe('holds');
-      await wipe('profit_distribution_items');
-      await wipe('profit_distributions');
-      await wipe('stock_transactions');
-      await wipe('journal_entries');
-      return res.status(200).json({ success: true, results });
-    }
-    
+
     return res.status(404).json({ error: `Endpoint not found: ${req.method} /${path}` });
   } catch (e) {
     return res.status(500).json({ error: e.message });
