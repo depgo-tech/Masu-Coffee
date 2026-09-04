@@ -260,6 +260,8 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 .kas-cd{background:var(--bg2);border:1px solid var(--bdr);border-radius:12px;padding:16px;box-shadow:var(--sh)}
 .kas-cd .kn{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--dim)}
 .kas-cd .kv{font-size:24px;font-weight:700;color:var(--ac);margin:6px 0 10px}
+/* FIX: modal konfirmasi selalu paling depan (tidak tertutup form lain) */
+#cfModal{z-index:600}
 @media (max-width: 1024px) {
   .sb{position:fixed;left:0;top:0;height:100vh;height:100dvh;transform:translateX(-100%);box-shadow:4px 0 20px rgba(0,0,0,.2)}
   .sb.show{transform:translateX(0)}
@@ -301,7 +303,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
       <div class="sb-i" data-role="admin" data-nav="settings" onclick="nav('settings')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Pengaturan</span></div>
       <div class="sb-i" onclick="doLogout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span>Keluar</span></div>
     </div>
-    <div class="sb-f">v7.5 © MASU SPACE</div>
+    <div class="sb-f">v7.6 © MASU SPACE</div>
   </div>
   <div class="mn">
     <div class="tb">
@@ -358,7 +360,7 @@ var lAst=lsGet('pos_assets',[]);
 var lCl=lsGet('pos_closed',[]);
 var lBuy=lsGet('pos_buys',[]);
 var lOb=lsGet('pos_outbox',[]);
-var kFrom='',kTo='',kSrc='',exFrom='',exTo='',roDate='',lp={preset:'7'},exCtx='admin',srvCts={},discVal='',discType='amount';
+var kFrom='',kTo='',kSrc='',exFrom='',exTo='',roDate='',lp={preset:'7'},exCtx='admin',srvCts={},discVal='',discType='amount',_pdFail=0,_pdPause=0;
 function saveST(){lsSet('pos_src_tx',lST)}
 function saveAst(){lsSet('pos_assets',lAst)}
 function saveCl(){lsSet('pos_closed',lCl)}
@@ -381,8 +383,7 @@ function gS(it){var n=(it.name||'').toLowerCase();if(n.includes('espresso'))retu
 function gI(it){if(it.image_data)return'<img src="'+it.image_data+'">';if(it.image_url)return'<img src="'+it.image_url+'">';return gS(it)}
 function rp(n){return'Rp '+(Math.round(n)||0).toLocaleString('id-ID')}
 function rpShort(n){n=Math.round(n);if(n>=1000000)return(n/1000000).toFixed(1).replace('.0','')+'jt';if(n>=1000)return Math.round(n/1000)+'rb';return String(n)}
-// FIX UTC vs WIB: ambil TANGGAL LOKAL (WIB) dari ISO timestamp — order jam 00:05 pagi
-// tidak lagi jatuh ke tanggal kemarin
+// Tanggal lokal WIB (bukan UTC) — order jam 00:05 pagi tetap hari ini
 function dLocal(s){try{return new Date(new Date(s).getTime()+7*3600*1000).toISOString().slice(0,10)}catch(e){return (s||'').slice(0,10)}}
 function fmtDT(s){var d=new Date(s);if(!s||isNaN(d))return'-';return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
 function fRp(el){var v=(el.value||'').replace(/\D/g,'');el.value=v?Number(v).toLocaleString('id-ID'):''}
@@ -394,6 +395,7 @@ function aG(p){return Promise.race([fetch(A+'/'+p).then(function(r){return r.jso
 function aP(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},15000)})]).catch(function(){return{error:'offline'}})}
 function aU(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
 function aD(p){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'DELETE'}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
+// Outbox anti-duplikat: verifikasi created_at ke server dulu, grace period sebelum retry
 function flushOb(){
   if(!apiOn||!lOb.length||window._flushing)return;
   window._flushing=true;
@@ -453,6 +455,8 @@ function dedupeOrders(){
   if(out.length!==lO.length){lO=out;lsSet('pos_orders',lO)}
 }
 function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.forEach(function(x){if(x&&x.id!=null)have[String(x.id)]=1});srv.forEach(function(x){if(x&&x.id!=null&&!have[String(x.id)])local.push(x)});return local}
+// Sinkronisasi: master data = REPLACE (server sumber kebenaran). Transaksi = tambah saja,
+// data lebih tua dari momen reset diabaikan. Endpoint yang error dijeda (backoff) supaya tidak lag.
 function syncBG(){
   if(window._syncing)return;
   if(window._syncPausedUntil&&Date.now()<window._syncPausedUntil)return;
@@ -465,12 +469,13 @@ function syncBG(){
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
+  // Backoff: kalau profit-distributions error 3x berturut-turut, jeda 5 menit (anti lag/spam 500)
+  if(Date.now()>_pdPause){aG('profit-distributions').then(function(d){if(d&&d.error){_pdFail++;if(_pdFail>=3){_pdPause=Date.now()+300000;_pdFail=0;tt('Sinkron bagi hasil dijeda 5 menit (server error)',true);return}}else{_pdFail=0}if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});lPD=srv;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}})}
   aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');if(!resetAt){lsSet('pos_reset_at',new Date().toISOString());resetAt=lsGet('pos_reset_at','')}var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
   aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
-  aG('profit-distributions').then(function(d){if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});lPD=srv;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   aG('settings').then(function(d){if(d&&!d.error){Object.keys(d).forEach(function(k){if(d[k]!==null&&d[k]!==''&&d[k]!==undefined)st[k]=d[k]});lsSet('pos_settings',st);aSt()}}).catch(function(){});
 }
-// Sinkron otomatis begitu aplikasi dibuka/layar kembali aktif (biar HP tidak terasa lambat)
+// Sinkron instan saat app dibuka / layar kembali aktif + polling 12 detik
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncBG()})}}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
 var _busySave={};
@@ -524,7 +529,7 @@ function nav(v){
 }
 function rnd(){var c=document.getElementById('ct');c.innerHTML='';if(cv==='dashboard')rD();else if(cv==='pos')rP();else if(cv==='riwayat')rRO();else if(cv==='produk')rPr();else if(cv==='kas')rKas();else if(cv==='stok')rSt();else if(cv==='akuntansi')rA();else if(cv==='laporan')rL();else if(cv==='absensi')rAb();else if(cv==='settings')rSe()}
 
-// ===== DASHBOARD PRODUK (tanggal lokal WIB) =====
+// ===== DASHBOARD PRODUK =====
 function rD(){
   var since=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
   var qty={};
