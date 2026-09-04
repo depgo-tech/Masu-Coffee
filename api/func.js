@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req, res) {
-  // Setup CORS & Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
@@ -17,10 +16,6 @@ export default async function handler(req, res) {
 
   const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // FIX: req.body on Vercel is already parsed into an object when
-  // Content-Type: application/json is sent. The old code called
-  // JSON.parse(req.body) unconditionally, which throws if req.body
-  // is already an object (TypeError: not valid JSON).
   let body = {};
   if (req.body) {
     if (typeof req.body === 'string') {
@@ -60,10 +55,6 @@ export default async function handler(req, res) {
         supabase.from('addons').select('*').eq('is_active', true),
         supabase.from('menu_item_addons').select('*'),
       ]);
-      // FIX: frontend expects keys { c, i, v, a, ia } (see loadMenu()/md
-      // usage in index.html), not { categories, items, variants, addons,
-      // itemAddons }. The old response shape silently broke sync — apiOn
-      // would flip true but md.c/md.i etc stayed undefined until reload.
       return res.status(200).json({
         c: cats.data || [],
         i: items.data || [],
@@ -92,6 +83,17 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
+        // FIX: cascade delete — hapus semua menu di kategori ini beserta anak-anaknya
+        // (varian, item-addons, resep) supaya tidak ada data "pocong" yang bikin
+        // sinkronisasi antar device aneh.
+        const { data: itemsInCat } = await supabase.from('menu_items').select('id').eq('category_id', id);
+        const itemIds = (itemsInCat || []).map(i => i.id);
+        if (itemIds.length) {
+          await supabase.from('menu_variants').delete().in('menu_item_id', itemIds);
+          await supabase.from('menu_item_addons').delete().in('menu_item_id', itemIds);
+          await supabase.from('recipes').delete().in('menu_item_id', itemIds);
+          await supabase.from('menu_items').delete().in('id', itemIds);
+        }
         const { error } = await supabase.from('categories').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
@@ -112,54 +114,16 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
+        // FIX: cascade delete — varian, item-addons, dan resep ikut dihapus.
+        // Tanpa ini, produk yang dihapus masih "beranak" di server dan
+        // muncul lagi di device lain saat sinkronisasi.
+        await supabase.from('menu_variants').delete().eq('menu_item_id', id);
+        await supabase.from('menu_item_addons').delete().eq('menu_item_id', id);
+        await supabase.from('recipes').delete().eq('menu_item_id', id);
         const { error } = await supabase.from('menu_items').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
-    }
-
-    // ===== TABLES =====
-    if (resource === 'tables') {
-      if (req.method === 'GET') {
-        const { data, error } = await supabase.from('tables').select('*').order('id');
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        const { data, error } = await supabase.from('tables').insert(body).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-      if (req.method === 'PUT' && id) {
-        const { data, error } = await supabase.from('tables').update({ ...body, updated_at: new Date().toISOString() }).eq('id', id).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0] || { success: true });
-      }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('tables').delete().eq('id', id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== HOLD ORDER =====
-    if (resource === 'hold-order' && req.method === 'POST') {
-      if (!body.table_id) return res.status(400).json({ error: 'table_id is required' });
-      const { data, error } = await supabase.from('tables').update({ status: 'held', hold_order: body.order_data, updated_at: new Date().toISOString() }).eq('id', body.table_id).select();
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json(data[0] || { success: true });
-    }
-    if (resource === 'recall-order' && req.method === 'GET') {
-      const tableId = url.searchParams.get('table_id');
-      const { data, error } = await supabase.from('tables').select('*').eq('id', tableId).single();
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json(data);
-    }
-    if (resource === 'clear-hold' && req.method === 'POST') {
-      if (!body.table_id) return res.status(400).json({ error: 'table_id is required' });
-      const { error } = await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() }).eq('id', body.table_id);
-      if (error) return res.status(500).json({ error: error.message });
-      return res.status(200).json({ success: true });
     }
 
     // ===== PLACE ORDER =====
@@ -169,12 +133,27 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'order and a non-empty items array are required' });
       }
 
-      // FIX: the old order-number generator read the last row and
-      // incremented it in JS, which is not atomic — two orders placed
-      // at nearly the same time can read the same "last" row and both
-      // write the same order_number, causing a collision/overwrite.
-      // We now retry on a unique-constraint violation (Postgres code
-      // 23505) instead of trusting a single read-then-write.
+      // ================================================================
+      // FIX UTAMA — IDEMPOTENSI (pembunuh duplikat transaksi):
+      // Sebelum insert, cek dulu apakah order dengan created_at yang sama
+      // SUDAH ada di server. Kalau ada, balikin order yang lama — JANGAN
+      // bikin baru. Ini membuat kirim-ulang dari antrian frontend tidak
+      // pernah menghasilkan duplikat, sebab payload retry identik byte
+      // per byte (created_at & total sama persis).
+      // ================================================================
+      if (order.created_at) {
+        let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
+        if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
+        const { data: existing } = await dupQuery.maybeSingle();
+        if (existing) {
+          return res.status(200).json({
+            order: existing,
+            order_number: existing.order_number,
+            duplicate: true
+          });
+        }
+      }
+
       let newOrder = null;
       let orderErr = null;
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -194,7 +173,15 @@ export default async function handler(req, res) {
           break;
         }
         orderErr = result.error;
-        // 23505 = unique_violation in Postgres — retry with a new number
+        // 23505 = unique_violation. Kalau yang bentrok adalah created_at
+        // (constraint UNIQUE(created_at) di database), berarti order ini
+        // sudah pernah masuk — ambil yang lama dan balikin, JANGAN error.
+        if (result.error.code === '23505' && order.created_at) {
+          const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
+          if (existing) {
+            return res.status(200).json({ order: existing, order_number: existing.order_number, duplicate: true });
+          }
+        }
         if (result.error.code !== '23505') break;
       }
       if (orderErr) return res.status(500).json({ error: orderErr.message });
@@ -235,6 +222,17 @@ export default async function handler(req, res) {
       const { data, error } = await query.limit(200);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
+    }
+    if (resource === 'transactions' && req.method === 'PUT' && id) {
+      // FIX BARU: frontend memanggil ini saat void order
+      // (aU('transactions/'+id, {status:'void'})) tapi endpoint-nya belum ada,
+      // jadi status void tidak pernah tersinkron ke cloud. Sekarang ada.
+      const allowed = {};
+      if (body.status !== undefined) allowed.status = body.status;
+      if (Object.keys(allowed).length === 0) return res.status(400).json({ error: 'no updatable fields sent' });
+      const { data, error } = await supabase.from('orders').update(allowed).eq('id', id).select();
+      if (error) return res.status(500).json({ error: error.message });
+      return res.status(200).json(data[0] || { success: true });
     }
 
     if (resource === 'dashboard' && req.method === 'GET') {
@@ -280,12 +278,12 @@ export default async function handler(req, res) {
       }
     }
     if (resource === 'recipes') {
-       if (req.method === 'GET') {
+      if (req.method === 'GET') {
         const { data, error } = await supabase.from('recipes').select('*, ingredients(*)').order('id');
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data);
       }
-       if (req.method === 'POST') {
+      if (req.method === 'POST') {
         if (!body.menu_item_id || !body.ingredient_id || body.quantity == null) {
           return res.status(400).json({ error: 'menu_item_id, ingredient_id and quantity are required' });
         }
@@ -293,18 +291,18 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
       }
-       if (req.method === 'PUT' && id) {
+      if (req.method === 'PUT' && id) {
         const { data, error } = await supabase.from('recipes').update(body).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
       }
-       if (req.method === 'DELETE' && id) {
+      if (req.method === 'DELETE' && id) {
         const { error } = await supabase.from('recipes').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
     }
-        if (resource === 'stock-in' && req.method === 'POST') {
+    if (resource === 'stock-in' && req.method === 'POST') {
       const { ingredient_id, quantity, note } = body;
       if (!ingredient_id || !quantity) return res.status(400).json({ error: 'ingredient_id and quantity are required' });
       const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', ingredient_id).single();
@@ -359,7 +357,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== HOLDS (order tertahan, tidak terikat meja) =====
+    // ===== HOLDS =====
     if (resource === 'holds') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('holds').select('*').order('created_at', { ascending: false });
@@ -379,7 +377,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== SHIFTS =====
+    // ===== SHIFTS (legacy — tidak dipakai frontend lagi, biarkan) =====
     if (resource === 'shifts') {
       if (req.method === 'GET') {
         const openOnly = url.searchParams.get('open');
@@ -480,6 +478,8 @@ export default async function handler(req, res) {
         return res.status(200).json(newDist);
       }
       if (req.method === 'DELETE' && id) {
+        // FIX: hapus dulu items-nya supaya tidak jadi data yatim
+        await supabase.from('profit_distribution_items').delete().eq('distribution_id', id);
         const { error } = await supabase.from('profit_distributions').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
@@ -502,7 +502,7 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== FINANCIAL SUMMARY (real P&L data for a period) =====
+    // ===== FINANCIAL SUMMARY =====
     if (resource === 'financial-summary' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
@@ -546,8 +546,7 @@ export default async function handler(req, res) {
       });
     }
 
-
-    // ===== EXPENSES & ACCOUNTING =====
+    // ===== EXPENSES =====
     if (resource === 'expenses') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').order('date', { ascending: false });
