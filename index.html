@@ -464,6 +464,7 @@ function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.fo
 // Garis waktu reset: data cloud lebih tua dari momen reset diabaikan selamanya
 function syncBG(){
   if(window._syncing)return;
+  if(window._syncPausedUntil&&Date.now()<window._syncPausedUntil)return;
   window._syncing=true;setTimeout(function(){window._syncing=false},10000);
   aG('menu').then(function(d){if(d&&!d.error&&d.i){md.c=mrg(md.c,d.c||[]);md.i=mrg(md.i,d.i||[]);md.v=mrg(md.v,d.v||[]);md.a=mrg(md.a,d.a||[]);md.ia=mrg(md.ia,d.ia||[]);saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
   aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lI,d);saveIngs();rnd();}});
@@ -1519,6 +1520,7 @@ function resetTxns(){
       ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re','pos_pd'].forEach(function(k){localStorage.removeItem(k)});
       lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];lPD=[];
       lsSet('pos_reset_at',new Date().toISOString());
+      window._syncPausedUntil=Date.now()+15000;
       tt('Semua transaksi dihapus. Laporan mulai dari 0.');rnd();
     },{title:'Konfirmasi Akhir',yesLabel:'Ya, Hapus Semua'});
   },{title:'Zona Berbahaya',yesLabel:'Lanjutkan'});
