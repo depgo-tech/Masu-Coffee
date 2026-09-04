@@ -526,7 +526,31 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
     }
-
+    // ===== RESET DATA: hapus semua transaksi di cloud (dipanggil saat "Mulai dari 0") =====
+    if (resource === 'reset-data' && req.method === 'POST') {
+      const results = {};
+      const wipe = async (table) => {
+        try {
+          const { data: rows } = await supabase.from(table).select('id').limit(10000);
+          if (rows && rows.length) {
+            const ids = rows.map(r => r.id);
+            const { error } = await supabase.from(table).delete().in('id', ids);
+            if (error) { results[table] = error.message; return; }
+          }
+          results[table] = 'ok';
+        } catch (e) { results[table] = e.message; }
+      };
+      await wipe('order_items');
+      await wipe('orders');
+      await wipe('expenses');
+      await wipe('holds');
+      await wipe('profit_distribution_items');
+      await wipe('profit_distributions');
+      await wipe('stock_transactions');
+      await wipe('journal_entries');
+      return res.status(200).json({ success: true, results });
+    }
+    
     return res.status(404).json({ error: `Endpoint not found: ${req.method} /${path}` });
   } catch (e) {
     return res.status(500).json({ error: e.message });
