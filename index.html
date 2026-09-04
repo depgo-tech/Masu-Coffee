@@ -398,7 +398,9 @@ function flushOb(){
   var left=[],done=0;
   q.forEach(function(it){
     aP(it.path,it.payload).then(function(r){
-      if(r&&!r.error){if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}}
+      if(r&&!r.error){
+        if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}
+      }
       else{left.push(it)}
       done++;
       if(done===q.length){if(left.length){lOb=left.concat(lOb);saveOb()}else{tt(q.length+' data tertunda terkirim ke cloud')}}
@@ -432,7 +434,7 @@ function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTim
 function unlockSave(key){_busySave[key]=false}
 function init(){
   var ls=localStorage.getItem('pos_settings');if(ls){try{Object.assign(st,JSON.parse(ls))}catch(e){}}aSt();
-  loadMenu();initRecipes();
+  loadMenu();initRecipes();dedupeOrders();
   syncBG();
   if(!checkSession())showLogin();
 }
@@ -889,7 +891,7 @@ function dE(id){if(!confirm('Hapus catatan pengeluaran ini? (mutasi kas tidak ik
 // ===== RIWAYAT ORDER (cocokkan uang cash kasir) =====
 function rRO(){
   var td=new Date().toISOString().slice(0,10);if(!roDate)roDate=td;
-  var f=lO.filter(function(o){var d=o.order.created_at?o.order.created_at.slice(0,10):'';return d===roDate}).slice().reverse();
+   var f=lO.filter(function(o){if(o.order.status==='void')return false;var d=o.order.created_at?o.order.created_at.slice(0,10):'';return(!from||d>=from)&&(!to||d<=to)});
   var cash=0,non=0;
   f.forEach(function(o){if(o.order.status==='void')return;var m=o.order.payment_method||'cash';if(m==='cash')cash+=parseFloat(o.order.total||0);else non+=parseFloat(o.order.total||0)});
   var h='<div class="rc"><div class="mg-h"><h2>Riwayat Order</h2></div>';
@@ -902,6 +904,27 @@ function rRO(){
   h+='</tbody></table></div></div>';
   document.getElementById('ct').innerHTML=h;
 }
+function voidOrderAsk(num){
+  var rec=lO.find(function(x){return x.order_number===num});
+  if(!rec||rec.order.status==='void')return;
+  if(!confirm('Batalkan order '+num+'?\nStok bahan dikembalikan & kas dikoreksi otomatis.'))return;
+  rec.order.status='void';
+  (rec.items||[]).forEach(function(item){
+    lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id}).forEach(function(r){
+      var ing=lI.find(function(i){return i.id==r.ingredient_id});
+      if(ing)ing.stock=parseFloat(ing.stock)+parseFloat(r.quantity)*item.quantity;
+    });
+  });
+  saveIngs();
+  var m=rec.order.payment_method||'cash';
+  var nowIso=new Date().toISOString();
+  lST.push({id:Date.now(),date:nowIso.slice(0,10),ts:nowIso,src:m==='cash'?'cash_kasir':'bank_kecil',type:'out',cat:'void_sale',desc:'Void '+num+' ('+m.toUpperCase()+')',amount:parseFloat(rec.order.total||0),m:m});
+  saveST();lsSet('pos_orders',lO);
+  tt('Order '+num+' dibatalkan - stok & kas dikoreksi');
+  rRO();if(cv==='pos')renderKasirBar();
+  if(apiOn&&rec.order&&rec.order.id)aU('transactions/'+rec.order.id,{status:'void'});
+}
+  
 function voidOrderAsk(num){
   var rec=lO.find(function(x){return x.order_number===num});
   if(!rec||rec.order.status==='void')return;
@@ -1459,6 +1482,24 @@ function migrateKas(){
   }
   lsSet('pos_kas_migrated',true);
 }
+
+  function dedupeOrders(){
+  var seen={},out=[];
+  lO.forEach(function(o){
+    var kn='n:'+(o.order_number||''),kt='t:'+((o.order&&o.order.created_at)||'');
+    if(seen[kn]||(kt!=='t:'&&seen[kt]))return;
+    seen[kn]=1;if(kt!=='t:')seen[kt]=1;out.push(o);
+  });
+  if(out.length!==lO.length){lO=out;lsSet('pos_orders',lO)}
+}
+function resetTxns(){
+  if(!confirm('HAPUS SEMUA TRANSAKSI & KAS?\nOrder, kas, tutup kasir, pengeluaran, hutang/piutang dihapus permanen.'))return;
+  if(!confirm('Yakin? Tidak bisa dibatalkan.'))return;
+  ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re'].forEach(function(k){localStorage.removeItem(k)});
+  lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];
+  tt('Semua transaksi dihapus. Mulai dari 0.');nav('dashboard');
+}
+  
 migrateKas();
 function dedupeOrders(){
   var seen={},out=[];
