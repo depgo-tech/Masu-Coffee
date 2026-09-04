@@ -517,11 +517,16 @@ function rD(){
 
 // ===== POS / KASIR =====
 function rP(){document.getElementById('ct').innerHTML='<div style="display:flex;flex-direction:column;height:100%"><div class="kasir-top" id="kasirBar"></div><div class="pl" style="flex:1;min-height:0"><div class="pl-l"><div class="pl-s"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="sIn" placeholder="Cari..." oninput="rMG()"></div><div class="ct-tab" id="cT2"></div><div id="holdList" style="margin-bottom:8px"></div><div class="mg" id="mG2"></div></div><div class="pr" id="oP"></div><button class="mobile-cart-btn" onclick="toggleCart()">🛒</button></div></div>';renderKasirBar();rCT();rMG();rOP();rHL()}
+function lastCloseTs(){
+  var t='';
+  lCl.forEach(function(c){if((c.created_at||'')>t)t=c.created_at||''});
+  return t;
+}
 function ksSum(){
-  var td=new Date().toISOString().slice(0,10);
+  var lc=lastCloseTs();
   var s={cash:0,qris:0,card:0,exp:0,bk:0,laci:saldoSrc('cash_kasir')};
   lST.forEach(function(t){
-    if(t.date!==td)return;
+    if(lc&&(t.ts||t.date)<=lc)return;
     if(t.cat==='sale_cash'&&t.type==='in')s.cash+=parseFloat(t.amount||0);
     else if(t.cat==='sale_noncash'&&t.type==='in'){if(t.m==='card')s.card+=parseFloat(t.amount||0);else s.qris+=parseFloat(t.amount||0)}
     else if(t.cat==='void_sale'&&t.type==='out'){if(t.m==='card')s.card-=parseFloat(t.amount||0);else if(t.m==='qris')s.qris-=parseFloat(t.amount||0);else s.cash-=parseFloat(t.amount||0)}
@@ -535,7 +540,9 @@ function renderKasirBar(){
   var el=document.getElementById('kasirBar');if(!el)return;
   var s=ksSum();
   var totalDay=s.cash+s.qris+s.card;
-  el.innerHTML='<div class="kb-left"><button class="bp" style="padding:9px 16px;font-size:12px" onclick="oEMK()">+ Pengeluaran Kasir</button><div class="kb-chips"><span class="kb-chip">Penjualan Hari Ini <b>'+rp(totalDay)+'</b></span><span class="kb-chip">Cash <b>'+rp(s.cash)+'</b></span><span class="kb-chip">QRIS <b>'+rp(s.qris)+'</b></span><span class="kb-chip">Debit <b>'+rp(s.card)+'</b></span><span class="kb-chip">Pengeluaran <b style="color:var(--dng)">'+rp(s.exp)+'</b></span><span class="kb-chip">→ Bank Kecil <b>'+rp(s.bk)+'</b></span></div></div><div class="kb-right"><div style="text-align:right"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px">Cash di Laci (Sistem)</div><div style="font-weight:700;color:var(--gold);font-size:16px">'+rp(s.laci)+'</div><div style="font-size:9px;color:var(--dim)">harus sama dengan hitungan fisik</div></div><button class="bp" style="padding:12px 18px;font-size:13px" onclick="oKasTutup()">Tutup Kasir</button></div>';
+  var lc=lastCloseTs();
+  var lcInfo=lc?'<span class="kb-chip">Tutup terakhir <b>'+new Date(lc).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+'</b></span>':'';
+  el.innerHTML='<div class="kb-left"><button class="bp" style="padding:9px 16px;font-size:12px" onclick="oEMK()">+ Pengeluaran Kasir</button><div class="kb-chips">'+lcInfo+'<span class="kb-chip">Penjualan <b>'+rp(totalDay)+'</b></span><span class="kb-chip">Cash <b>'+rp(s.cash)+'</b></span><span class="kb-chip">QRIS <b>'+rp(s.qris)+'</b></span><span class="kb-chip">Debit <b>'+rp(s.card)+'</b></span><span class="kb-chip">Pengeluaran <b style="color:var(--dng)">'+rp(s.exp)+'</b></span><span class="kb-chip">→ Bank Kecil <b>'+rp(s.bk)+'</b></span></div></div><div class="kb-right"><div style="text-align:right"><div style="font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px">Cash di Laci (fisik sekarang)</div><div style="font-weight:700;color:var(--gold);font-size:16px">'+rp(s.laci)+'</div><div style="font-size:9px;color:var(--dim)">harus sama dengan hitungan fisik</div></div><button class="bp" style="padding:12px 18px;font-size:13px" onclick="oKasTutup()">Tutup Kasir</button></div>';
 }
 function toggleCart(){document.getElementById('oP').classList.toggle('show')}
 function rCT(){var el=document.getElementById('cT2');if(!el)return;var h='<div class="ct-t '+(cc?'':'act')+'" onclick="sC2(null)">Semua</div>';md.c.forEach(function(c){h+='<div class="ct-t '+(cc===c.id?'act':'')+'" onclick="sC2('+c.id+')">'+c.name+'</div>'});el.innerHTML=h}
