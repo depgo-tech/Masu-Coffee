@@ -573,7 +573,7 @@ function ksSum(){
     if(t.cat==='sale_cash'&&t.type==='in')s.cash+=parseFloat(t.amount||0);
     else if(t.cat==='sale_noncash'&&t.type==='in'){if(t.m==='card')s.card+=parseFloat(t.amount||0);else s.qris+=parseFloat(t.amount||0)}
     else if(t.cat==='void_sale'&&t.type==='out'){if(t.m==='card')s.card-=parseFloat(t.amount||0);else if(t.m==='qris')s.qris-=parseFloat(t.amount||0);else s.cash-=parseFloat(t.amount||0)}
-    if(t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))s.exp+=parseFloat(t.amount||0);
+    if(t.src==='cash_kasir'&&t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))s.exp+=parseFloat(t.amount||0);
     if(t.src==='bank_kecil'&&t.cat==='sale_noncash'&&t.type==='in')s.bk+=parseFloat(t.amount||0);
     if(t.src==='bank_kecil'&&t.cat==='void_sale'&&t.type==='out')s.bk-=parseFloat(t.amount||0);
   });
@@ -829,7 +829,8 @@ function uKasTutup(){
   var ti=0,to2=0;
   lST.forEach(function(t){if(t.src!==src||t.date!==date)return;if(t.type==='in')ti+=parseFloat(t.amount||0);else to2+=parseFloat(t.amount||0)});
   var exp=saldoSrc(src);
-  var h='<div class="pnl"><div class="pnl-r"><span class="lb">Masuk hari itu</span><span class="vl pos">'+rp(ti)+'</span></div><div class="pnl-r"><span class="lb">Keluar hari itu</span><span class="vl neg">'+rp(to2)+'</span></div><div class="pnl-r t"><span class="lb">Saldo Sistem (sekarang)</span><span>'+rp(exp)+'</span></div></div>';
+  var h='<div class="pnl"><div class="pnl-r"><span class="lb">Masuk hari itu</span><span class="vl pos">'+rp(ti)+'</span></div><div class="pnl-r"><span class="lb">Keluar hari itu</span><span class="vl neg">'+rp(to2)+'</span></div><div class="pnl-r t"><span class="lb">Saldo Sistem (sekarang)</span><span style="'+(exp<0?'color:var(--dng)':'')+'">'+rp(exp)+'</span></div></div>';
+  if(exp<0)h+='<div style="background:#fce0e0;color:var(--dng);font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:12px;line-height:1.5">⚠ Saldo sistem laci minus. Ini biasanya tanda ada transaksi yang salah catat (misal: order dibatalkan tapi penjualannya sudah masuk sesi tutup kasir sebelumnya). Cek dulu Riwayat Order sebelum lanjut tutup kasir, supaya selisih yang tersimpan bukan angka yang keliru.</div>';
   h+='<div class="fg"><label>Uang Fisik Dihitung</label><input type="text" inputmode="numeric" id="ktCounted" placeholder="0" oninput="fRp(this);uKasVar('+exp+')" style="font-weight:700"></div>';
   h+='<div class="pr-sr t" id="ktVar" style="margin-bottom:12px"><span>Selisih</span><span>Rp 0</span></div>';
   var srcOpts=SRCS.filter(function(s){return s.id!==src}).map(function(s){return'<option value="'+s.id+'">'+s.name+'</option>'}).join('');
@@ -973,7 +974,12 @@ function rRO(){
 function voidOrderAsk(num){
   var rec=lO.find(function(x){return x.order_number===num});
   if(!rec||rec.order.status==='void')return;
-  showConfirm('Batalkan order '+num+'?\nStok bahan dikembalikan & kas dikoreksi otomatis.',function(){
+  var lc=lastCloseTs();
+  var oldShift=lc&&rec.order.created_at&&rec.order.created_at<=lc;
+  var msg=oldShift
+    ?'Order '+num+' ini dari sesi SEBELUM tutup kasir terakhir — uangnya kemungkinan sudah dipindah/disetor saat tutup kasir lalu.\nKalau tetap dibatalkan, Cash di Laci sesi ini akan tetap ikut berkurang, jadi bisa kelihatan minus walau fisiknya tidak salah. Sebaiknya catat sebagai penyesuaian manual saja.\nTetap batalkan?'
+    :'Batalkan order '+num+'?\nStok bahan dikembalikan & kas dikoreksi otomatis.';
+  showConfirm(msg,function(){
     rec.order.status='void';
     (rec.items||[]).forEach(function(item){
       lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id}).forEach(function(r){
