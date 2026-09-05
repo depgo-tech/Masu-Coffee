@@ -398,6 +398,7 @@ function aD(p){if(!apiOn)return Promise.resolve({error:'offline'});return Promis
 // Outbox anti-duplikat: verifikasi created_at ke server dulu, grace period sebelum retry
 function flushOb(){
   if(!apiOn||!lOb.length||window._flushing)return;
+  if(!navigator.onLine)return;
   window._flushing=true;
   aG('transactions').then(function(d){
     if(d&&!d.error&&Array.isArray(d)){
@@ -416,21 +417,21 @@ function flushOb(){
       });
       lOb=still;saveOb();
     }
-    var RETRY_GRACE_MS=20000;
-    var now=Date.now();
-    var q=[],keep=[];
-    lOb.forEach(function(it){
-      if(!it.queued_at||now-it.queued_at>=RETRY_GRACE_MS)q.push(it);else keep.push(it);
-    });
+    var RETRY_GRACE_MS=20000;var now=Date.now();var q=[],keep=[];
+    lOb.forEach(function(it){if(!it.queued_at||now-it.queued_at>=RETRY_GRACE_MS)q.push(it);else keep.push(it)});
     lOb=keep;saveOb();
     if(!q.length){window._flushing=false;if(cv==='riwayat')rRO();return}
     var left=[],done=0;
     q.forEach(function(it){
-      aP(it.path,it.payload).then(function(r){
+      var send=(it.m==='D')?aD(it.path):aP(it.path,it.payload);
+      send.then(function(r){
         if(r&&!r.error){
           if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}
-        }
-        else{it.queued_at=Date.now();left.push(it)}
+          else if(it.ref&&r.id&&it.path==='expenses'){var ix=lE.findIndex(function(e){return e.id===it.ref});if(ix>-1){lE[ix].id=r.id;lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}
+          else if(it.ref&&r.id&&it.path==='attendance'){var ax=lAtt.findIndex(function(a){return a.id===it.ref});if(ax>-1){var oc=lAtt[ax].clock_out;lAtt[ax].id=r.id;saveAtt();if(oc)aU('attendance/'+r.id,{clock_out:oc})}}
+          else if(it.ref&&r.id&&it.path==='holds'){var hx=lHold.findIndex(function(h){return h.id===it.ref});if(hx>-1){lHold[hx].id=r.id;saveHold();if(cv==='pos')rHL()}}
+          else if(it.ref&&r.id&&it.path==='profit-distributions'){var px=lPD.findIndex(function(p){return p.id===it.ref});if(px>-1){lPD[px].id=r.id;savePD();if(cv==='akuntansi')rAC()}}
+        }else{it.queued_at=Date.now();left.push(it)}
         done++;
         if(done===q.length){
           if(left.length){lOb=left.concat(lOb);saveOb()}
@@ -458,6 +459,7 @@ function mrg(local,srv){if(!Array.isArray(srv))return local;var have={};local.fo
 // Sinkronisasi: master data = REPLACE (server sumber kebenaran). Transaksi = tambah saja,
 // data lebih tua dari momen reset diabaikan. Endpoint yang error dijeda (backoff) supaya tidak lag.
 function syncBG(){
+  if(!navigator.onLine)return;
   if(window._syncing)return;
   if(window._syncPausedUntil&&Date.now()<window._syncPausedUntil)return;
   window._syncing=true;setTimeout(function(){window._syncing=false},10000);
@@ -465,7 +467,7 @@ function syncBG(){
   aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){lI=d;saveIngs();rnd();}});
   aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rnd();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
-  aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
+  aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){d.forEach(function(s){var ix=lAtt.findIndex(function(a){return a.id===s.id});if(ix>-1)lAtt[ix]=s;else lAtt.push(s)});saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});var pending=lHold.filter(function(h){return h.id>1e11});lHold=srv.concat(pending);saveHold();if(cv==='pos')rHL()}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
@@ -494,7 +496,7 @@ function syncBG(){
      aG('settings').then(function(d){if(d&&!d.error&&d.sn){st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
 }
 // Sinkron instan saat app dibuka / layar kembali aktif + polling 12 detik
-function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},3000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
+function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},6000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
 function manualSync(){window._syncPausedUntil=0;window._syncing=false;tt('Menyinkronkan...');syncBG()}
 function aSt() {
     document.getElementById('sbN').textContent = st.sn || 'MASU SPACE';
@@ -660,9 +662,10 @@ function uDisc(){var el=document.getElementById('prTotals');if(el)el.innerHTML=c
 function sOT(t){oT=t;rOP()}
 function cQ(i,d){ca[i].quantity+=d;if(ca[i].quantity<=0)ca.splice(i,1);else ca[i].subtotal=ca[i].unit_price*ca[i].quantity;rOP()}
 function rI(i){ca.splice(i,1);rOP()}
-function hO(){if(!ca.length||!lockSave('hO'))return;var note=prompt('Catatan untuk order ini (nama pelanggan / keterangan):','')||'';var savedCart=ca,savedType=oT,savedNum=oN;var tempId=Date.now();var h={id:tempId,cart:savedCart,orderType:savedType,order_number:savedNum,note:note,created_at:new Date().toISOString()};lHold.push(h);saveHold();ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';rOP();rHL();tt('Order ditahan (hold)');if(apiOn){aP('holds',{order_number:savedNum,note:note,order_type:savedType,cart:savedCart}).then(function(r){if(r&&!r.error&&r.id){var idx=lHold.findIndex(function(x){return x.id===tempId});if(idx>-1){lHold[idx].id=r.id;saveHold();rHL()}}})}}
-function rCO(hid){var h=lHold.find(function(x){return x.id===hid});if(!h)return;ca=h.cart;oT=h.orderType;oN=h.order_number;lHold=lHold.filter(function(x){return x.id!==hid});saveHold();if(apiOn)aD('holds/'+hid);nav('pos');tt('Order dipanggil')}
-function dHO(hid){showConfirm('Hapus order tertahan ini?',function(){lHold=lHold.filter(function(x){return x.id!==hid});saveHold();if(apiOn)aD('holds/'+hid);rHL();tt('Dihapus')})}
+function hO(){if(!ca.length||!lockSave('hO'))return;var note=prompt('Catatan untuk order ini (nama pelanggan / keterangan):','')||'';var savedCart=ca,savedType=oT,savedNum=oN;var tempId=Date.now();var h={id:tempId,cart:savedCart,orderType:savedType,order_number:savedNum,note:note,created_at:new Date().toISOString()};lHold.push(h);saveHold();ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';rOP();rHL();tt('Order ditahan (hold)');if(apiOn){aP('holds',{order_number:savedNum,note:note,order_type:savedType,cart:savedCart}).then(function(r){if(r&&!r.error&&r.id){var idx=lHold.findIndex(function(x){return x.id===tempId});if(idx>-1){lHold[idx].id=r.id;saveHold();rHL()}}})}else{lOb.push({path:'holds',payload:{order_number:savedNum,note:note,order_type:savedType,cart:savedCart},ref:tempId,queued_at:Date.now()});saveOb()}}
+function syncDelHold(hid){if(!apiOn)return;aD('holds/'+hid).then(function(r){if(r&&r.error){lOb.push({path:'holds/'+hid,m:'D',queued_at:Date.now()});saveOb()}})}
+function rCO(hid){var h=lHold.find(function(x){return x.id===hid});if(!h)return;ca=h.cart;oT=h.orderType;oN=h.order_number;lHold=lHold.filter(function(x){return x.id!==hid});saveHold();syncDelHold(hid);nav('pos');tt('Order dipanggil')}
+function dHO(hid){showConfirm('Hapus order tertahan ini?',function(){lHold=lHold.filter(function(x){return x.id!==hid});saveHold();syncDelHold(hid);rHL();tt('Dihapus')})}
 function rHL(){var el=document.getElementById('holdList');if(!el)return;if(!lHold.length){el.innerHTML='';return}el.innerHTML='<div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">ORDER DITAHAN ('+lHold.length+')</div>'+lHold.map(function(h){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg);border-radius:6px;margin-bottom:4px;cursor:pointer" onclick="rCO('+h.id+')"><div><div style="font-size:12px;font-weight:600">#'+h.order_number+(h.note?' - '+h.note:'')+'</div><div style="font-size:10px;color:var(--dim)">'+h.cart.length+' item</div></div><button class="px" onclick="event.stopPropagation();dHO('+h.id+')">×</button></div>'}).join('')}
 function checkStockOk(){
   for(var idx=0;idx<ca.length;idx++){
@@ -979,11 +982,11 @@ function sE2(d,src,jenis,method,amt,desc){
   if(cv==='kas')rKas();
   if(cv==='pos')renderKasirBar();
   if(cv==='akuntansi')rAC();
-    if(apiOn){aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id}).then(function(r){
+        if(apiOn){aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id}).then(function(r){
     if(r&&!r.error&&r.id){var idx=lE.findIndex(function(e){return e.id===tempId});if(idx>-1){lE[idx].id=r.id;lsSet('pos_exp',lE)}}
     syncBG();
     unlockSave('sE');
-  })}else{unlockSave('sE')}
+  })}else{lOb.push({path:'expenses',payload:{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id},ref:tempId,queued_at:Date.now()});saveOb();unlockSave('sE')}
 }
 function dE(id){showConfirm('Hapus catatan pengeluaran ini? (mutasi kas tidak ikut berubah)',function(){lE=lE.filter(function(e){return e.id!==id});lsSet('pos_exp',lE);if(apiOn)aD('expenses/'+id);if(cv==='akuntansi')rAC();tt('Dihapus')})}
 
@@ -1091,7 +1094,8 @@ function sPDist(){
   var tempId=Date.now();
   var rec={id:tempId,period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,created_at:new Date().toISOString(),profit_distribution_items:items};
   lPD.push(rec);savePD();cm('opModal');tt('Bagi hasil disimpan');rAC();
-  if(apiOn){aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){if(r&&!r.error&&r.id){var idx=lPD.findIndex(function(p){return p.id===tempId});if(idx>-1){lPD[idx].id=r.id;savePD();rAC()}}unlockSave('sPDist')})}else{unlockSave('sPDist')}
+    if(apiOn){aP('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items}).then(function(r){if(r&&!r.error&&r.id){var idx=lPD.findIndex(function(p){return p.id===tempId});if(idx>-1){lPD[idx].id=r.id;savePD();rAC()}}unlockSave('sPDist')})}else{lOb.push({path:'profit-distributions',payload:{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items},ref:tempId,queued_at:Date.now()});saveOb();unlockSave('sPDist')}
+}
 }
 function dPDist(id){showConfirm('Hapus catatan bagi hasil ini?',function(){lPD=lPD.filter(function(p){return p.id!==id});savePD();rAC();tt('Dihapus');if(apiOn)aD('profit-distributions/'+id)})}
 
@@ -1474,10 +1478,10 @@ function sBM(){
 function oOM(){var h='<div class="ml"><h2>Stock Opname</h2><div class="fg"><label>Bahan</label><select id="oIng" onchange="uOS()">';lI.forEach(function(ing){h+='<option value="'+ing.id+'" data-stock="'+ing.stock+'" data-unit="'+ing.unit+'">'+ing.name+' ('+ing.stock+' '+ing.unit+')</option>'});h+='</select></div><div class="fg"><label>Stok Sistem</label><input type="text" id="oSys" readonly></div><div class="fg"><label>Stok Aktual</label><input type="number" id="oAct" placeholder="0" oninput="cOD()"></div><div class="fg"><label>Selisih</label><input type="text" id="oDiff" readonly style="font-weight:700"></div><div class="fg"><label>Catatan</label><input type="text" id="oNote"></div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Batal</button><button class="bp" onclick="sO()">Simpan</button></div></div>';document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');uOS()}
 function uOS(){var sel=document.getElementById('oIng');if(!sel)return;var opt=sel.options[sel.selectedIndex];document.getElementById('oSys').value=(opt&&opt.dataset?opt.dataset.stock:0)+' '+(opt&&opt.dataset?opt.dataset.unit:'');cOD()}
 function cOD(){var sel=document.getElementById('oIng');var sys=parseFloat(sel.selectedOptions[0]&&sel.selectedOptions[0].dataset?sel.selectedOptions[0].dataset.stock:0);var act=parseFloat(document.getElementById('oAct').value)||0;var diff=act-sys;var el=document.getElementById('oDiff');if(el){el.value=(diff>0?'+':'')+diff;el.style.color=diff<0?'var(--dng)':'var(--suc)'}}
-function sO(){var sel=document.getElementById('oIng');var ingId=parseInt(sel.value);var ingName=sel.options[sel.selectedIndex].text.split(' (')[0];var sys=parseFloat(sel.selectedOptions[0].dataset.stock);var act=parseFloat(document.getElementById('oAct').value);var note=document.getElementById('oNote').value.trim();if(isNaN(act)||act<0){tt('Isi aktual',true);return}var diff=act-sys;lOp.push({id:Date.now(),date:new Date().toLocaleDateString('sv-SE'),ingredient:ingName,system:sys,actual:act,diff:diff,note:note});lsSet('pos_op',lOp);var ing=lI.find(function(i){return i.id===ingId});if(ing)ing.stock=act;saveIngs();cm('opModal');tt('Opname disimpan! Stok update.');rIC()}
+function sO(){var sel=document.getElementById('oIng');var ingId=parseInt(sel.value);var ingName=sel.options[sel.selectedIndex].text.split(' (')[0];var sys=parseFloat(sel.selectedOptions[0].dataset.stock);var act=parseFloat(document.getElementById('oAct').value);var note=document.getElementById('oNote').value.trim();if(isNaN(act)||act<0){tt('Isi aktual',true);return}var diff=act-sys;lOp.push({id:Date.now(),date:new Date().toLocaleDateString('sv-SE'),ingredient:ingName,system:sys,actual:act,diff:diff,note:note});lsSet('pos_op',lOp);var ing=lI.find(function(i){return i.id===ingId});if(ing){ing.stock=act;saveIngs();if(apiOn)aU('ingredients/'+ingId,{stock:act})}cm('opModal');tt('Opname disimpan! Stok update.');rIC()}
 function oWM(){var h='<div class="ml"><h2>Catat Waste</h2><div class="fg"><label>Bahan</label><select id="wIng" onchange="uWL()">';lI.forEach(function(ing){h+='<option value="'+ing.id+'" data-cost="'+(ing.cost||0)+'" data-unit="'+ing.unit+'">'+ing.name+' ('+ing.stock+' '+ing.unit+')</option>'});h+='</select></div><div class="fg"><label>Qty Terbuang</label><input type="number" id="wQty" placeholder="0" oninput="uWL()"></div><div class="fg"><label>Alasan</label><select id="wRsn"><option value="Expired">Expired</option><option value="Rusak">Rusak</option><option value="Tumpah">Tumpah</option><option value="Salah Buat">Salah Buat</option></select></div><div class="fg"><label>Kerugian (Rp)</label><input type="text" id="wLss" readonly style="font-weight:700;color:var(--dng)"></div><div class="ma"><button class="bs" onclick="cm(\'wModal\')">Batal</button><button class="bp" onclick="sW()">Simpan</button></div></div>';document.getElementById('wC').innerHTML=h;document.getElementById('wModal').classList.add('show')}
 function uWL(){var sel=document.getElementById('wIng');if(!sel)return;var cost=parseFloat(sel.selectedOptions[0]&&sel.selectedOptions[0].dataset?sel.selectedOptions[0].dataset.cost:0);var qty=parseFloat(document.getElementById('wQty').value)||0;var el=document.getElementById('wLss');if(el)el.value=rp(qty*cost)}
-function sW(){if(!lockSave('sW')){tt('Tunggu sebentar, masih diproses',true);return}var sel=document.getElementById('wIng');var ingId=parseInt(sel.value);var qty=parseFloat(document.getElementById('wQty').value);var reason=document.getElementById('wRsn').value;if(!qty||qty<=0){tt('Isi qty',true);unlockSave('sW');return}lW.push({id:Date.now(),date:new Date().toLocaleDateString('sv-SE'),ingredient_id:ingId,quantity:qty,reason:reason});lsSet('pos_w',lW);var ing=lI.find(function(i){return i.id===ingId});if(ing)ing.stock=parseFloat(ing.stock)-qty;saveIngs();cm('wModal');tt('Waste dicatat! Stok berkurang.');rIC();unlockSave('sW')}
+function sW(){if(!lockSave('sW')){tt('Tunggu sebentar, masih diproses',true);return}var sel=document.getElementById('wIng');var ingId=parseInt(sel.value);var qty=parseFloat(document.getElementById('wQty').value);var reason=document.getElementById('wRsn').value;if(!qty||qty<=0){tt('Isi qty',true);unlockSave('sW');return}lW.push({id:Date.now(),date:new Date().toLocaleDateString('sv-SE'),ingredient_id:ingId,quantity:qty,reason:reason});lsSet('pos_w',lW);var ing=lI.find(function(i){return i.id===ingId});if(ing){ing.stock=parseFloat(ing.stock)-qty;saveIngs();if(apiOn)aU('ingredients/'+ingId,{stock:ing.stock})}cm('wModal');tt('Waste dicatat! Stok berkurang.');rIC();unlockSave('sW')}
 function dW(id){showConfirm('Hapus?',function(){lW=lW.filter(function(w){return w.id!==id});lsSet('pos_w',lW);rIC();tt('Dihapus')})}
 function eR(id){var it=md.i.find(function(i){return i.id===id});if(!it)return;var ir=lRcp.filter(function(r){return r.menu_item_id==id});var h='<div class="ml"><h2>Resep: '+it.name+'</h2>';h+='<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">Bahan Saat Ini:</div>';if(!ir.length){h+='<div style="color:var(--dng);font-size:12px">Belum ada resep</div>'}else{ir.forEach(function(r){var ing=lI.find(function(i){return i.id==r.ingredient_id});if(ing){h+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--bdr)"><span style="flex:1;font-size:12px">'+ing.name+'</span><input type="number" value="'+r.quantity+'" style="width:60px;padding:4px;font-size:11px;text-align:center" onchange="uRQty('+r.id+',this.value,'+id+')"><span style="font-size:10px;color:var(--dim)">'+ing.unit+'</span><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dR('+r.id+','+id+')">x</button></div>'}})}h+='</div>';h+='<div style="background:var(--bg);border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">Tambah Bahan:</div><div style="display:flex;gap:4px"><select id="nRI" style="flex:1;padding:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;font-size:14px">';lI.forEach(function(ing){var ex=ir.find(function(r){return r.ingredient_id==ing.id});if(!ex){h+='<option value="'+ing.id+'">'+ing.name+' ('+ing.stock+' '+ing.unit+')</option>'}});h+='</select><input type="number" id="nRQ" placeholder="Qty" style="width:70px;padding:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;font-size:14px;text-align:center"><button class="bp" style="flex:0 0 auto;padding:8px 12px" onclick="aR('+id+')">+</button></div></div>';h+='<div class="ma"><button class="bs" onclick="cm(\'rcpModal\')">Tutup</button></div></div>';document.getElementById('rcpC').innerHTML=h;document.getElementById('rcpModal').classList.add('show')}
 function uRQty(rid,val,mid){var r=lRcp.find(function(x){return x.id==rid});var v=parseFloat(val);if(r&&!isNaN(v)&&v>0){r.quantity=v;saveRcp();tt('Qty resep diperbarui');eR(mid);if(apiOn)aU('recipes/'+rid,{quantity:v})}}
@@ -1509,7 +1513,8 @@ function doClockIn(){
   var tempId=Date.now();var nowIso=new Date().toISOString();
   var rec={id:tempId,emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso,clock_out:null};
   lAtt.push(rec);saveAtt();document.getElementById('absPin').value='';tt(emp.name+' clock-in berhasil');rAb();
-  if(apiOn){aP('attendance',{emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso}).then(function(r){if(r&&!r.error&&r.id){var idx=lAtt.findIndex(function(a){return a.id===tempId});if(idx>-1){lAtt[idx].id=r.id;saveAtt()}}})}
+  if(apiOn){aP('attendance',{emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso}).then(function(r){if(r&&!r.error&&r.id){var idx=lAtt.findIndex(function(a){return a.id===tempId});if(idx>-1){var oc=lAtt[idx].clock_out;lAtt[idx].id=r.id;saveAtt();if(oc)aU('attendance/'+r.id,{clock_out:oc})}}})}
+else{lOb.push({path:'attendance',payload:{emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso},ref:tempId,queued_at:Date.now()});saveOb()}
 }
 function doClockOut(){
   var id=document.getElementById('absEmp').value;var pin=document.getElementById('absPin').value.trim();var emp=findEmp(id);
