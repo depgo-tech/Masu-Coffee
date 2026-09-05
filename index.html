@@ -496,7 +496,7 @@ function syncBG(){
 // Sinkron instan saat app dibuka / layar kembali aktif + polling 12 detik
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},3000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
 function manualSync(){window._syncPausedUntil=0;window._syncing=false;tt('Menyinkronkan...');syncBG()}
-function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10;var llg=document.getElementById('loginLogo'),llt=document.getElementById('loginTitle');if(llg){if(st.sl_img)llg.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">';else llg.textContent=(st.sl||'M').charAt(0).toUpperCase()}if(llt)llt.textContent=st.sn||'MASU SPACE POS'}
+function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">'}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase()};if(fav&&st.sl_img)fav.href=st.sl_img}if(llt)llt.textContent=st.sn||'MASU SPACE POS'}
 var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
 function unlockSave(key){_busySave[key]=false}
