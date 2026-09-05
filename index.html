@@ -311,7 +311,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
         <div class="tg" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
         <div class="pt" id="pt">Dashboard</div>
       </div>
-      <div class="tb-r"><div class="ab off" id="ab"><div class="dt"></div><span>Local</span></div><div class="ck"><div id="ckT">--:--</div><div class="d" id="ckD">--</div></div></div>
+      <div class="tb-r"><button onclick="manualSync()" title="Sync sekarang" style="border:1px solid var(--bdr);background:#fff;border-radius:8px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--dim)" id="syncBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button><div class="ab off" id="ab"><div class="dt"></div><span>Local</span></div><div class="ck"><div id="ckT">--:--</div><div class="d" id="ckD">--</div></div></div>
     </div>
     <div class="ct" id="ct"></div>
   </div>
@@ -391,7 +391,7 @@ function pRp(el){return parseInt(((el&&el.value)||'').replace(/\D/g,''))||0}
 function tt(m,e){var t=document.getElementById('tt');t.textContent=m;t.className='tt3 show'+(e?' error':'');setTimeout(function(){t.className='tt3'},2200)}
 function ck(){var n=new Date();document.getElementById('ckT').textContent=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');document.getElementById('ckD').textContent=n.toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short'})}
 setInterval(ck,1000);ck();
-function aG(p){return Promise.race([fetch(A+'/'+p).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},8000)})]).catch(function(){return{error:'offline'}})}
+function aG(p){return Promise.race([fetch(A+'/'+p,{cache:'no-store'}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},8000)})]).catch(function(){return{error:'offline'}})}
 function aP(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},15000)})]).catch(function(){return{error:'offline'}})}
 function aU(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
 function aD(p){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'DELETE'}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
@@ -466,18 +466,37 @@ function syncBG(){
   aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rnd();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){mrg(lAtt,d);saveAtt();if(cv==='absensi')rAb()}});
-  aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});mrg(lHold,srv);saveHold();if(cv==='pos')rHL()}});
+  aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});var pending=lHold.filter(function(h){return h.id>1e11});lHold=srv.concat(pending);saveHold();if(cv==='pos')rHL()}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   // Backoff: kalau profit-distributions error 3x berturut-turut, jeda 5 menit (anti lag/spam 500)
-  if(Date.now()>_pdPause){aG('profit-distributions').then(function(d){if(d&&d.error){_pdFail++;if(_pdFail>=3){_pdPause=Date.now()+300000;_pdFail=0;tt('Sinkron bagi hasil dijeda 5 menit (server error)',true);return}}else{_pdFail=0}if(d&&!d.error&&Array.isArray(d)){var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(p){return !resetAt||!p.created_at||p.created_at>=resetAt});lPD=srv;savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}})}
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');if(!resetAt){lsSet('pos_reset_at',new Date().toISOString());resetAt=lsGet('pos_reset_at','')}var haveN={},haveT={};lO.forEach(function(o){haveN[o.order_number]=1;if(o.order&&o.order.created_at)haveT[o.order.created_at]=1});var added=0;d.forEach(function(o){if(haveN[o.order_number])return;var cts=o.order&&o.order.created_at;if(cts)srvCts[cts]=o.order_number;if(resetAt&&cts&&cts<resetAt)return;if(cts&&haveT[cts])return;if(cts)haveT[cts]=1;added++;lO.push({order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number})});if(added){dedupeOrders();lsSet('pos_orders',lO)}if(added&&cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC()}});
-  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var resetAt=lsGet('pos_reset_at','');var srv=d.filter(function(e){return !resetAt||!e.date||e.date>=resetAt.slice(0,10)}).map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});var n0=lE.length;mrg(lE,srv);if(lE.length!==n0){lsSet('pos_exp',lE);if(cv==='akuntansi')rAC()}}});
+  if(Date.now()>_pdPause){aG('profit-distributions').then(function(d){if(d&&d.error){_pdFail++;if(_pdFail>=3){_pdPause=Date.now()+300000;_pdFail=0;tt('Sinkron bagi hasil dijeda 5 menit (server error)',true);return}}else{_pdFail=0}if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var pending=lPD.filter(function(p){return p.id>1e11});lPD=d.concat(pending);savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}})}
+  // Transaksi & pengeluaran: server = cermin kebenaran (bukan cuma tambah-tambah).
+  // Kalau dihapus/reset di device lain, device ini otomatis ikut kosong di sync berikutnya.
+  // Data yang baru diinput di device INI sendiri dan belum sukses ke server tetap dipertahankan.
+  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){
+    if(lOb.some(function(x){return x.path==='reset-data'}))return;
+    var pendingRefs={};lOb.forEach(function(x){if(x.path==='order'&&x.ref)pendingRefs[x.ref]=1});
+    d.forEach(function(o){if(o.order&&o.order.created_at)srvCts[o.order.created_at]=o.order_number});
+    var fresh=d.map(function(o){return{order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number}});
+    var stillPending=lO.filter(function(o){return pendingRefs[o.order_number]});
+    lO=fresh.concat(stillPending);
+    dedupeOrders();lsSet('pos_orders',lO);
+    if(cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC();if(cv==='pos')renderKasirBar();
+  }});
+  aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){
+    if(lOb.some(function(x){return x.path==='reset-data'}))return;
+    var srv=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});
+    var pending=lE.filter(function(e){return e.id>1e11});
+    lE=srv.concat(pending);
+    lsSet('pos_exp',lE);if(cv==='akuntansi')rAC();
+  }});
      aG('settings').then(function(d){if(d&&!d.error&&d.sn){st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
 }
 // Sinkron instan saat app dibuka / layar kembali aktif + polling 12 detik
-function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},12000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncBG()})}}
-function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10}
+function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},8000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncBG()})}}
+function manualSync(){window._syncPausedUntil=0;window._syncing=false;tt('Menyinkronkan...');syncBG()}
+function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10;var llg=document.getElementById('loginLogo'),llt=document.getElementById('loginTitle');if(llg){if(st.sl_img)llg.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">';else llg.textContent=(st.sl||'M').charAt(0).toUpperCase()}if(llt)llt.textContent=st.sn||'MASU SPACE POS'}
 var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
 function unlockSave(key){_busySave[key]=false}
@@ -1511,7 +1530,6 @@ function resetTxns(){
       var doLocal=function(){
         ['pos_orders','pos_src_tx','pos_closed','pos_exp','pos_buys','pos_hold','pos_outbox','pos_cf','pos_pa','pos_re','pos_pd'].forEach(function(k){localStorage.removeItem(k)});
         lO=[];lST=[];lCl=[];lE=[];lBuy=[];lHold=[];lOb=[];lCF=[];lPa=[];lRe=[];lPD=[];
-        lsSet('pos_reset_at',new Date().toISOString());
         window._syncPausedUntil=Date.now()+8000;
         tt('Semua transaksi dihapus di semua device. Mulai dari 0.');rnd();
       };
