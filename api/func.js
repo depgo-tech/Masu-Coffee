@@ -4,6 +4,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
+  // Penting untuk konsistensi multi-device: jangan biarkan browser/CDN nge-cache
+  // respons API. Tanpa ini, device/browser tertentu bisa "macet" di data lama
+  // walau data di database sudah berubah.
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -243,7 +247,7 @@ export default async function handler(req, res) {
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
-      const { data, error } = await query.limit(500);
+      const { data, error } = await query.limit(1000);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
