@@ -4,29 +4,21 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept');
-  // Penting untuk konsistensi multi-device: jangan biarkan browser/CDN nge-cache
-  // respons API. Tanpa ini, device/browser tertentu bisa "macet" di data lama
-  // walau data di database sudah berubah.
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({ error: 'Server env vars not set (SUPABASE_URL / SUPABASE_SERVICE_KEY)' });
   }
-
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   let body = {};
   if (req.body) {
-    if (typeof req.body === 'string') {
-      try { body = JSON.parse(req.body); } catch (e) { body = {}; }
-    } else {
-      body = req.body;
-    }
+    if (typeof req.body === 'string') { try { body = JSON.parse(req.body); } catch (e) { body = {}; } }
+    else body = req.body;
   }
 
   try {
@@ -36,7 +28,6 @@ export default async function handler(req, res) {
     const resource = parts[0] || '';
     const id = parts[1];
 
-    // Konversi tanggal lokal (WIB) ke rentang ISO UTC yang benar
     const toWibStart = (d) => new Date(d + 'T00:00:00+07:00').toISOString();
     const toWibEnd = (d) => {
       const t = new Date(d + 'T00:00:00+07:00');
@@ -44,9 +35,7 @@ export default async function handler(req, res) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA: hapus semua transaksi di cloud (dipanggil "Mulai dari 0") =====
-    // Chunk 500 per delete supaya tidak kena batas PostgREST (delete ribuan baris
-    // sekaligus bisa diam-diam gagal → data "bangkit lagi" setelah reset).
+    // ===== RESET DATA =====
     if (resource === 'reset-data' && req.method === 'POST') {
       const results = {};
       const wipe = async (table, col) => {
@@ -70,7 +59,7 @@ export default async function handler(req, res) {
       await wipe('profit_distribution_items', 'id');
       await wipe('profit_distributions', 'id');
       await wipe('stock_transactions', 'id');
-      await wipe('journal_entries', 'id');
+      await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() });
       return res.status(200).json({ success: true, results });
     }
 
@@ -98,11 +87,7 @@ export default async function handler(req, res) {
         supabase.from('menu_item_addons').select('*'),
       ]);
       return res.status(200).json({
-        c: cats.data || [],
-        i: items.data || [],
-        v: vars.data || [],
-        a: ads.data || [],
-        ia: ia.data || [],
+        c: cats.data || [], i: items.data || [], v: vars.data || [], a: ads.data || [], ia: ia.data || [],
       });
     }
 
@@ -125,7 +110,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // Cascade: menu di kategori ini + varian/addon/resepnya ikut terhapus
         const { data: itemsInCat } = await supabase.from('menu_items').select('id').eq('category_id', id);
         const itemIds = (itemsInCat || []).map(i => i.id);
         if (itemIds.length) {
@@ -154,7 +138,6 @@ export default async function handler(req, res) {
         return res.status(200).json(data[0] || { success: true });
       }
       if (req.method === 'DELETE' && id) {
-        // Cascade: varian, addon link, resep ikut terhapus
         await supabase.from('menu_variants').delete().eq('menu_item_id', id);
         await supabase.from('menu_item_addons').delete().eq('menu_item_id', id);
         await supabase.from('recipes').delete().eq('menu_item_id', id);
@@ -171,8 +154,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'order and a non-empty items array are required' });
       }
 
-      // IDEMPOTENSI: created_at identik = sudah pernah masuk. Balikin yang lama,
-      // JANGAN bikin baru. Kirim-ulang dari antrian tidak pernah jadi duplikat.
+      // IDEMPOTENSI: created_at identik = order sudah pernah masuk → balikin yang lama
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
@@ -195,14 +177,8 @@ export default async function handler(req, res) {
         }
 
         const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
-        if (!result.error) {
-          newOrder = result.data;
-          orderErr = null;
-          break;
-        }
+        if (!result.error) { newOrder = result.data; orderErr = null; break; }
         orderErr = result.error;
-        // 23505 = unique violation. Kalau bentrok created_at (constraint DB),
-        // berarti order sudah pernah masuk — ambil yang lama, bukan error.
         if (result.error.code === '23505' && order.created_at) {
           const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
           if (existing) {
@@ -216,7 +192,11 @@ export default async function handler(req, res) {
 
       const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
-      if (itemsErr) return res.status(500).json({ error: itemsErr.message });
+      if (itemsErr) {
+        // FIX: jangan tinggalkan order kosong (yatim) bila insert items gagal
+        await supabase.from('orders').delete().eq('id', newOrder.id);
+        return res.status(500).json({ error: itemsErr.message });
+      }
 
       if (table_id) {
         await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() }).eq('id', table_id);
@@ -241,13 +221,12 @@ export default async function handler(req, res) {
 
     // ===== TRANSACTIONS =====
     if (resource === 'transactions' && req.method === 'GET') {
-      // Filter tanggal dari frontend = tanggal lokal WIB → diubah ke rentang UTC benar
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
-      const { data, error } = await query.limit(1000);
+      const { data, error } = await query.limit(3000); // FIX: laporan kuartal/tahunan butuh rentang lebih besar
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
@@ -260,7 +239,6 @@ export default async function handler(req, res) {
       return res.status(200).json(data[0] || { success: true });
     }
     if (resource === 'transactions' && req.method === 'DELETE' && id) {
-      // Hapus order (pesanan batal): stok bahan dikembalikan dulu
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -281,7 +259,7 @@ export default async function handler(req, res) {
     if (resource === 'dashboard' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
-      let query = supabase.from('orders').select('id, total, order_type, created_at');
+      let query = supabase.from('orders').select('id, total, order_type, created_at').neq('status', 'cancelled'); // FIX: order batal tak dihitung
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
       const { data: orders, error } = await query;
@@ -417,29 +395,6 @@ export default async function handler(req, res) {
         const { error } = await supabase.from('holds').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
-      }
-    }
-
-    // ===== SHIFTS (legacy — tidak dipakai frontend, biarkan) =====
-    if (resource === 'shifts') {
-      if (req.method === 'GET') {
-        const openOnly = url.searchParams.get('open');
-        let q = supabase.from('shifts').select('*').order('opened_at', { ascending: false });
-        if (openOnly) q = q.eq('status', 'open');
-        const { data, error } = await q.limit(50);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
-      }
-      if (req.method === 'POST') {
-        if (!body.shift_label) return res.status(400).json({ error: 'shift_label is required' });
-        const { data, error } = await supabase.from('shifts').insert(body).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0]);
-      }
-      if (req.method === 'PUT' && id) {
-        const { data, error } = await supabase.from('shifts').update(body).eq('id', id).select();
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0] || { success: true });
       }
     }
 
