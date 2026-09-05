@@ -494,7 +494,7 @@ function syncBG(){
      aG('settings').then(function(d){if(d&&!d.error&&d.sn){st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
 }
 // Sinkron instan saat app dibuka / layar kembali aktif + polling 12 detik
-function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},8000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')syncBG()})}}
+function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},3000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
 function manualSync(){window._syncPausedUntil=0;window._syncing=false;tt('Menyinkronkan...');syncBG()}
 function aSt(){document.getElementById('sbN').textContent=st.sn||'MASU SPACE';var ll=document.getElementById('sbL');var fav=document.getElementById('favicon');if(st.sl_img){ll.innerHTML='<img src="'+st.sl_img+'">';if(fav)fav.href=st.sl_img}else{ll.textContent=(st.sl||'M').charAt(0).toUpperCase();if(fav)fav.href=''}if(!st.tr)st.tr=0.10;var llg=document.getElementById('loginLogo'),llt=document.getElementById('loginTitle');if(llg){if(st.sl_img)llg.innerHTML='<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">';else llg.textContent=(st.sl||'M').charAt(0).toUpperCase()}if(llt)llt.textContent=st.sn||'MASU SPACE POS'}
 var _busySave={};
@@ -725,11 +725,12 @@ function dP(){
   tt('Order tersimpan!');
   sR(localNum,op,cartSnap,change,recv,method);
   var ip=cartSnap.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
-  aP('order',{order:op,items:ip}).then(function(result){
+    aP('order',{order:op,items:ip}).then(function(result){
     if(result&&!result.error&&result.order_number){
       rec.order_number=result.order_number;
       lsSet('pos_orders',lO);
       tt(result.duplicate?'Tersinkron (order sudah ada di cloud)':'Tersinkron ke Cloud!');
+      syncBG();
     }else{
       lOb.push({path:'order',payload:{order:op,items:ip},ref:localNum,queued_at:Date.now()});saveOb();
       tt('Disimpan lokal - otomatis sync saat online',true);
@@ -960,8 +961,9 @@ function sE2(d,src,jenis,method,amt,desc){
   if(cv==='kas')rKas();
   if(cv==='pos')renderKasirBar();
   if(cv==='akuntansi')rAC();
-  if(apiOn){aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id}).then(function(r){
+    if(apiOn){aP('expenses',{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id}).then(function(r){
     if(r&&!r.error&&r.id){var idx=lE.findIndex(function(e){return e.id===tempId});if(idx>-1){lE[idx].id=r.id;lsSet('pos_exp',lE)}}
+    syncBG();
     unlockSave('sE');
   })}else{unlockSave('sE')}
 }
