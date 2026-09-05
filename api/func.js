@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA =====
+    // ===== RESET DATA (hapus semua transaksi di cloud + pasang tanda reset) =====
     if (resource === 'reset-data' && req.method === 'POST') {
       const results = {};
       const wipe = async (table, col) => {
@@ -59,7 +59,17 @@ export default async function handler(req, res) {
       await wipe('profit_distribution_items', 'id');
       await wipe('profit_distributions', 'id');
       await wipe('stock_transactions', 'id');
+      await wipe('cash_transactions', 'id');
+      await wipe('kas_closures', 'id');
+      await wipe('payables', 'id');
+      await wipe('receivables', 'id');
+      await wipe('assets', 'id');
+      await wipe('stock_buys', 'id');
+      await wipe('stock_opname', 'id');
+      await wipe('waste', 'id');
       await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() });
+      // TANDA RESET: device lain membersihkan data lokalnya saat melihat timestamp ini berubah
+      await supabase.from('settings').update({ last_reset_at: new Date().toISOString() }).eq('id', 1);
       return res.status(200).json({ success: true, results });
     }
 
@@ -193,7 +203,7 @@ export default async function handler(req, res) {
       const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
       if (itemsErr) {
-        // FIX: jangan tinggalkan order kosong (yatim) bila insert items gagal
+        // Jangan tinggalkan order kosong bila insert items gagal
         await supabase.from('orders').delete().eq('id', newOrder.id);
         return res.status(500).json({ error: itemsErr.message });
       }
@@ -226,7 +236,7 @@ export default async function handler(req, res) {
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
-      const { data, error } = await query.limit(3000); // FIX: laporan kuartal/tahunan butuh rentang lebih besar
+      const { data, error } = await query.limit(3000);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json(data);
     }
@@ -239,6 +249,7 @@ export default async function handler(req, res) {
       return res.status(200).json(data[0] || { success: true });
     }
     if (resource === 'transactions' && req.method === 'DELETE' && id) {
+      const { data: ord } = await supabase.from('orders').select('order_number').eq('id', id).maybeSingle();
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -251,6 +262,8 @@ export default async function handler(req, res) {
         }
       }
       await supabase.from('order_items').delete().eq('order_id', id);
+      // Mutasi kas dari penjualan ini juga dihapus (biar Kas & Bank ikut koreksi di semua device)
+      if (ord?.order_number) await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + ord.order_number);
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true });
@@ -259,7 +272,7 @@ export default async function handler(req, res) {
     if (resource === 'dashboard' && req.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
-      let query = supabase.from('orders').select('id, total, order_type, created_at').neq('status', 'cancelled'); // FIX: order batal tak dihitung
+      let query = supabase.from('orders').select('id, total, order_type, created_at').neq('status', 'cancelled');
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
       const { data: orders, error } = await query;
@@ -511,6 +524,176 @@ export default async function handler(req, res) {
       }
       if (req.method === 'DELETE' && id) {
         const { error } = await supabase.from('expenses').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== CASH TRANSACTIONS (Kas & Bank) =====
+    if (resource === 'cash-transactions') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('cash_transactions').select('*').order('ts', { ascending: false }).limit(5000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json((data || []).map(r => ({ id: r.id, date: r.tx_date, ts: r.ts, src: r.src, type: r.type, cat: r.cat, desc: r.descr, amount: parseFloat(r.amount), m: r.m || undefined })));
+      }
+      if (req.method === 'POST') {
+        const rows = Array.isArray(body) ? body : [body];
+        const ins = [];
+        for (const t of rows) {
+          if (!t.src || !t.type || t.amount == null) return res.status(400).json({ error: 'src, type, amount are required' });
+          if (t.ref) {
+            const { data: ex } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
+            if (ex && ex.length) continue;
+          }
+          ins.push({ tx_date: t.date, ts: t.ts || new Date().toISOString(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null });
+        }
+        if (!ins.length) return res.status(200).json({ success: true, skipped: true });
+        const { data, error } = await supabase.from('cash_transactions').insert(ins).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(Array.isArray(body) ? data : data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('cash_transactions').delete().eq('ref', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== KAS CLOSURES (Tutup Kasir) =====
+    if (resource === 'kas-closures') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('kas_closures').select('*').order('created_at', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.close_date || !body.src) return res.status(400).json({ error: 'close_date and src are required' });
+        const { data, error } = await supabase.from('kas_closures').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('kas_closures').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== PAYABLES =====
+    if (resource === 'payables') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('payables').select('*').order('p_date', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.p_date || body.amount == null) return res.status(400).json({ error: 'p_date and amount are required' });
+        const { data, error } = await supabase.from('payables').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('payables').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('payables').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== RECEIVABLES =====
+    if (resource === 'receivables') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('receivables').select('*').order('r_date', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.r_date || body.amount == null) return res.status(400).json({ error: 'r_date and amount are required' });
+        const { data, error } = await supabase.from('receivables').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('receivables').update(body).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('receivables').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== ASSETS =====
+    if (resource === 'assets') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('assets').select('*').order('created_at', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.name || body.value == null) return res.status(400).json({ error: 'name and value are required' });
+        const { data, error } = await supabase.from('assets').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('assets').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
+
+    // ===== STOCK BUYS (pembelian bahan via pengeluaran) =====
+    if (resource === 'stock-buys') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('stock_buys').select('*').order('b_date', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.b_date) return res.status(400).json({ error: 'b_date is required' });
+        const { data, error } = await supabase.from('stock_buys').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+    }
+
+    // ===== STOCK OPNAME =====
+    if (resource === 'stock-opname') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('stock_opname').select('*').order('date', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.date) return res.status(400).json({ error: 'date is required' });
+        const { data, error } = await supabase.from('stock_opname').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+    }
+
+    // ===== WASTE =====
+    if (resource === 'waste') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase.from('waste').select('*').order('date', { ascending: false }).limit(2000);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data);
+      }
+      if (req.method === 'POST') {
+        if (!body.date || body.quantity == null) return res.status(400).json({ error: 'date and quantity are required' });
+        const { data, error } = await supabase.from('waste').insert(body).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0]);
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('waste').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
