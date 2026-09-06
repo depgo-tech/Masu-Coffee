@@ -1213,6 +1213,9 @@ function rAC(){
   if(aT==='dashboard'){
     var f=calcFinancials(m.start,m.end);
     var h='<div class="pnl"><h3>Ringkasan '+m.label+'</h3><div class="pnl-r"><span class="lb">Total Penjualan</span><span class="vl pos">'+rp(f.totalSales)+'</span></div><div class="pnl-r"><span class="lb">HPP</span><span class="vl neg">'+rp(f.cogs)+'</span></div><div class="pnl-r"><span class="lb">Laba Kotor</span><span class="vl '+(f.grossProfit>=0?'pos':'neg')+'">'+rp(f.grossProfit)+'</span></div><div class="pnl-r"><span class="lb">Total Pengeluaran</span><span class="vl neg">'+rp(f.totalExp)+'</span></div><div class="pnl-r t"><span class="lb">Laba Bersih</span><span class="vl '+(f.netProfit>=0?'pos':'neg')+'">'+rp(f.netProfit)+'</span></div></div>';
+        var kasNow=0;SRCS.forEach(function(s){kasNow+=saldoSrc(s.id)});
+    var setoran=0;lST.forEach(function(t){if(t.cat==='modal'&&t.type==='in')setoran+=parseFloat(t.amount||0)});
+    h+='<div class="pnl"><h3>Posisi Modal & Kas</h3><div class="pnl-r"><span class="lb">Setoran Modal & Saldo Awal (bukan pendapatan)</span><span class="vl">'+rp(setoran)+'</span></div><div class="pnl-r"><span class="lb">Kas & Bank tersisa sekarang</span><span class="vl pos">'+rp(kasNow)+'</span></div><div class="pnl-r"><span class="lb">Kekayaan bersih (modal − rugi)</span><span class="vl '+(setoran+f.netProfit>=0?'pos':'neg')+'">'+rp(setoran+f.netProfit)+'</span></div><p style="font-size:11px;color:var(--dim);margin-top:6px">Laba Rugi minus berarti beban bulan ini lebih besar dari penjualan — selisihnya otomatis ditutup oleh modal. Modal sengaja TIDAK dihitung sebagai pendapatan agar Laba Rugi tetap jujur. Rincian lengkap ada di tab Neraca.</p></div>';
     h+='<div class="pnl"><h3>Pengeluaran per Akun</h3>';
     var accKeys=Object.keys(f.byAccount);
     if(!accKeys.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Belum ada pengeluaran bulan ini</div>'}
