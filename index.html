@@ -572,7 +572,7 @@ function doLogin(){
   var pk=String(st.pinKaryawan==null?'':st.pinKaryawan).trim();
   var pf=String(st.pinFinance==null?'5678':st.pinFinance).trim();
   role=null;
-  if(pin&&pin===pa){role='admin'}
+  if(pin&&pin===pa){role='admin';window.adminArea=loginMode;try{sessionStorage.setItem('pos_area',loginMode)}catch(e){}}
   else if(loginMode==='fin'&&pin&&pin===pf){role='finance'}
   else if(loginMode==='pos'&&pin&&pin===pk){role='karyawan'}
   else{document.getElementById('loginErr').textContent=(loginMode==='fin'?'PIN salah untuk area Keuangan':'PIN salah untuk area Kasir');document.getElementById('loginPin').value='';return}
@@ -586,10 +586,10 @@ function doLogin(){
   startPolling();
 }
 function doLogout(){role=null;try{sessionStorage.removeItem('pos_role')}catch(e){}if(window._pollT){clearInterval(window._pollT);window._pollT=null}showLogin()}
-function applyRole(){document.querySelectorAll('[data-acc]').forEach(function(el){el.style.display=el.dataset.acc.split(' ').indexOf(role)>-1?'':'none'})}
+function applyRole(){document.querySelectorAll('[data-acc]').forEach(function(el){var roles=el.dataset.acc.split(' ');var show=roles.indexOf(role)>-1;if(role==='admin'){var areaRoles=(window.adminArea==='fin')?['finance','admin']:['karyawan','admin'];show=roles.some(function(r){return areaRoles.indexOf(r)>-1})}el.style.display=show?'':'none'})}
 function checkSession(){
   var r=null;try{r=sessionStorage.getItem('pos_role')}catch(e){}
-  if(r){role=r;document.getElementById('loginScreen').classList.remove('show');applyRole();cv=(role==='karyawan')?'pos':(role==='finance')?'kas':'dashboard';nav(cv);startPolling();return true}
+  if(r){role=r;try{window.adminArea=sessionStorage.getItem('pos_area')||'pos'}catch(e){window.adminArea='pos'};document.getElementById('loginScreen').classList.remove('show');applyRole();cv=(role==='karyawan')?'pos':(role==='finance')?'kas':(window.adminArea==='fin')?'kas':'dashboard';nav(cv);startPolling();return true}
   return false;
 }
 function toggleSidebar(){var sb=document.getElementById('sb');var ov=document.getElementById('sbOv');if(window.innerWidth<=1024){sb.classList.toggle('show');ov.classList.toggle('show');}else{sb.classList.toggle('col');}}
