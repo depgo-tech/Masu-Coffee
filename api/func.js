@@ -534,7 +534,7 @@ export default async function handler(req, res) {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('cash_transactions').select('*').order('ts', { ascending: false }).limit(5000);
         if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json((data || []).map(r => ({ id: r.id, date: r.tx_date, ts: r.ts, src: r.src, type: r.type, cat: r.cat, desc: r.descr, amount: parseFloat(r.amount), m: r.m || undefined })));
+        return res.status(200).json((data || []).map(r => ({ id: r.id, date: r.tx_date, ts: r.ts, src: r.src, type: r.type, cat: r.cat, desc: r.descr, amount: parseFloat(r.amount), m: r.m || undefined, investor_id: r.investor_id || null })));
       }
       if (req.method === 'POST') {
         const rows = Array.isArray(body) ? body : [body];
@@ -545,7 +545,7 @@ export default async function handler(req, res) {
             const { data: ex } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
             if (ex && ex.length) continue;
           }
-          ins.push({ tx_date: t.date, ts: t.ts || new Date().toISOString(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null });
+          ins.push({ tx_date: t.date, ts: t.ts || new Date().toISOString(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null, investor_id: t.investor_id || null });
         }
         if (!ins.length) return res.status(200).json({ success: true, skipped: true });
         const { data, error } = await supabase.from('cash_transactions').insert(ins).select();
