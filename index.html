@@ -360,7 +360,7 @@ var lAst=lsGet('pos_assets',[]);
 var lCl=lsGet('pos_closed',[]);
 var lBuy=lsGet('pos_buys',[]);
 var lOb=lsGet('pos_outbox',[]);
-var kFrom='',kTo='',kSrc='',exFrom='',exTo='',roDate='',lp={preset:'7'},exCtx='admin',srvCts={},discVal='',discType='amount',_pdFail=0,_pdPause=0;
+var kFrom='',kTo='',kSrc='',exFrom='',exTo='',roDate='',lp={preset:'7'},lpFrom='',lpTo='',pnlFromV='',pnlToV='',pnlHas=false,exCtx='admin',srvCts={},discVal='',discType='amount',_pdFail=0,_pdPause=0;
 function saveST(){lsSet('pos_src_tx',lST)}
 function saveAst(){lsSet('pos_assets',lAst)}
 function saveCl(){lsSet('pos_closed',lCl)}
@@ -490,9 +490,9 @@ function syncBG(){
   if(window._syncing)return;
   if(window._syncPausedUntil&&Date.now()<window._syncPausedUntil)return;
   window._syncing=true;setTimeout(function(){window._syncing=false},10000);
-  aG('menu').then(function(d){if(d&&!d.error&&d.i){md={c:d.c||[],i:d.i||[],v:d.v||[],a:d.a||[],ia:d.ia||[]};saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rnd();}});
-  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){lI=d;saveIngs();rnd();}});
-  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rnd();}});
+  aG('menu').then(function(d){if(d&&!d.error&&d.i){md={c:d.c||[],i:d.i||[],v:d.v||[],a:d.a||[],ia:d.ia||[]};saveMenu();apiOn=true;document.getElementById('ab').innerHTML='<div class="dt"></div><span>Online</span>';document.getElementById('ab').className='ab on';flushOb();rndSafe();}});
+  aG('ingredients').then(function(d){if(d&&!d.error&&Array.isArray(d)){lI=d;saveIngs();rndSafe();}});
+  aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rndSafe();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
   // Absensi: merge per-record (clock-out dari device lain ikut ter-update)
   aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){d.forEach(function(s){var ix=lAtt.findIndex(function(a){return a.id===s.id});if(ix>-1)lAtt[ix]=s;else lAtt.push(s)});saveAtt();if(cv==='absensi')rAb()}});
@@ -604,6 +604,7 @@ function nav(v){
   document.getElementById('pt').textContent=t[v]||v;rnd();closeSidebar();
 }
 function rnd(){var ae=document.activeElement;if(ae&&(ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT'))return;var c=document.getElementById('ct');c.innerHTML='';if(cv==='dashboard')rD();else if(cv==='pos')rP();else if(cv==='riwayat')rRO();else if(cv==='produk')rPr();else if(cv==='kas')rKas();else if(cv==='stok')rSt();else if(cv==='akuntansi')rA();else if(cv==='laporan')rL();else if(cv==='absensi')rAb();else if(cv==='settings')rSe()}
+function rndSafe(){if(['dashboard','pos','produk','stok'].indexOf(cv)>-1)rnd()}
 
 // ===== DASHBOARD PRODUK =====
 function rD(){
@@ -1248,8 +1249,8 @@ function rAC(){
     if(f.otherTotal>0){h+='<div class="pnl-r"><span class="lb">Beban Lain-lain</span><span class="vl neg">- '+rp(f.otherTotal)+'</span></div>'}
     h+='<div class="pnl-r t"><span class="lb">Laba Bersih</span><span class="vl '+(f.netProfit>=0?'pos':'neg')+'">'+rp(f.netProfit)+dLabel(delta(f.netProfit,pf.netProfit))+'</span></div>';
     h+='<div class="pnl-r"><span class="lb">Margin Laba Bersih</span><span class="vl">'+f.margin.toFixed(1)+'%</span></div></div>';
-    h+='<div class="df"><label>Custom Periode:</label><input type="date" id="pnlFrom" value="'+m.start+'"><label>s/d</label><input type="date" id="pnlTo" value="'+m.end+'"><button onclick="rPnlCustom()">Tampilkan</button></div><div id="pnlCustomResult"></div>';
-    el.innerHTML=h;
+       h+='<div class="df"><label>Custom Periode:</label><input type="date" id="pnlFrom" value="'+(pnlFromV||m.start)+'"><label>s/d</label><input type="date" id="pnlTo" value="'+(pnlToV||m.end)+'"><button onclick="rPnlCustom()">Tampilkan</button></div><div id="pnlCustomResult"></div>';
+    el.innerHTML=h;if(pnlHas)rPnlCustom();
   }else if(aT==='neraca'){
     var kas=0;SRCS.forEach(function(s){kas+=saldoSrc(s.id)});
     var piutang=lRe.filter(function(r){return r.status!=='paid'}).reduce(function(s,r){return s+(parseFloat(r.amount)-parseFloat(r.received_amount||0))},0);
@@ -1370,6 +1371,7 @@ function dAst(id){showConfirm('Hapus aset ini?',function(){lAst=lAst.filter(func
 function rPnlCustom(){
   var from=document.getElementById('pnlFrom').value,to=document.getElementById('pnlTo').value;
   if(!from||!to)return;
+  pnlFromV=from;pnlToV=to;pnlHas=true;
   var f=calcFinancials(from,to);
   var h='<div class="pnl"><h3>Periode Custom: '+from+' s/d '+to+'</h3><div class="pnl-r"><span class="lb">Total Penjualan</span><span class="vl pos">'+rp(f.totalSales)+'</span></div><div class="pnl-r"><span class="lb">HPP</span><span class="vl neg">- '+rp(f.cogs)+'</span></div><div class="pnl-r t"><span class="lb">Laba Kotor</span><span class="vl '+(f.grossProfit>=0?'pos':'neg')+'">'+rp(f.grossProfit)+'</span></div><div class="pnl-r"><span class="lb">Total Beban Operasional</span><span class="vl neg">- '+rp(f.operatingTotal)+'</span></div><div class="pnl-r t"><span class="lb">Laba Bersih</span><span class="vl '+(f.netProfit>=0?'pos':'neg')+'">'+rp(f.netProfit)+'</span></div><div class="pnl-r"><span class="lb">Margin</span><span class="vl">'+f.margin.toFixed(1)+'%</span></div></div>';
   document.getElementById('pnlCustomResult').innerHTML=h;
@@ -1405,8 +1407,8 @@ function rL(){
   h+='<div class="df" style="background:var(--bg2);border:1px solid var(--bdr);border-radius:10px;padding:14px;gap:14px;align-items:flex-end">';
   h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">Periode</label><select id="lPreset" onchange="lpChange()"><option value="today">Hari Ini</option><option value="7">7 Hari</option><option value="30">30 Hari</option><option value="month">Bulan Ini</option><option value="q1">Kuartal 1 (Jan–Mar)</option><option value="q2">Kuartal 2 (Apr–Jun)</option><option value="q3">Kuartal 3 (Jul–Sep)</option><option value="q4">Kuartal 4 (Okt–Des)</option><option value="custom">Custom</option></select></div>';
   h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">Tahun (kuartal)</label><input type="number" id="lYear" value="'+y+'" style="width:90px;padding:10px;background:var(--bg2);border:1px solid var(--bdr);border-radius:6px" onchange="lpChange()"></div>';
-  h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">Dari</label><input type="date" id="dF" value="'+wa+'" onchange="lp.preset=\'custom\';document.getElementById(\'lPreset\').value=\'custom\';lpR()"></div>';
-  h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">s/d</label><input type="date" id="dT3" value="'+td+'" onchange="lp.preset=\'custom\';document.getElementById(\'lPreset\').value=\'custom\';lpR()"></div>';
+    h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">Dari</label><input type="date" id="dF" value="'+(lpFrom||wa)+'" onchange="lp.preset=\'custom\';document.getElementById(\'lPreset\').value=\'custom\';lpR()"></div>';
+  h+='<div><label style="display:block;font-size:10px;color:var(--dim);font-weight:700;text-transform:uppercase;margin-bottom:4px">s/d</label><input type="date" id="dT3" value="'+(lpTo||td)+'" onchange="lp.preset=\'custom\';document.getElementById(\'lPreset\').value=\'custom\';lpR()"></div>';
   h+='<button onclick="lpR()">Tampilkan</button></div>';
   h+='<div class="rc-c" id="lSum" style="margin-top:16px"></div>';
   h+='<div class="pnl"><h3>Grafik Penjualan</h3><div id="lChart"></div></div></div>';
@@ -1424,11 +1426,13 @@ function lpChange(){
   else if(p==='month'){var m=monthRange(0);f=m.start;t=m.end}
   else if(p==='q1'||p==='q2'||p==='q3'||p==='q4'){var r=qRange(y,parseInt(p[1]));f=r.start;t=r.end}
   else{lpR();return}
+   lpFrom=f;lpTo=t;
   document.getElementById('dF').value=f;document.getElementById('dT3').value=t;
   lpR();
 }
 function lpR(){
   var from=document.getElementById('dF').value,to=document.getElementById('dT3').value;
+  lpFrom=from;lpTo=to;
   var f=lO.filter(function(o){var d=o.order.created_at?dLocal(o.order.created_at):'';return(!from||d>=from)&&(!to||d<=to)});
   var ts=f.reduce(function(s,o){return s+parseFloat(o.order.total||0)},0);
   var avg=f.length?ts/f.length:0;
