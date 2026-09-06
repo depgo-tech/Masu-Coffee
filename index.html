@@ -596,7 +596,8 @@ function toggleSidebar(){var sb=document.getElementById('sb');var ov=document.ge
 function closeSidebar(){document.getElementById('sb').classList.remove('show');document.getElementById('sbOv').classList.remove('show');}
 function nav(v){
   var ok={karyawan:['pos','riwayat','dashboard','produk','stok','laporan','absensi'],finance:['kas','akuntansi','stok','laporan','absensi']}[role];
-  if(ok&&ok.indexOf(v)===-1)v=ok[0];
+  if(role==='admin')ok=(window.adminArea==='fin')?['kas','akuntansi','stok','laporan','absensi','settings']:['pos','riwayat','dashboard','produk','stok','laporan','absensi','settings'];
+  if(ok&&ok.indexOf(v)===-1)v=(window.adminArea==='fin'&&role==='admin')?'kas':ok[0];
   cv=v;
   document.querySelectorAll('.sb-i').forEach(function(i){i.classList.toggle('act',i.dataset.nav===v)});
   var t={dashboard:'Dashboard',pos:'Penjualan',riwayat:'Riwayat Order',produk:'Produk',kas:'Kas & Bank',stok:'Inventory',akuntansi:'Akuntansi',laporan:'Laporan Penjualan',absensi:'Absensi',settings:'Pengaturan'};
