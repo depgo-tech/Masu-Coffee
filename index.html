@@ -530,7 +530,7 @@ function syncBG(){
   aG('waste').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lW.filter(function(w){return w.id>1e11});lW=d.map(function(r){return{id:r.id,date:r.date,ingredient_id:r.ingredient_id,quantity:parseFloat(r.quantity),reason:r.reason}}).concat(pend);lsSet('pos_w',lW);if(cv==='stok')rIC();}});
   aG('stock-buys').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lBuy.filter(function(b){return b.id>1e11});lBuy=d.map(function(r){return{id:r.id,date:r.b_date,ing_id:r.ing_id,ing_name:r.ing_name,qty:parseFloat(r.qty),unit:r.unit,amount:parseFloat(r.amount),src:r.src}}).concat(pend);saveBuy();}});
   // Settings + TANDA RESET: device lain membersihkan transaksi lokalnya saat tanda berubah
-  aG('settings').then(function(d){if(d&&!d.error&&d.sn){var lr=d.last_reset_at||'';if(lr&&lr!==lsGet('pos_last_reset','')){lsSet('pos_last_reset',lr);wipeLocalTx();rnd();tt('Sinkron reset: transaksi lokal dibersihkan')}st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
+  aG('settings').then(function(d){if(d&&!d.error&&d.sn){var lr=d.last_reset_at||'';if(lr&&lr!==lsGet('pos_last_reset','')){if(lsSet('pos_last_reset',lr)){wipeLocalTx();rnd();tt('Sinkron reset: transaksi lokal dibersihkan')}}st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
 }
 // Sinkron instan saat app dibuka / layar kembali aktif + polling
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},6000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
@@ -639,14 +639,20 @@ function lastCloseTs(){
   return t;
 }
 function ksSum(){
-  var lc=lastCloseTs();
+  var td=dLocal(new Date().toISOString());
   var s={cash:0,qris:0,card:0,exp:0,bk:0,laci:saldoSrc('cash_kasir')};
+  lO.forEach(function(o){
+    var d=o.order&&o.order.created_at?dLocal(o.order.created_at):'';
+    if(d!==td)return;
+    var m=o.order.payment_method||'cash';
+    if(m==='cash')s.cash+=parseFloat(o.order.total||0);
+    else if(m==='card')s.card+=parseFloat(o.order.total||0);
+    else s.qris+=parseFloat(o.order.total||0);
+    if(m!=='cash')s.bk+=parseFloat(o.order.total||0);
+  });
   lST.forEach(function(t){
-    if(lc&&(t.ts||t.date)<=lc)return;
-    if(t.cat==='sale_cash'&&t.type==='in')s.cash+=parseFloat(t.amount||0);
-    else if(t.cat==='sale_noncash'&&t.type==='in'){if(t.m==='card')s.card+=parseFloat(t.amount||0);else s.qris+=parseFloat(t.amount||0)}
+    if(t.date!==td)return;
     if(t.src==='cash_kasir'&&t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))s.exp+=parseFloat(t.amount||0);
-    if(t.src==='bank_kecil'&&t.cat==='sale_noncash'&&t.type==='in')s.bk+=parseFloat(t.amount||0);
   });
   return s;
 }
@@ -936,7 +942,7 @@ function sKasTutup(){
   var recId=Date.now()+3;
   var rec={id:recId,date:date,src:src,tin:ti,tout:to2,expected:exp,counted:counted,variance:vari,moved_to:move,moved_amount:movedAmt,created_at:nowIso};
   lCl.push(rec);saveST();saveCl();
-  qOb('kas-closures',{close_date:date,src:src,tin:ti,tout:to2,expected:exp,counted:counted,variance:vari,moved_to:move||null,moved_amount:movedAmt},'closure',recId);
+   qOb('kas-closures',{close_date:date,src:src,tin:ti,tout:to2,expected:exp,counted:counted,variance:vari,moved_to:move||null,moved_amount:movedAmt,created_at:nowIso},'closure',recId);
   var h='<div class="ml" style="max-width:400px"><h2 style="justify-content:center">✓ Tutup Kasir Tersimpan</h2><div class="pnl"><div class="pnl-r"><span class="lb">'+srcName(src)+' — '+date+'</span><span></span></div><div class="pnl-r"><span class="lb">Masuk</span><span class="vl pos">'+rp(ti)+'</span></div><div class="pnl-r"><span class="lb">Keluar</span><span class="vl neg">'+rp(to2)+'</span></div><div class="pnl-r"><span class="lb">Sistem</span><span>'+rp(exp)+'</span></div><div class="pnl-r"><span class="lb">Fisik</span><span>'+rp(counted)+'</span></div><div class="pnl-r t"><span class="lb">Selisih</span><span class="vl '+(vari<0?'neg':'pos')+'">'+(vari>=0?'+':'')+rp(vari)+'</span></div>'+(movedAmt>0?'<div class="pnl-r"><span class="lb">Dipindah ke '+srcName(move)+'</span><span>'+rp(movedAmt)+'</span></div>':'')+'</div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Tutup</button><button class="bp" onclick="cetakTutupKasir('+recId+')">🖨 Cetak Laporan</button></div></div>';
   document.getElementById('opC').innerHTML=h;
   if(cv==='kas')rKas();
