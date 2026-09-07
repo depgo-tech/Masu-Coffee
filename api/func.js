@@ -552,8 +552,23 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(Array.isArray(body) ? data : data[0]);
       }
+            if (req.method === 'PUT' && id) {
+        if (!/^\d+$/.test(String(id))) return res.status(400).json({ error: 'numeric id required' });
+        const up = {};
+        if (body.descr !== undefined) up.descr = body.descr;
+        if (body.amount !== undefined) up.amount = body.amount;
+        if (body.src !== undefined) up.src = body.src;
+        if (body.tx_date !== undefined) up.tx_date = body.tx_date;
+        if (!Object.keys(up).length) return res.status(400).json({ error: 'no updatable fields' });
+        const { data, error } = await supabase.from('cash_transactions').update(up).eq('id', id).select();
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json(data[0] || { success: true });
+      }
       if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('cash_transactions').delete().eq('ref', id);
+        const q = /^\d+$/.test(String(id))
+          ? supabase.from('cash_transactions').delete().eq('id', id)
+          : supabase.from('cash_transactions').delete().eq('ref', id);
+        const { error } = await q;
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
