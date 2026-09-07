@@ -1779,13 +1779,18 @@ function dR(rid,mid){lRcp=lRcp.filter(function(r){return r.id!=rid});saveRcp();i
 var absSel=null;
 function rAb(){
   var td=new Date().toLocaleDateString('sv-SE');
+  if(!window.absRep){var n=new Date();window.absRep={m:n.getMonth()+1,y:n.getFullYear()}}
   var todayAtt=lAtt.filter(function(a){return a.date===td});
   var h='<div class="sc"><div class="mg-h"><h2>Absensi</h2>'+(role==='admin'?'<button class="bs" style="flex:0 0 auto;padding:10px 14px;font-size:12px" onclick="oEmpM()">Kelola Karyawan</button>':'')+'</div>';
   h+='<div class="set-s" style="max-width:420px"><h3>Clock In / Clock Out</h3><div class="fg"><label>Pilih Nama</label><select id="absEmp" onchange="absSel=this.value">'+lEmp.map(function(e){return'<option value="'+e.id+'">'+e.name+'</option>'}).join('')+'</select></div><div class="fg"><label>PIN</label><input type="password" inputmode="numeric" id="absPin" maxlength="6" placeholder="PIN karyawan"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="bp" onclick="doClockIn()">Clock In</button><button class="bs" onclick="doClockOut()">Clock Out</button></div></div>';
   h+='<h3 style="margin:16px 0 8px;font-size:14px">Absensi Hari Ini</h3><div class="acc-tb"><table><thead><tr><th>Nama</th><th>Jam Masuk</th><th>Jam Keluar</th><th>Durasi</th></tr></thead><tbody>';
   if(!todayAtt.length){h+='<tr><td colspan="4" style="text-align:center;color:var(--dim);padding:16px">Belum ada yang absen hari ini</td></tr>'}
   else{todayAtt.forEach(function(a){var dur=a.clock_out?Math.round((new Date(a.clock_out)-new Date(a.clock_in))/60000)+' menit':'-';h+='<tr><td style="font-weight:600">'+a.name+'</td><td>'+new Date(a.clock_in).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+'</td><td>'+(a.clock_out?new Date(a.clock_out).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'-')+'</td><td>'+dur+'</td></tr>'})}
-  h+='</tbody></table></div></div>';
+  h+='</tbody></table></div>';
+  h+='<div class="pnl" style="margin-top:16px"><h3>📅 Rekap Bulanan <button class="bp" style="margin-left:auto;padding:6px 12px;font-size:11px" onclick="cetakRekapAbsensi()">🖨 Unduh PDF / Cetak</button></h3>';
+  h+='<div class="df"><label>Bulan:</label><select id="absM" onchange="window.absRep.m=parseInt(this.value);rAb()">'+[1,2,3,4,5,6,7,8,9,10,11,12].map(function(m){return'<option value="'+m+'" '+(window.absRep.m===m?'selected':'')+'>'+['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][m-1]+'</option>'}).join('')+'</select><label>Tahun:</label><input type="number" id="absY" value="'+window.absRep.y+'" style="width:90px" onchange="window.absRep.y=parseInt(this.value)||'+window.absRep.y+';rAb()"></div>';
+  h+=renderAbsRekap(window.absRep.y,window.absRep.m);
+  h+='</div></div>';
   document.getElementById('ct').innerHTML=h;
   if(lEmp.length)absSel=lEmp[0].id;
 }
@@ -1832,6 +1837,54 @@ function dEmp(id){
     lEmp=lEmp.filter(function(e){return e.id!==id});saveEmp();rEmpL();tt('Dihapus');
     if(apiOn)aD('employees/'+id);
   });
+}
+
+  function renderAbsRekap(y,m){
+  var now=new Date();
+  var dim=new Date(y,m,0).getDate();
+  var elapsed=(y===now.getFullYear()&&m===now.getMonth()+1)?now.getDate():dim;
+  var prefix=y+'-'+String(m).padStart(2,'0');
+  var h='<div class="acc-tb"><table><thead><tr><th>Karyawan</th><th class="nm">Hari Masuk</th><th class="nm">Tidak Absen</th><th class="nm">Total Jam</th><th class="nm">Rata² / Hari Masuk</th></tr></thead><tbody>';
+  if(!lEmp.length){h+='<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:16px">Belum ada karyawan</td></tr>'}
+  else{lEmp.forEach(function(e){
+    var recs=lAtt.filter(function(a){return a.emp_id==e.id&&(a.date||'').slice(0,7)===prefix});
+    var dates={};recs.forEach(function(a){dates[a.date]=1});
+    var masuk=Object.keys(dates).length;
+    var ms=0;
+    recs.forEach(function(a){if(a.clock_out)ms+=(new Date(a.clock_out)-new Date(a.clock_in))});
+    var jam=ms/3600000;
+    var avg=masuk>0?jam/masuk:0;
+    h+='<tr><td style="font-weight:600">'+e.name+'</td><td class="nm pos">'+masuk+'</td><td class="nm '+(elapsed-masuk>0?'neg':'')+'">'+Math.max(0,elapsed-masuk)+'</td><td class="nm">'+jam.toFixed(1)+' jam</td><td class="nm">'+avg.toFixed(1)+' jam</td></tr>';
+  })}
+  h+='<tr style="font-weight:700;background:var(--bg)"><td>KETERANGAN</td><td colspan="4" style="font-weight:400;font-size:11px">"Tidak Absen" = hari berjalan (tgl 1–'+elapsed+') dikurangi hari masuk. Belum termasuk jadwal libur.</td></tr>';
+  h+='</tbody></table></div>';
+  return h;
+}
+function cetakRekapAbsensi(){
+  var y=window.absRep.y,m=window.absRep.m;
+  var mNames=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var dim=new Date(y,m,0).getDate();
+  var now=new Date();
+  var elapsed=(y===now.getFullYear()&&m===now.getMonth()+1)?now.getDate():dim;
+  var prefix=y+'-'+String(m).padStart(2,'0');
+  var h='<div style="font-family:Arial,sans-serif;color:#111"><div style="text-align:center;margin-bottom:12px"><div style="font-size:18px;font-weight:800">'+(st.sn||'MASU SPACE')+'</div><div style="font-size:12px;color:#555">Rekap Absensi '+mNames[m-1]+' '+y+'</div>'+(st.sa?'<div style="font-size:10px;color:#777">'+st.sa+'</div>':'')+'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1a3a0a;color:#fff"><th style="border:1px solid #999;padding:7px;text-align:left">Karyawan</th><th style="border:1px solid #999;padding:7px">Hari Masuk</th><th style="border:1px solid #999;padding:7px">Tidak Absen</th><th style="border:1px solid #999;padding:7px">Total Jam</th><th style="border:1px solid #999;padding:7px">Rata² / Hari</th></tr></thead><tbody>';
+  lEmp.forEach(function(e,i){
+    var recs=lAtt.filter(function(a){return a.emp_id==e.id&&(a.date||'').slice(0,7)===prefix});
+    var dates={};recs.forEach(function(a){dates[a.date]=1});
+    var masuk=Object.keys(dates).length;
+    var ms=0;recs.forEach(function(a){if(a.clock_out)ms+=(new Date(a.clock_out)-new Date(a.clock_in))});
+    var jam=ms/3600000;var avg=masuk>0?jam/masuk:0;
+    h+='<tr style="background:'+(i%2?'#f3f6ee':'#fff')+'"><td style="border:1px solid #bbb;padding:6px;font-weight:600">'+e.name+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+masuk+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+Math.max(0,elapsed-masuk)+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+jam.toFixed(1)+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+avg.toFixed(1)+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="margin-top:10px;font-size:10px;color:#666">Periode hitung: tgl 1–'+dim+' '+mNames[m-1]+' '+y+' (hari berjalan: '+elapsed+'). Dicetak '+fmtDT(new Date())+'.</div></div>';
+  var f=document.createElement('iframe');
+  f.style.position='fixed';f.style.right='0';f.style.bottom='0';f.style.width='0';f.style.height='0';f.style.border='0';f.style.visibility='hidden';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document;
+  d.open();d.write('<!DOCTYPE html><html><head><title>Rekap Absensi</title><style>@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#111}</style></head><body>'+h+'</body></html>');d.close();
+  setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
 }
 
 // ===== PENGATURAN + RESET + IMPORT/EXPORT =====
