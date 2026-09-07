@@ -1314,6 +1314,39 @@ function sPDist(){
 }
 function dPDist(id){showConfirm('Hapus catatan bagi hasil ini?',function(){lPD=lPD.filter(function(p){return p.id!==id});savePD();qObD('profit-distributions/'+id,'pd',id);rAC();tt('Dihapus')})}
 
+function cetakRekapBulanan(y){
+  var mNames=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var rows=[],totS=0,totN=0;
+  for(var m=1;m<=12;m++){
+    var bs=new Date(y,m-1,1),be=new Date(y,m,0);
+    var f=calcFinancials(bs.toLocaleDateString('sv-SE'),be.toLocaleDateString('sv-SE'));
+    var shares=lInv.map(function(i){return f.netProfit*(parseFloat(i.percentage)/100)});
+    rows.push({label:mNames[m-1],sales:f.totalSales,net:f.netProfit,shares:shares});
+    totS+=f.totalSales;totN+=f.netProfit;
+  }
+  var shTot={};lInv.forEach(function(i){shTot[i.id]=0});rows.forEach(function(r){lInv.forEach(function(i,ix){shTot[i.id]+=r.shares[ix]})});
+  var h='<div style="font-family:Arial,sans-serif;color:#111"><div style="text-align:center;margin-bottom:10px"><div style="font-size:18px;font-weight:800">'+(st.sn||'MASU SPACE')+'</div><div style="font-size:11px;color:#555">Rekap Laba Bulanan — Tahun '+y+'</div>'+(st.sa?'<div style="font-size:10px;color:#777">'+st.sa+'</div>':'')+'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#1a3a0a;color:#fff">';
+  h+='<th style="border:1px solid #999;padding:6px;text-align:left">Bulan</th><th style="border:1px solid #999;padding:6px;text-align:right">Penjualan</th><th style="border:1px solid #999;padding:6px;text-align:right">Laba Bersih</th>';
+  lInv.forEach(function(i){h+='<th style="border:1px solid #999;padding:6px;text-align:right">'+i.name+'<br><span style="font-weight:400">'+i.percentage+'%</span></th>'});
+  h+='</tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    h+='<tr style="background:'+(i%2?'#f3f6ee':'#fff')+'"><td style="border:1px solid #bbb;padding:5px">'+r.label+' '+y+'</td><td style="border:1px solid #bbb;padding:5px;text-align:right">'+rp(r.sales)+'</td><td style="border:1px solid #bbb;padding:5px;text-align:right;font-weight:600">'+rp(r.net)+'</td>';
+    r.shares.forEach(function(sh){h+='<td style="border:1px solid #bbb;padding:5px;text-align:right">'+rp(sh)+'</td>'});
+    h+='</tr>';
+  });
+  h+='<tr style="background:#d4e6c4;font-weight:700"><td style="border:1px solid #999;padding:6px">TOTAL '+y+'</td><td style="border:1px solid #999;padding:6px;text-align:right">'+rp(totS)+'</td><td style="border:1px solid #999;padding:6px;text-align:right">'+rp(totN)+'</td>';
+  lInv.forEach(function(i){h+='<td style="border:1px solid #999;padding:6px;text-align:right">'+rp(shTot[i.id]||0)+'</td>'});
+  h+='</tr></tbody></table>';
+  h+='<div style="margin-top:8px;font-size:10px;color:#666">Dicetak '+fmtDT(new Date())+' · Laba bersih = penjualan − HPP − beban operasional · Bagi hasil per investor sesuai persentase terdaftar.</div></div>';
+  var f2=document.createElement('iframe');
+  f2.style.position='fixed';f2.style.right='0';f2.style.bottom='0';f2.style.width='0';f2.style.height='0';f2.style.border='0';f2.style.visibility='hidden';
+  document.body.appendChild(f2);
+  var d=f2.contentWindow.document;
+  d.open();d.write('<!DOCTYPE html><html><head><title>Rekap Bulanan '+y+'</title><style>@page{size:A4 landscape;margin:12mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#111}</style></head><body>'+h+'</body></html>');d.close();
+  setTimeout(function(){try{f2.contentWindow.focus();f2.contentWindow.print()}catch(e){}setTimeout(function(){if(f2.parentNode)f2.parentNode.removeChild(f2)},1500)},300);
+}
+  
 // ===== MESIN AKUNTANSI (tanggal lokal WIB) =====
 function calcFinancials(from,to){
   var orders=lO.filter(function(o){var d=o.order.created_at?dLocal(o.order.created_at):'';return d>=from&&d<=to});
@@ -1503,12 +1536,30 @@ function rAC(){
       h+='<td><button class="me" style="padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="oPDM(\''+qr.start+'\',\''+qr.end+'\',\''+qr.label+'\')">Bagi Hasil</button></td></tr>';
     }
     h+='</tbody></table></div></div>';
+        h+='<div class="pnl"><h3>Rekap per Bulan — '+y+' <button class="bp" style="margin-left:auto;padding:6px 12px;font-size:11px" onclick="cetakRekapBulanan('+y+')">🖨 Unduh PDF / Cetak</button></h3>';
+    h+='<div class="acc-tb"><table><thead><tr><th>Bulan</th><th class="nm">Penjualan</th><th class="nm">Laba Bersih</th>';
+    lInv.forEach(function(i){h+='<th class="nm">'+i.name.split(' ')[0]+'<br><span style="font-weight:400;font-size:9px">'+i.percentage+'%</span></th>'});
+    h+='<th></th></tr></thead><tbody>';
+    var mNames=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    var totS=0,totN=0,shTot={};
+    for(var bm=1;bm<=12;bm++){
+      var bs=new Date(y,bm-1,1),be=new Date(y,bm,0);
+      var bf=calcFinancials(bs.toLocaleDateString('sv-SE'),be.toLocaleDateString('sv-SE'));
+      totS+=bf.totalSales;totN+=bf.netProfit;
+      h+='<tr><td style="font-weight:600">'+mNames[bm-1]+' '+y+'</td><td class="nm">'+rp(bf.totalSales)+'</td><td class="nm '+(bf.netProfit>=0?'pos':'neg')+'">'+rp(bf.netProfit)+'</td>';
+      lInv.forEach(function(i){var sh=bf.netProfit*(parseFloat(i.percentage)/100);shTot[i.id]=(shTot[i.id]||0)+sh;h+='<td class="nm">'+rp(sh)+'</td>'});
+      h+='<td></td></tr>';
+    }
+    h+='<tr style="font-weight:700;background:var(--bg)"><td>TOTAL '+y+'</td><td class="nm">'+rp(totS)+'</td><td class="nm '+(totN>=0?'pos':'neg')+'">'+rp(totN)+'</td>';
+    lInv.forEach(function(i){h+='<td class="nm">'+rp(shTot[i.id]||0)+'</td>'});
+    h+='<td></td></tr></tbody></table></div></div>';
     h+='<div class="pnl"><h3>Riwayat Bagi Hasil</h3>';
     if(!lPD.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Belum ada riwayat bagi hasil.</div>'}
     else{h+='<div class="acc-tb"><table><thead><tr><th>Periode</th><th>Laba Bersih</th><th>Rincian Investor</th><th>Tgl Dibuat</th><th>Aksi</th></tr></thead><tbody>';
       lPD.slice().sort(function(a,b){return(b.created_at||'').localeCompare(a.created_at||'')}).forEach(function(pd){var items=pd.profit_distribution_items||pd.items||[];var rincian=items.map(function(it){return it.investor_name+': '+rp(it.amount)}).join('<br>');h+='<tr><td>'+pd.period_label+'</td><td class="nm pos">'+rp(pd.net_profit)+'</td><td style="font-size:11px">'+(rincian||'-')+'</td><td>'+(pd.created_at?new Date(pd.created_at).toLocaleDateString('id-ID'):'-')+'</td><td><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dPDist('+pd.id+')">Hapus</button></td></tr>'});
       h+='</tbody></table></div>'}
     h+='</div>';el.innerHTML=h;
+    
   }else if(aT==='journal'){
     var j=[];
     lO.forEach(function(o){var d=o.order.created_at?dLocal(o.order.created_at):td;j.push({date:d,acc:'Kas',desc:'Penjualan '+o.order_number,debit:parseFloat(o.order.total||0),credit:0});j.push({date:d,acc:'Pendapatan',desc:'Penjualan '+o.order_number,debit:0,credit:parseFloat(o.order.total||0)})});
