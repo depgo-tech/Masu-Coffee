@@ -492,7 +492,7 @@ function syncBG(){
   aG('recipes').then(function(d){if(d&&!d.error&&Array.isArray(d)){lRcp=d;saveRcp();rndSafe();}});
   aG('employees').then(function(d){if(d&&!d.error&&Array.isArray(d)){lEmp=d;saveEmp();if(cv==='absensi')rAb()}});
   // Absensi: merge per-record (clock-out dari device lain ikut ter-update)
-  aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){d.forEach(function(s){var ix=lAtt.findIndex(function(a){return a.id===s.id});if(ix>-1)lAtt[ix]=s;else lAtt.push(s)});saveAtt();if(cv==='absensi')rAb()}});
+    aG('attendance').then(function(d){if(d&&!d.error&&Array.isArray(d)){d.forEach(function(s){var ix=lAtt.findIndex(function(a){return a.id===s.id});if(ix>-1)lAtt[ix]=s;else lAtt.push(s)});var seen={},out=[];lAtt.forEach(function(a){var k=(a.emp_id)+'|'+(a.date||'')+'|'+(a.clock_in||'');if(seen[k]){var prev=seen[k];var keep=(a.id<prev.id)?a:prev;var drop=(keep===a)?prev:a;out=out.filter(function(x){return x!==drop});seen[k]=keep}else{seen[k]=a;out.push(a)}});lAtt=out;saveAtt();if(cv==='absensi')rAb()}});
   aG('holds').then(function(d){if(d&&!d.error&&Array.isArray(d)){var srv=d.map(function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}});var pending=lHold.filter(function(h){return h.id>1e11});lHold=srv.concat(pending);saveHold();if(cv==='pos')rHL()}});
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
@@ -1796,13 +1796,15 @@ function rAb(){
 }
 function findEmp(id){return lEmp.find(function(e){return e.id==id})}
 function doClockIn(){
+  if(!lockSave('clk')){return}
   var id=document.getElementById('absEmp').value;var pin=document.getElementById('absPin').value.trim();var emp=findEmp(id);
-  if(!emp){tt('Pilih nama',true);return}
-  if(pin!==String(emp.pin).trim()){tt('PIN salah',true);return}
+  if(!emp){unlockSave('clk');tt('Pilih nama',true);return}
+  if(pin!==String(emp.pin).trim()){unlockSave('clk');tt('PIN salah',true);return}
   var td=new Date().toLocaleDateString('sv-SE');
+  var nowIso=new Date().toISOString();
   var already=lAtt.find(function(a){return a.emp_id==id&&a.date===td&&!a.clock_out});
-  if(already){tt(emp.name+' sudah clock-in dan belum clock-out',true);return}
-  var tempId=Date.now();var nowIso=new Date().toISOString();
+  if(already){unlockSave('clk');tt(emp.name+' sudah clock-in dan belum clock-out',true);return}
+  var tempId=Date.now();
   var rec={id:tempId,emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso,clock_out:null};
   lAtt.push(rec);saveAtt();document.getElementById('absPin').value='';tt(emp.name+' clock-in berhasil');rAb();
   qOb('attendance',{emp_id:emp.id,name:emp.name,date:td,clock_in:nowIso},'att',tempId);
