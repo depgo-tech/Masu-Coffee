@@ -376,10 +376,13 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data);
       }
-      if (req.method === 'POST') {
+            if (req.method === 'POST') {
         if (!body.emp_id || !body.name || !body.date || !body.clock_in) {
           return res.status(400).json({ error: 'emp_id, name, date and clock_in are required' });
         }
+        // IDEMPOTENSI: emp+tanggal+jam masuk identik = sudah pernah masuk, balikin yang lama
+        const { data: dupe } = await supabase.from('attendance').select('*').eq('emp_id', body.emp_id).eq('date', body.date).eq('clock_in', body.clock_in).limit(1);
+        if (dupe && dupe.length) return res.status(200).json(dupe[0]);
         const { data, error } = await supabase.from('attendance').insert(body).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0]);
