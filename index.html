@@ -648,6 +648,7 @@ function lastCloseTs(){
   lCl.forEach(function(c){if((c.created_at||'')>t)t=c.created_at||''});
   return t;
 }
+function lastCloseTsFor(src){var t='';lCl.forEach(function(c){if(c.src===src&&(c.created_at||'')>t)t=c.created_at||''});return t}
 // Chip kasir = sesi berjalan: penjualan/pengeluaran SESUDAH tutup kasir terakhir.
 // Setelah tutup, semua chip mulai dari 0 lagi.
 function ksSum(){
@@ -1176,9 +1177,15 @@ function oKasTutup(){
 function uKasTutup(){
   var src=document.getElementById('ktSrc').value;var date=document.getElementById('ktDate').value;
   var ti=0,to2=0;
-  lST.forEach(function(t){if(t.src!==src||t.date!==date)return;if(t.type==='in')ti+=parseFloat(t.amount||0);else to2+=parseFloat(t.amount||0)});
+  var lcS=lastCloseTsFor(src);
+  lST.forEach(function(t){
+    if(t.src!==src||t.date!==date)return;
+    if(lcS&&(t.ts||t.date)<=lcS)return;
+    if(t.type==='in'&&(t.cat==='sale_cash'||t.cat==='sale_noncash'))ti+=parseFloat(t.amount||0);
+    else if(t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))to2+=parseFloat(t.amount||0);
+  });
   var exp=saldoSrc(src);
-  var h='<div class="pnl"><div class="pnl-r"><span class="lb">Masuk hari itu</span><span class="vl pos">'+rp(ti)+'</span></div><div class="pnl-r"><span class="lb">Keluar hari itu</span><span class="vl neg">'+rp(to2)+'</span></div><div class="pnl-r t"><span class="lb">Saldo Sistem (sekarang)</span><span style="'+(exp<0?'color:var(--dng)':'')+'">'+rp(exp)+'</span></div></div>';
+  var h='<div class="pnl"><div class="pnl-r"><span class="lb">Penjualan (sesi ini)</span><span class="vl pos">'+rp(ti)+'</span></div><div class="pnl-r"><span class="lb">Pengeluaran (sesi ini)</span><span class="vl neg">'+rp(to2)+'</span></div><div class="pnl-r t"><span class="lb">Saldo Sistem (sekarang)</span><span style="'+(exp<0?'color:var(--dng)':'')+'">'+rp(exp)+'</span></div></div>';
   if(exp<0)h+='<div style="background:#fce0e0;color:var(--dng);font-size:12px;padding:10px 12px;border-radius:8px;margin-bottom:12px;line-height:1.5">⚠ Saldo sistem laci minus. Cek dulu Riwayat Order — mungkin ada order yang perlu dihapus (uangnya sudah dibalikin ke konsumen tapi masih tercatat di sesi ini).</div>';
   h+='<div class="fg"><label>Uang Fisik Dihitung</label><input type="text" inputmode="numeric" id="ktCounted" placeholder="0" oninput="fRp(this);uKasVar('+exp+')" style="font-weight:700"></div>';
   h+='<div class="pr-sr t" id="ktVar" style="margin-bottom:12px"><span>Selisih</span><span>Rp 0</span></div>';
@@ -1194,7 +1201,13 @@ function sKasTutup(){
   var counted=pRp(document.getElementById('ktCounted'));var exp=saldoSrc(src);var vari=counted-exp;
   var nowIso=new Date().toISOString();
   var ti=0,to2=0;
-  lST.forEach(function(t){if(t.src!==src||t.date!==date)return;if(t.type==='in')ti+=parseFloat(t.amount||0);else to2+=parseFloat(t.amount||0)});
+  var lcS=lastCloseTsFor(src);
+  lST.forEach(function(t){
+    if(t.src!==src||t.date!==date)return;
+    if(lcS&&(t.ts||t.date)<=lcS)return;
+    if(t.type==='in'&&(t.cat==='sale_cash'||t.cat==='sale_noncash'))ti+=parseFloat(t.amount||0);
+    else if(t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))to2+=parseFloat(t.amount||0);
+  });
   var adjId=Date.now();
   if(vari!==0){lST.push({id:adjId,date:date,ts:nowIso,src:src,type:vari>0?'in':'out',cat:'adjust',desc:'Penyesuaian tutup kasir '+date,amount:Math.abs(vari)});qOb('cash-transactions',{date:date,ts:nowIso,src:src,type:vari>0?'in':'out',cat:'adjust',desc:'Penyesuaian tutup kasir '+date,amount:Math.abs(vari),ref:'cladj-'+adjId},'cash',adjId)}
   var move=document.getElementById('ktMove').value;var movedAmt=0;
