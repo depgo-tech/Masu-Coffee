@@ -321,7 +321,7 @@ body{font-family:'Segoe UI',-apple-system,sans-serif;background:var(--bg);color:
 <div class="mo" id="pModal"><div class="ml" style="max-width:400px"><h2>Pembayaran</h2><div class="pr-sr t" style="margin-bottom:14px"><span>Total</span><span id="pT">Rp 0</span></div><div class="fg"><label>Metode</label><select id="pM" onchange="pMChange()"><option value="cash">Cash</option><option value="qris">QRIS</option><option value="card">Debit</option></select></div><div class="fg"><label>Uang Diterima</label><input type="text" inputmode="numeric" id="pR" placeholder="0" oninput="fRp(this);cC()" style="font-size:18px;font-weight:700"></div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:10px"><button class="bs" onclick="sC(50000)" style="padding:8px;font-size:12px">50K</button><button class="bs" onclick="sC(100000)" style="padding:8px;font-size:12px">100K</button><button class="bs" onclick="sC(150000)" style="padding:8px;font-size:12px">150K</button><button class="bs" onclick="sC(200000)" style="padding:8px;font-size:12px">200K</button></div><div class="pr-sr" style="font-size:14px;padding:8px 0;border-top:1px dashed var(--bdr)"><span class="lb">Kembalian:</span><span style="color:var(--suc);font-weight:700;font-size:16px" id="pC">Rp 0</span></div><div class="ma"><button class="bs" onclick="cm('pModal')">Batal</button><button class="bp" id="pGo" onclick="dP()">Bayar & Cetak</button></div></div></div>
 <div class="mo" id="mModal"><div class="ml"><h2 id="mMT">Tambah Produk</h2><input type="hidden" id="eI"><div class="fg"><label>Nama Produk</label><input type="text" id="eN"></div><div class="fr"><div class="fg"><label>Kategori</label><select id="eC"></select></div><div class="fg"><label>Harga</label><input type="number" id="eP"></div></div><div class="fg"><label>Deskripsi</label><input type="text" id="eD"></div><div class="fg"><label>Foto</label><div class="iu"><div class="ip" id="iPr"></div><div class="ib"><input type="file" accept="image/*" onchange="hU(event)"><input type="text" id="eU" placeholder="atau URL" oninput="hUrl()"></div></div></div><div class="fg"><label>Status</label><select id="eA"><option value="true">Aktif</option><option value="false">Nonaktif</option></select></div><div class="ma"><button class="bs" onclick="cm('mModal')">Batal</button><button class="bp" onclick="sP()">Simpan</button></div></div></div>
 <div class="mo" id="cModal"><div class="ml" style="max-width:380px"><h2>Kelola Kategori</h2><div id="cL" style="margin-bottom:12px"></div><div class="fr"><div class="fg"><input type="text" id="nC" placeholder="Nama kategori"></div><button class="bp" style="flex:0 0 auto;padding:12px" onclick="aC()">+</button></div><div class="ma"><button class="bs" onclick="cm('cModal')">Tutup</button></div></div></div>
-<div class="mo" id="rModal"><div class="ml" style="max-width:320px"><div id="rC"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px"><button class="bs" onclick="cm('rModal')">Tutup</button><button class="bs" onclick="pR2()">Cetak</button></div></div></div>
+<div class="mo" id="rModal"><div class="ml" style="max-width:320px"><div id="rC"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px"><button class="bs" onclick="cm('rModal')">Tutup</button><button class="bs" onclick="pR2()">Cetak</button><button class="bs" onclick="prtKitchen2()">🍳 Dapur</button></div></div></div>
 <div class="mo" id="cfModal"><div class="ml" style="max-width:340px;text-align:center"><div id="cfIcon" style="width:56px;height:56px;border-radius:50%;background:#fce0e0;color:var(--dng);display:flex;align-items:center;justify-content:center;margin:0 auto 14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:26px;height:26px"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></div><h2 id="cfTitle" style="justify-content:center;margin-bottom:6px">Konfirmasi</h2><p id="cfMsg" style="color:var(--dim);font-size:13px;white-space:pre-line;line-height:1.5;margin-bottom:4px"></p><div class="ma"><button class="bs" onclick="_cfNo()" id="cfNoBtn">Batal</button><button class="bp" onclick="_cfYes()" id="cfYesBtn" style="background:var(--dng)">Ya, Hapus</button></div></div></div>
 <div class="mo" id="rcpModal"><div class="ml" id="rcpC"></div></div>
 <div class="mo" id="eModal"><div class="ml" style="max-width:420px"><h2 id="eMT">Catatan Pengeluaran</h2><div class="fg"><label>Tanggal</label><input type="date" id="eD2"></div><div class="fg"><label>Sumber Kas / Bank</label><select id="eSrc"></select></div><div class="fg"><label>Jenis Transaksi (untuk apa uangnya)</label><select id="eJenis" onchange="uEJenis()"><option value="ops">Beban Operasional / Lainnya</option><option value="bahan">Pembelian Persediaan (Bahan)</option><option value="asset">Pembelian Aset</option><option value="hutang">Pembayaran Hutang</option><option value="prive">Prive (Ambil Uang Pribadi)</option></select></div><div class="fg" id="eBahanWrap" style="display:none"><label>Bahan yang Dibeli</label><select id="eBIng"></select></div><div class="fg" id="eBahanWrap2" style="display:none"><label>Qty (sesuai satuan bahan)</label><input type="number" id="eBQty" placeholder="0"></div><div class="fg" id="eAssetWrap" style="display:none"><label>Nama Aset yang Dibeli</label><input type="text" id="eAN" placeholder="cth: Mesin Espresso, Renovasi Counter"></div><div class="fg" id="eHutangWrap" style="display:none"><label>Hutang yang Dibayar</label><select id="eHPay" onchange="uEHutangAmt()"></select></div><div class="fg" id="ePriveWrap" style="display:none"><p style="font-size:11px;color:var(--dim);margin:0">Prive = pengambilan uang pribadi/pemilik. Mengurangi modal di Neraca, BUKAN beban (tidak masuk Laba Rugi).</p></div><div class="fg" id="eAccWrap"><label>Akun <span style="font-size:10px;color:var(--dim);font-weight:400">(posisi di Laba Rugi)</span></label><select id="eAcc2" onchange="uEAccLabel()"></select></div><div class="fg" id="eCatWrap" style="display:none"><label>Kategori (manual)</label><input type="text" id="eC2" placeholder="Contoh: Sewa Tempat"></div><div class="fg"><label>Deskripsi</label><input type="text" id="eDs"></div><div class="fg"><label>Jumlah (Rp)</label><input type="number" id="eAm"></div><div class="fg"><label>Metode</label><select id="eMt"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div><div class="ma"><button class="bs" onclick="cm('eModal')">Batal</button><button class="bp" id="eSaveBtn" onclick="sE()">Simpan</button></div></div></div>
@@ -454,7 +454,11 @@ function flushOb(){
       send.then(function(r){
         if(r&&!r.error){
           if(it.kind&&it.ref&&r&&r.id)obFixId(it,r.id);
-          else if(it.ref&&r.order_number){var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}}
+          else if(it.ref&&r.order_number){
+            var rr=lO.find(function(x){return x.order_number===it.ref});if(rr){rr.order_number=r.order_number;lsSet('pos_orders',lO)}
+            if(it.cashTx){var fn=r.order_number;var cp=Object.assign({},it.cashTx);cp.ref='sale-'+fn;cp.desc='Penjualan '+fn+' ('+String(cp.m||'cash').toUpperCase()+')';aP('cash-transactions',cp).then(function(rr2){if(rr2&&rr2.id&&it.cashRef){var ix=lST.findIndex(function(x){return x.id===it.cashRef});if(ix>-1){lST[ix].id=rr2.id;lST[ix].desc=cp.desc;saveST()}}})}
+            if(prtKitchenOn()){var oo=lO.find(function(x){return x.order_number===fn});if(oo)prtKitchen(fn,oo.order,oo.items)}
+          }
         }else{it.queued_at=Date.now();left.push(it)}
         done++;
         if(done===q.length){
@@ -793,21 +797,25 @@ function dP(){
   var saleTxId=Date.now();
   lST.push({id:saleTxId,date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method});
   saveIngs();lsSet('pos_orders',lO);saveST();
-  qOb('cash-transactions',{date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method,ref:'sale-'+localNum},'cash',saleTxId);
+  var cashPay={date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method,ref:'sale-'+localNum};
   cm('pModal');
   ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';
   rOP();renderKasirBar();
   tt('Order tersimpan!');
   sR(localNum,op,cartSnap,change,recv,method);
   var ip=cartSnap.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
-  aP('order',{order:op,items:ip}).then(function(result){
+    aP('order',{order:op,items:ip}).then(function(result){
     if(result&&!result.error&&result.order_number){
       rec.order_number=result.order_number;
-      lsSet('pos_orders',lO);
+      var stx=lST.find(function(x){return x.id===saleTxId});if(stx)stx.desc='Penjualan '+result.order_number+' ('+method.toUpperCase()+')';
+      lsSet('pos_orders',lO);saveST();
+      var cp=Object.assign({},cashPay);cp.ref='sale-'+result.order_number;cp.desc=stx?stx.desc:cp.desc;
+      aP('cash-transactions',cp).then(function(rr){if(rr&&rr.id){var ix=lST.findIndex(function(x){return x.id===saleTxId});if(ix>-1){lST[ix].id=rr.id;saveST()}}});
+      if(prtKitchenOn())prtKitchen(result.order_number,op,cartSnap);
       tt(result.duplicate?'Tersinkron (order sudah ada di cloud)':'Tersinkron ke Cloud!');
       syncBG();
     }else{
-      lOb.push({path:'order',payload:{order:op,items:ip},ref:localNum,queued_at:Date.now()});saveOb();
+      lOb.push({path:'order',payload:{order:op,items:ip},ref:localNum,cashTx:cashPay,cashRef:saleTxId,queued_at:Date.now()});saveOb();
       tt('Disimpan lokal - otomatis sync saat online',true);
     }
     setTimeout(function(){unlockSave('dP')},1200);
@@ -884,17 +892,36 @@ function printHTML(content,w){
   setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){tt('Gagal buka dialog cetak — izinkan popup untuk situs ini',true)}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
 }
 
-  // ===== PRINTER USB / BLUETOOTH (ESC/POS) =====
-var PRT={mode:'',dev:null,ep:null,chr:null,svc:null,name:'',last:null};
-function loadPRT(){var p=lsGet('pos_printer',null);if(p){PRT.mode=p.mode||'';PRT.name=p.name||'';PRT.ep=p.ep;PRT.svc=p.svc||null;PRT.chr=p.chr||null}}
-function savePRT(){lsSet('pos_printer',{mode:PRT.mode,name:PRT.name,ep:PRT.ep,svc:PRT.svc,chr:PRT.chr})}
+  // ===== PRINTER USB / BLUETOOTH (ESC/POS) — 2 printer: KASIR + DAPUR =====
+function _newPrt(){return{mode:'',dev:null,ep:null,chr:null,svc:null,name:''}}
+var PRT=_newPrt(),PRTK=_newPrt(),PRT_LAST=null;
+function loadPRT(){var p=lsGet('pos_printer',null);if(p){PRT.mode=p.mode||'';PRT.name=p.name||'';PRT.ep=p.ep;PRT.svc=p.svc||null;PRT.chr=p.chr||null}var k=lsGet('pos_printer_k',null);if(k){PRTK.mode=k.mode||'';PRTK.name=k.name||'';PRTK.ep=k.ep;PRTK.svc=k.svc||null;PRTK.chr=k.chr||null}}
+function savePRT(){lsSet('pos_printer',{mode:PRT.mode,name:PRT.name,ep:PRT.ep,svc:PRT.svc,chr:PRT.chr});lsSet('pos_printer_k',{mode:PRTK.mode,name:PRTK.name,ep:PRTK.ep,svc:PRTK.svc,chr:PRTK.chr})}
 function prtCols(){return (parseInt(st.pw)||80)<=58?32:48}
-function prtConnected(){return (PRT.mode==='usb'&&PRT.dev)||(PRT.mode==='bt'&&PRT.chr)}
-function prtConnectedName(){return prtConnected()?(PRT.mode.toUpperCase()+' — '+PRT.name):''}
+function _on(p){return (p.mode==='usb'&&p.dev)||(p.mode==='bt'&&p.chr)}
+function prtConnected(){return _on(PRT)}
+function prtKitchenOn(){return _on(PRTK)}
+function prtConnectedName(){return _on(PRT)?(PRT.mode.toUpperCase()+' — '+PRT.name):''}
+function prtKitchenName(){return _on(PRTK)?(PRTK.mode.toUpperCase()+' — '+PRTK.name):''}
 function fmtNum(n){return (Math.round(n)||0).toLocaleString('id-ID')}
 function _prtEnc(s){s=String(s).replace(/—/g,'-').replace(/•/g,'*').replace(/²/g,'2').replace(/×/g,'x').replace(/’/g,"'");var b=[];for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);b.push(c>126?63:c)}return b}
 function _pad2(l,r,w){l=String(l);r=String(r);var sp=w-l.length-r.length;if(sp<1)return l+' '+r;var o=l;for(var i=0;i<sp;i++)o+=' ';return o+r}
 function _dash(w){var o='';for(var i=0;i<w;i++)o+='-';return o}
+function prtSend(p,bytes){
+  if(p.mode==='usb'&&p.dev)return p.dev.transferOut(p.ep,bytes);
+  if(p.mode==='bt'&&p.chr){
+    var pr=Promise.resolve();
+    for(var i=0;i<bytes.length;i+=100){
+      (function(c){pr=pr.then(function(){
+        if(p.chr.writeValueWithoutResponse)return p.chr.writeValueWithoutResponse(c);
+        return p.chr.writeValue(c);
+      }).catch(function(){})})(bytes.subarray(i,Math.min(i+100,bytes.length)));
+    }
+    return pr;
+  }
+  return Promise.reject(new Error('Printer belum terhubung'));
+}
+function _prtDisconnect(p){try{if(p.dev)p.dev.close()}catch(e){}try{if(p.chr&&p.chr.service&&p.chr.service.device)p.chr.service.device.gatt.disconnect()}catch(e){}p.mode='';p.dev=null;p.chr=null;p.name=''}
 function buildEscposReceipt(on,order,items,change,paid,method){
   var W=prtCols();var B=[];
   function tx(s){_prtEnc(s).forEach(function(c){B.push(c)});B.push(10)}
@@ -906,6 +933,7 @@ function buildEscposReceipt(on,order,items,change,paid,method){
   tx(_pad2('No:',on,W));
   tx(_pad2('Date:',fmtDT(new Date()),W));
   tx(_pad2('Type:',order.order_type==='dine-in'?'Dine-in':'Takeaway',W));
+  if(order.notes)tx('Nota: '+order.notes);
   tx(_dash(W));
   (items||[]).forEach(function(it){
     tx(it.quantity+'x '+it.menu_item_name);
@@ -930,35 +958,40 @@ function buildEscposReceipt(on,order,items,change,paid,method){
   raw([0x1D,0x56,0x42,0x00]);
   return new Uint8Array(B);
 }
-function prtSend(bytes){
-  if(PRT.mode==='usb'&&PRT.dev)return PRT.dev.transferOut(PRT.ep,bytes);
-  if(PRT.mode==='bt'&&PRT.chr){
-    var p=Promise.resolve();
-    for(var i=0;i<bytes.length;i+=100){
-      (function(c){p=p.then(function(){
-        if(PRT.chr.writeValueWithoutResponse)return PRT.chr.writeValueWithoutResponse(c);
-        return PRT.chr.writeValue(c);
-      }).catch(function(){})})(bytes.subarray(i,Math.min(i+100,bytes.length)));
-    }
-    return p;
-  }
-  return Promise.reject(new Error('Printer belum terhubung'));
+function buildEscposKitchen(on,order,items){
+  var W=prtCols();var B=[];
+  function tx(s){_prtEnc(s).forEach(function(c){B.push(c)});B.push(10)}
+  function raw(a){a.forEach(function(x){B.push(x)})}
+  raw([0x1B,0x40]);
+  raw([0x1B,0x61,1]);raw([0x1B,0x45,1]);tx('== DAPUR ==');raw([0x1B,0x45,0]);
+  tx(on);
+  if(order.notes)tx(order.notes);
+  tx(_dash(W));
+  raw([0x1B,0x45,1]);
+  (items||[]).forEach(function(it){
+    tx(it.quantity+'x '+it.menu_item_name);
+    var vs=[it.variant_temp,it.variant_size].filter(Boolean).join(', ');
+    if(vs)tx('  '+vs);
+    if(it.addons&&it.addons.length)tx('  + '+it.addons.map(function(a){return a.name}).join(', '));
+  });
+  raw([0x1B,0x45,0]);
+  tx(_dash(W));
+  tx(new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}));
+  raw([0x1B,0x64,3]);
+  raw([0x1D,0x56,0x42,0x00]);
+  return new Uint8Array(B);
 }
-function prtDisconnect(){
-  try{if(PRT.dev)PRT.dev.close()}catch(e){}
-  try{if(PRT.chr&&PRT.chr.service&&PRT.chr.service.device)PRT.chr.service.device.gatt.disconnect()}catch(e){}
-  PRT.mode='';PRT.dev=null;PRT.chr=null;PRT.name='';savePRT();updatePrtBtn();
-  var el=document.getElementById('prtStat');if(el)el.innerHTML=prtStatHTML();
-  tt('Printer diputus');
+function prtKitchen(onum,order,items){
+  if(!prtKitchenOn())return;
+  prtSend(PRTK,buildEscposKitchen(onum,order,items)).catch(function(e){tt('Printer dapur: '+(e.message||e),true)});
 }
-function prtStatHTML(){return 'Status: <b>'+(prtConnected()?('Terhubung — '+prtConnectedName()):'Belum terhubung')+'</b><br>Lebar kertas: '+(st.pw||80)+'mm ('+prtCols()+' kolom) — diatur di Pengaturan'}
-function oPrtM(){
-  var h='<div class="ml" style="max-width:380px"><h2>🖨 Printer Struk</h2><div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px" id="prtStat">'+prtStatHTML()+'</div>';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="bp" onclick="prtConnectUSB()">🔌 Sambung USB</button><button class="bp" style="background:var(--gold)" onclick="prtConnectBT()">🔵 Sambung Bluetooth</button></div>';
-  h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px"><button class="bs" onclick="prtTest()">Cetak Tes</button><button class="bs" onclick="prtDisconnect()">Putuskan</button></div>';
-  h+='<p style="font-size:11px;color:var(--dim);margin-top:10px">USB: pilih printer di jendela yang muncul (Chrome/Edge). Bluetooth: aktifkan mode pairing di printer; printer Classic-SPP lama mungkin tidak muncul — pakai USB. Koneksi otomatis nyambung lagi saat buka aplikasi di device yang sama.</p>';
-  h+='<div class="ma"><button class="bs" onclick="cm(\'opModal\')">Tutup</button></div></div>';
-  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+function prtKitchen2(){
+  if(!prtKitchenOn()){tt('Sambungkan printer dapur dulu',true);return}
+  if(!PRT_LAST){tt('Belum ada struk di layar ini',true);return}
+  prtKitchen(PRT_LAST.on,PRT_LAST.order,PRT_LAST.items);
+}
+function prtStatHTML(){
+  return 'KASIR: <b>'+(prtConnected()?prtConnectedName():'belum terhubung')+'</b><br>DAPUR: <b>'+(prtKitchenOn()?prtKitchenName():'belum terhubung')+'</b><br>Kertas: '+(st.pw||80)+'mm ('+prtCols()+' kolom)';
 }
 function _usbPickEp(dev){
   var iface=null,ep=null;
@@ -971,25 +1004,28 @@ function _usbPickEp(dev){
   });
   return iface===null?null:{iface:iface,ep:ep};
 }
-function prtConnectUSB(){
+function _usbFinish(dev,r,p){
+  p.mode='usb';p.dev=dev;p.ep=r.ep;p.name=dev.productName||('USB '+dev.vendorId);
+  savePRT();updatePrtBtn();
+  var el=document.getElementById('prtStat');if(el)el.innerHTML=prtStatHTML();
+  tt('Printer USB terhubung: '+p.name);
+}
+function prtConnectUSB(target){
+  var p=(target==='k')?PRTK:PRT;
   if(!navigator.usb){tt('Browser tidak mendukung USB. Pakai Chrome/Edge.',true);return}
   navigator.usb.requestDevice({acceptAllDevices:true}).then(function(dev){
     return dev.open().then(function(){ if(!dev.configuration)return dev.selectConfiguration(1); }).then(function(){
       var r=_usbPickEp(dev);
-      if(!r)throw new Error('Endpoint printer tidak ditemukan di perangkat ini');
-      return dev.claimInterface(r.iface).then(function(){return r});
-    }).then(function(r){
-      PRT.mode='usb';PRT.dev=dev;PRT.ep=r.ep;PRT.name=dev.productName||('USB '+dev.vendorId);
-      savePRT();updatePrtBtn();
-      var el=document.getElementById('prtStat');if(el)el.innerHTML=prtStatHTML();
-      tt('Printer USB terhubung: '+PRT.name);
+      if(!r)throw new Error('Endpoint printer tidak ditemukan');
+      return dev.claimInterface(r.iface).then(function(){_usbFinish(dev,r,p)});
     });
   }).catch(function(e){
     if(e&&e.message&&e.message.indexOf('Endpoint')>-1)tt('Gagal: '+e.message,true);
     else if(e&&e.name!=='NotFoundError')tt('Gagal USB: '+(e.message||e.name),true);
   });
 }
-function prtConnectBT(){
+function prtConnectBT(target){
+  var p=(target==='k')?PRTK:PRT;
   if(!navigator.bluetooth){tt('Browser tidak mendukung Bluetooth. Pakai Chrome/Edge.',true);return}
   navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:[0xff00,0xae00,0xfee7,'0000ff00-0000-1000-8000-00805f9b34fb','0000ae00-0000-1000-8000-00805f9b34fb','e7810a71-73ae-499d-8c15-faa9aef0c3f2','49535343-fe7d-4ae5-8fa9-9fafd205e455','6e400001-b5a3-f393-e0a9-e50e24dcca9e']})
   .then(function(dev){return dev.gatt.connect().then(function(){return dev})})
@@ -1006,43 +1042,59 @@ function prtConnectBT(){
         });
       });
       return chain.then(function(){
-        if(!found)throw new Error('Tidak ada karakteristik write — printer tidak kompatibel BLE');
-        PRT.mode='bt';PRT.chr=found.chr;PRT.svc=found.svc;PRT.name=dev.name||'Printer BT';
+        if(!found)throw new Error('Tidak ada karakteristik write (tidak kompatibel BLE)');
+        p.mode='bt';p.chr=found.chr;p.svc=found.svc;p.name=dev.name||'Printer BT';
         savePRT();updatePrtBtn();
         var el=document.getElementById('prtStat');if(el)el.innerHTML=prtStatHTML();
-        tt('Printer Bluetooth terhubung: '+PRT.name);
+        tt('Printer BT terhubung: '+p.name);
       });
     });
   }).catch(function(e){if(e&&e.name!=='NotFoundError')tt('Gagal Bluetooth: '+(e.message||e.name),true)});
 }
-function prtTest(){
-  if(!prtConnected()){tt('Sambungkan printer dulu',true);return}
+function prtTest(target){
+  var p=(target==='k')?PRTK:PRT;
+  if(!_on(p)){tt('Sambungkan printer dulu',true);return}
   var B=[];function raw(a){a.forEach(function(x){B.push(x)})}
   function tx(s){_prtEnc(s).forEach(function(c){B.push(c)});B.push(10)}
   raw([0x1B,0x40]);raw([0x1B,0x61,1]);raw([0x1B,0x45,1]);tx(st.sn||'MASU SPACE');raw([0x1B,0x45,0]);
-  tx('TES PRINTER OK');
-  tx(_dash(prtCols()));
-  tx(new Date().toLocaleString('id-ID'));
+  tx(target==='k'?'TES PRINTER DAPUR OK':'TES PRINTER OK');
+  tx(_dash(prtCols()));tx(new Date().toLocaleString('id-ID'));
   raw([0x1B,0x64,3]);raw([0x1D,0x56,0x42,0x00]);
-  prtSend(new Uint8Array(B)).then(function(){tt('Tes terkirim — cek kertas')}).catch(function(e){tt('Gagal kirim: '+(e.message||e),true)});
+  prtSend(p,new Uint8Array(B)).then(function(){tt('Tes terkirim — cek kertas')}).catch(function(e){tt('Gagal kirim: '+(e.message||e),true)});
+}
+function prtDisconnect(target){
+  var p=(target==='k')?PRTK:PRT;
+  _prtDisconnect(p);savePRT();updatePrtBtn();
+  var el=document.getElementById('prtStat');if(el)el.innerHTML=prtStatHTML();
+  tt('Printer diputus');
+}
+function _prtAutoOne(p,key,devs){
+  var dev=devs[0];if(!dev)return Promise.resolve();
+  return dev.open().then(function(){ if(!dev.configuration)return dev.selectConfiguration(1); }).then(function(){
+    var r=_usbPickEp(dev);if(!r)return;
+    return dev.claimInterface(r.iface).then(function(){p.mode='usb';p.dev=dev;p.ep=r.ep;p.name=dev.productName||p.name;updatePrtBtn()});
+  }).catch(function(){});
 }
 function prtAuto(){
   loadPRT();
-  if(!PRT.mode){updatePrtBtn();return}
-  if(PRT.mode==='usb'&&navigator.usb&&navigator.usb.getDevices){
-    navigator.usb.getDevices().then(function(ds){
-      var dev=ds[0];if(!dev){updatePrtBtn();return}
-      dev.open().then(function(){ if(!dev.configuration)return dev.selectConfiguration(1); }).then(function(){
-        var r=_usbPickEp(dev);if(!r)return;
-        return dev.claimInterface(r.iface).then(function(){PRT.dev=dev;PRT.ep=r.ep;updatePrtBtn()});
-      }).catch(function(){updatePrtBtn()});
-    }).catch(function(){updatePrtBtn()});
-  }else if(PRT.mode==='bt'&&navigator.bluetooth&&navigator.bluetooth.getDevices){
-    navigator.bluetooth.getDevices().then(function(ds){
-      var dev=ds[0];if(!dev){updatePrtBtn();return}
-      dev.gatt.connect().then(function(){return dev.gatt.getPrimaryService(PRT.svc)}).then(function(s){return s.getCharacteristic(PRT.chr)}).then(function(c){PRT.chr=c;updatePrtBtn()}).catch(function(){updatePrtBtn()});
-    }).catch(function(){updatePrtBtn()});
+  if(navigator.usb&&navigator.usb.getDevices){
+    navigator.usb.getDevices().then(function(ds){return Promise.all([_prtAutoOne(PRT,'pos_printer',ds),_prtAutoOne(PRTK,'pos_printer_k',ds)])}).then(updatePrtBtn).catch(updatePrtBtn);
   }else updatePrtBtn();
+}
+function updatePrtBtn(){
+  var b=document.getElementById('prtBtn');if(!b)return;
+  var on=prtConnected()||prtKitchenOn();
+  b.style.background=on?'var(--suc)':'var(--bg2)';
+  b.style.color=on?'#fff':'var(--dim)';
+  b.title=on?('Kasir: '+prtConnectedName()+' | Dapur: '+prtKitchenName()):'Sambungkan Printer';
+}
+function oPrtM(){
+  var h='<div class="ml" style="max-width:400px"><h2>🖨 Printer</h2><div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:10px;font-size:12px" id="prtStat">'+prtStatHTML()+'</div>';
+  h+='<b style="font-size:12px">Printer Kasir (struk pelanggan)</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0"><button class="bp" onclick="prtConnectUSB()">🔌 USB</button><button class="bp" style="background:var(--gold)" onclick="prtConnectBT()">🔵 BT</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="bs" onclick="prtTest()">Tes</button><button class="bs" onclick="prtDisconnect()">Putus</button></div>';
+  h+='<b style="font-size:12px;display:block;margin-top:12px">Printer Dapur (tiket pesanan)</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0"><button class="bp" onclick="prtConnectUSB(\'k\')">🔌 USB</button><button class="bp" style="background:var(--gold)" onclick="prtConnectBT(\'k\')">🔵 BT</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="bs" onclick="prtTest(\'k\')">Tes</button><button class="bs" onclick="prtDisconnect(\'k\')">Putus</button></div>';
+  h+='<p style="font-size:11px;color:var(--dim);margin-top:10px">Tiket dapur tercetak OTOMatis tiap order (qty + varian + catatan, tanpa harga). Dua printer bisa satu jenis koneksi atau campur (cth: kasir USB, dapur BT). Chrome/Edge.</p>';
+  h+='<div class="ma"><button class="bs" onclick="cm(\'opModal\')">Tutup</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
 }
 function updatePrtBtn(){
   var b=document.getElementById('prtBtn');if(!b)return;
@@ -1412,7 +1464,7 @@ function rRO(){
 function deleteOrderAsk(num){
   var rec=lO.find(function(x){return x.order_number===num});
   if(!rec)return;
-  showConfirm('Hapus order '+num+'?\nStok bahan dikembalikan, kas dikoreksi otomatis (uang sudah dibalikin ke konsumen), dan order hilang total dari riwayat.',function(){
+  showConfirm('Hapus order '+num+'?\nStok dikembalikan, mutasi kas penjualan (laci/bank) ikut dihapus di SEMUA DEVICE.',function(){
     (rec.items||[]).forEach(function(item){
       lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id}).forEach(function(r){
         var ing=lI.find(function(i){return i.id==r.ingredient_id});
@@ -1420,17 +1472,23 @@ function deleteOrderAsk(num){
       });
     });
     saveIngs();
-    var idx=-1;
-    for(var i=lST.length-1;i>=0;i--){
-      var t=lST[i];
-      if((t.cat==='sale_cash'||t.cat==='sale_noncash')&&(t.desc||'').indexOf(num)>-1){idx=i;break}
-    }
-    if(idx>-1){lST.splice(idx,1);saveST()}
+    var removed=0;
+    lST=lST.filter(function(t){
+      var isSale=(t.cat==='sale_cash'||t.cat==='sale_noncash');
+      if(isSale&&(t.desc||'').indexOf(num)>-1){removed++;return false}
+      return true;
+    });
+    saveST();
     lO=lO.filter(function(x){return x.order_number!==num});
     lsSet('pos_orders',lO);
-    lOb=lOb.filter(function(x){return!(x.ref===num||x.ref==='sale-'+num)});saveOb();
-    tt('Order '+num+' dihapus - stok & kas dikoreksi');
-    rRO();if(cv==='pos')renderKasirBar();
+    lOb=lOb.filter(function(x){
+      if(x.ref===num)return false;
+      if(x.kind==='cash'&&x.payload&&x.payload.ref==='sale-'+num)return false;
+      if(x.cashTx&&x.ref===num)return false;
+      return true;
+    });saveOb();
+    tt('Order dihapus'+(removed?' — '+removed+' mutasi kas ikut dihapus':''));
+    rRO();if(cv==='pos')renderKasirBar();if(cv==='kas')rKas();
     if(apiOn&&rec.order&&rec.order.id)aD('transactions/'+rec.order.id);
   },{title:'Hapus Order',yesLabel:'Ya, Hapus'});
 }
