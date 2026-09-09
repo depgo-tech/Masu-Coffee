@@ -603,7 +603,7 @@ function checkSession(){
 function toggleSidebar(){var sb=document.getElementById('sb');var ov=document.getElementById('sbOv');if(window.innerWidth<=1024){sb.classList.toggle('show');ov.classList.toggle('show');}else{sb.classList.toggle('col');}}
 function closeSidebar(){document.getElementById('sb').classList.remove('show');document.getElementById('sbOv').classList.remove('show');}
 function nav(v){
-  var ok={karyawan:['pos','riwayat','dashboard','produk','stok','laporan','absensi'],finance:['kas','akuntansi','stok','laporan','absensi']}[role];
+    var ok={karyawan:['pos','riwayat','dashboard','produk','absensi'],finance:['kas','akuntansi','stok','laporan','absensi']}[role];
   if(role==='admin')ok=(window.adminArea==='fin')?['kas','akuntansi','stok','laporan','absensi','settings']:['pos','riwayat','dashboard','produk','stok','laporan','absensi','settings'];
   if(ok&&ok.indexOf(v)===-1)v=(window.adminArea==='fin'&&role==='admin')?'kas':ok[0];
   cv=v;
