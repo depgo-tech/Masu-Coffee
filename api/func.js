@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA (hapus semua transaksi di cloud + pasang tanda reset) =====
+    // ===== RESET DATA (hapus semua transaksi + pasang tanda reset + catat log) =====
     if (resource === 'reset-data' && req.method === 'POST') {
       const results = {};
       const wipe = async (table, col) => {
@@ -70,6 +70,16 @@ export default async function handler(req, res) {
       await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() });
       // TANDA RESET: device lain membersihkan data lokalnya saat melihat timestamp ini berubah
       await supabase.from('settings').update({ last_reset_at: new Date().toISOString() }).eq('id', 1);
+      // LOG FORENSIK: catat kapan + dari device/IP apa reset dilakukan
+      const ua = req.headers['user-agent'] || 'unknown';
+      const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+      await supabase.from('audit_log').insert({
+        action: 'reset-data',
+        entity_type: 'system',
+        entity_id: String(Date.now()),
+        detail: results,
+        performed_by: 'device: ' + ua.slice(0, 120) + ' | IP: ' + ip
+      });
       return res.status(200).json({ success: true, results });
     }
 
@@ -203,7 +213,7 @@ export default async function handler(req, res) {
       const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
       if (itemsErr) {
-        // Jangan tinggalkan order kosong bila insert items gagal
+        // Jangan tinggalkan order kosong (yatim) bila insert items gagal
         await supabase.from('orders').delete().eq('id', newOrder.id);
         return res.status(500).json({ error: itemsErr.message });
       }
@@ -262,7 +272,7 @@ export default async function handler(req, res) {
         }
       }
       await supabase.from('order_items').delete().eq('order_id', id);
-      // Mutasi kas dari penjualan ini juga dihapus (biar Kas & Bank ikut koreksi di semua device)
+      // Mutasi kas dari penjualan ini juga dihapus (Kas & Bank ikut koreksi di semua device)
       if (ord?.order_number) await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + ord.order_number);
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });
@@ -346,7 +356,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true });
     }
 
-    // ===== EMPLOYEES =====
+// ===== AKHIR BAGIAN 1/2 — BAGIAN 2 DITARUH TEPAT DI BAWAH BARIS INI =====
+      // ===== EMPLOYEES =====
     if (resource === 'employees') {
       if (req.method === 'GET') {
         const { data, error } = await supabase.from('employees').select('*').eq('is_active', true).order('name');
@@ -366,18 +377,20 @@ export default async function handler(req, res) {
       }
     }
 
-    // ===== ATTENDANCE =====
-          if (req.method === 'PUT' && id) {
-        const { data, error } = await supabase.from('attendance').update(body).eq('id', id).select();
+    // ===== ATTENDANCE (GET + POST idempotensi + PUT + DELETE) =====
+    if (resource === 'attendance') {
+      if (req.method === 'GET') {
+        const date = url.searchParams.get('date');
+        let q = supabase.from('attendance').select('*').order('clock_in', { ascending: false });
+        if (date) q = q.eq('date', date);
+        const { data, error } = await q.limit(200);
         if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data[0] || { success: true });
+        return res.status(200).json(data);
       }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('attendance').delete().eq('id', id);
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
-      }
-    }
+      if (req.method === 'POST') {
+        if (!body.emp_id || !body.name || !body.date || !body.clock_in) {
+          return res.status(400).json({ error: 'emp_id, name, date and clock_in are required' });
+        }
         // IDEMPOTENSI: emp+tanggal+jam masuk identik = sudah pernah masuk, balikin yang lama
         const { data: dupe } = await supabase.from('attendance').select('*').eq('emp_id', body.emp_id).eq('date', body.date).eq('clock_in', body.clock_in).limit(1);
         if (dupe && dupe.length) return res.status(200).json(dupe[0]);
@@ -389,6 +402,11 @@ export default async function handler(req, res) {
         const { data, error } = await supabase.from('attendance').update(body).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
+      }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('attendance').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
       }
     }
 
@@ -553,7 +571,7 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(Array.isArray(body) ? data : data[0]);
       }
-            if (req.method === 'PUT' && id) {
+      if (req.method === 'PUT' && id) {
         if (!/^\d+$/.test(String(id))) return res.status(400).json({ error: 'numeric id required' });
         const up = {};
         if (body.descr !== undefined) up.descr = body.descr;
@@ -713,6 +731,67 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
+    }
+
+    // ===== IMPORT DATA (bulk dari spreadsheet) =====
+    if (resource === 'import-data' && req.method === 'POST') {
+      const { orders, expenses, cash } = body;
+      const results = { orders: 0, orderItems: 0, expenses: 0, cash: 0, skippedOrders: 0, skippedExpenses: 0, skippedCash: 0, errors: [] };
+
+      if (Array.isArray(orders) && orders.length) {
+        const nums = orders.map(o => o.order_number).filter(Boolean);
+        let existSet = new Set();
+        if (nums.length) {
+          const { data: exist } = await supabase.from('orders').select('order_number').in('order_number', nums);
+          existSet = new Set((exist || []).map(r => r.order_number));
+        }
+        for (const o of orders) {
+          const { items, ...ord } = o;
+          if (!ord.order_number || existSet.has(ord.order_number)) { results.skippedOrders++; continue; }
+          const { data: ins, error } = await supabase.from('orders').insert(ord).select().single();
+          if (error) { results.errors.push('order ' + ord.order_number + ': ' + error.message); continue; }
+          results.orders++;
+          if (Array.isArray(items) && items.length) {
+            const rows = items.map(it => ({ ...it, order_id: ins.id }));
+            const { error: ie } = await supabase.from('order_items').insert(rows);
+            if (!ie) results.orderItems += rows.length; else results.errors.push('items ' + ord.order_number + ': ' + ie.message);
+          }
+        }
+      }
+
+      if (Array.isArray(expenses) && expenses.length) {
+        const { data: ex } = await supabase.from('expenses').select('date,description,amount').limit(20000);
+        const ekey = e => [e.date, (e.description || ''), String(e.amount)].join('|');
+        const exSet = new Set((ex || []).map(ekey));
+        const toIns = [];
+        for (const e of expenses) {
+          if (!e.date || e.amount == null) { results.errors.push('expense invalid'); continue; }
+          const k = ekey(e);
+          if (exSet.has(k)) { results.skippedExpenses++; continue; }
+          exSet.add(k);
+          toIns.push(e);
+        }
+        if (toIns.length) {
+          const { data: ins, error } = await supabase.from('expenses').insert(toIns).select();
+          if (error) results.errors.push('expenses: ' + error.message);
+          else results.expenses += ins.length;
+        }
+      }
+
+      if (Array.isArray(cash) && cash.length) {
+        for (const t of cash) {
+          if (!t.src || !t.type || t.amount == null || !t.date) { results.errors.push('cash invalid'); continue; }
+          if (t.ref) {
+            const { data: c } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
+            if (c && c.length) { results.skippedCash++; continue; }
+          }
+          const { error } = await supabase.from('cash_transactions').insert({ tx_date: t.date, ts: t.ts || new Date().toISOString(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null, investor_id: t.investor_id || null });
+          if (!error) results.cash++;
+          else results.errors.push('cash: ' + error.message);
+        }
+      }
+
+      return res.status(200).json({ success: true, results });
     }
 
     return res.status(404).json({ error: `Endpoint not found: ${req.method} /${path}` });
