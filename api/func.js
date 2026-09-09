@@ -273,7 +273,10 @@ export default async function handler(req, res) {
       }
       await supabase.from('order_items').delete().eq('order_id', id);
       // Mutasi kas dari penjualan ini juga dihapus (Kas & Bank ikut koreksi di semua device)
-      if (ord?.order_number) await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + ord.order_number);
+      if (ord?.order_number) {
+        await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + ord.order_number);
+        await supabase.from('cash_transactions').delete().like('descr', '%' + ord.order_number + '%');
+      }
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) return res.status(500).json({ error: error.message });
       return res.status(200).json({ success: true });
