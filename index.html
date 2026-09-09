@@ -953,7 +953,6 @@ function buildEscposReceipt(on,order,items,change,paid,method){
   tx(_pad2('Date:',fmtDT(new Date()),W));
   tx(_pad2('Type:',order.order_type==='dine-in'?'Dine-in':'Takeaway',W));
   if(order.notes)tx('Nota: '+order.notes);
-  if(order.notes)tx('Nota: '+order.notes);
   tx(_dash(W));
   (items||[]).forEach(function(it){
     tx(it.quantity+'x '+it.menu_item_name);
