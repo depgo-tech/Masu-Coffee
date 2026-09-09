@@ -641,12 +641,16 @@ function lastCloseTs(){
   lCl.forEach(function(c){if((c.created_at||'')>t)t=c.created_at||''});
   return t;
 }
-// Penjualan hari ini = dari order hari ini (satu sumber dengan Riwayat Order, anti beda-jam antar device)
+// Chip kasir = sesi berjalan: penjualan/pengeluaran SESUDAH tutup kasir terakhir.
+// Setelah tutup, semua chip mulai dari 0 lagi.
 function ksSum(){
+  var lc=lastCloseTs();
   var td=dLocal(new Date().toISOString());
   var s={cash:0,qris:0,card:0,exp:0,bk:0,laci:saldoSrc('cash_kasir')};
   lO.forEach(function(o){
-    var d=o.order&&o.order.created_at?dLocal(o.order.created_at):'';
+    if(!o.order||!o.order.created_at)return;
+    if(lc&&o.order.created_at<=lc)return;
+    var d=dLocal(o.order.created_at);
     if(d!==td)return;
     var m=o.order.payment_method||'cash';
     if(m==='cash')s.cash+=parseFloat(o.order.total||0);
@@ -655,7 +659,7 @@ function ksSum(){
     if(m!=='cash')s.bk+=parseFloat(o.order.total||0);
   });
   lST.forEach(function(t){
-    if(t.date!==td)return;
+    if(lc&&(t.ts||t.date)<=lc)return;
     if(t.src==='cash_kasir'&&t.type==='out'&&(t.cat==='expense'||t.cat==='stock_purchase'))s.exp+=parseFloat(t.amount||0);
   });
   return s;
@@ -862,12 +866,22 @@ function rKas(){
 }
 function printHTML(content,w){
   w=w||80;
+  var html='<!DOCTYPE html><html><head><title>Cetak</title><style>@page{size:'+w+'mm auto;margin:4mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Courier New,monospace;font-size:11px;color:#000;width:'+w+'mm;margin:0 auto;padding:4px}.rt{width:100%}.rt h3{text-align:center;font-size:14px;margin-bottom:4px}.rt .ra{text-align:center;font-size:10px;margin-bottom:6px}.rd{border-top:1px dashed #000;margin:6px 0}.rr{display:flex;justify-content:space-between;margin:2px 0}.rtl{font-weight:bold;font-size:13px}.rf{text-align:center;margin-top:6px;font-size:10px}</style></head><body>'+content+'</body></html>';
+  // Coba tab print biasa (dialog pasti muncul, bisa Save as PDF)
+  var win=null;
+  try{win=window.open('','_blank')}catch(e){win=null}
+  if(win&&win.document){
+    win.document.open();win.document.write(html);win.document.close();
+    setTimeout(function(){try{win.focus();win.print()}catch(e){try{win.print()}catch(e2){}}},400);
+    return;
+  }
+  // Fallback: iframe tersembunyi
   var f=document.createElement('iframe');
   f.style.position='fixed';f.style.right='0';f.style.bottom='0';f.style.width='0';f.style.height='0';f.style.border='0';f.style.visibility='hidden';
   document.body.appendChild(f);
   var d=f.contentWindow.document;
-  d.open();d.write('<!DOCTYPE html><html><head><title>Cetak</title><style>@page{size:'+w+'mm auto;margin:4mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Courier New,monospace;font-size:11px;color:#000;width:'+w+'mm;margin:0 auto;padding:4px}.rt{width:100%}.rt h3{text-align:center;font-size:14px;margin-bottom:4px}.rd{border-top:1px dashed #000;margin:6px 0}.rr{display:flex;justify-content:space-between;margin:2px 0}.rtl{font-weight:bold;font-size:13px}</style></head><body>'+content+'</body></html>');d.close();
-  setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
+  d.open();d.write(html);d.close();
+  setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){tt('Gagal buka dialog cetak — izinkan popup untuk situs ini',true)}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
 }
 
   // ===== PRINTER USB / BLUETOOTH (ESC/POS) =====
