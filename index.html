@@ -1845,7 +1845,110 @@ function dEmp(id){
 function _absISO(d,t){if(!t)return null;var x=new Date(d+'T'+t+':00+07:00');return isNaN(x)?null:x.toISOString()}
 function _absRecs(e,prefix){return lAtt.filter(function(a){return a.emp_id==e.id&&(a.date||'').slice(0,7)===prefix})}
 function _absStat(a){return a.status||'hadir'}
+function _absTime(s){if(!s)return'';var d=new Date(s);if(isNaN(d))return'';return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')}
+function _absISO(d,t){if(!t)return null;var x=new Date(d+'T'+t+':00+07:00');return isNaN(x)?null:x.toISOString()}
+function _absRecs(e,prefix){return lAtt.filter(function(a){return a.emp_id==e.id&&(a.date||'').slice(0,7)===prefix})}
+function _absStat(a){return a.status||'hadir'}
 function renderAbsRekap(y,m){
+  var now=new Date();
+  var dim=new Date(y,m,0).getDate();
+  var elapsed=(y===now.getFullYear()&&m===now.getMonth()+1)?now.getDate():dim;
+  var prefix=y+'-'+String(m).padStart(2,'0');
+  var canEdit=(role==='admin'||role==='finance');
+  var h='<div class="acc-tb"><table><thead><tr><th>Karyawan</th><th class="nm">Hari Masuk</th><th class="nm">Libur</th><th class="nm">Tidak Absen</th><th class="nm">Jam Kerja</th><th class="nm">Lembur</th><th class="nm">Rata²</th></tr></thead><tbody>';
+  if(!lEmp.length){h+='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:16px">Belum ada karyawan</td></tr>'}
+  else{lEmp.forEach(function(e){
+    var recs=_absRecs(e,prefix);var masukD={},libD=0,ms=0,lembur=0;
+    recs.forEach(function(a){if(_absStat(a)==='libur'){libD++;return}masukD[a.date]=1;if(!a.clock_out)return;var msx=new Date(a.clock_out)-new Date(a.clock_in);if(isNaN(msx))return;ms+=msx;var hrs=msx/3600000;if(hrs>8)lembur+=hrs-8});
+    var masuk=Object.keys(masukD).length;var jam=ms/3600000;var avg=masuk>0?jam/masuk:0;
+    h+='<tr><td style="font-weight:600">'+e.name+'</td><td class="nm pos">'+masuk+'</td><td class="nm">'+libD+'</td><td class="nm '+((elapsed-masuk-libD)>0?'neg':'')+'">'+Math.max(0,elapsed-masuk-libD)+'</td><td class="nm">'+jam.toFixed(1)+' jam</td><td class="nm" style="color:var(--gold)">'+lembur.toFixed(1)+' jam</td><td class="nm">'+avg.toFixed(1)+' jam</td></tr>';
+  })}
+  h+='<tr style="font-weight:700;background:var(--bg)"><td>KETERANGAN</td><td colspan="6" style="font-weight:400;font-size:11px">Hari kerja = tgl 1–'+elapsed+'. Jam kerja maks 8 jam/hari; kelebihan otomatis masuk LEMBUR.</td></tr>';
+  h+='</tbody></table></div>';
+  h+=(canEdit?'<div style="margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center"><b style="font-size:13px">Riwayat Absensi Bulan Ini</b><button class="bp" style="padding:6px 12px;font-size:11px" onclick="absOpenAdd()">+ Tambah / Tandai Libur</button></div>':'<div style="margin:12px 0 6px"><b style="font-size:13px">Riwayat Absensi Bulan Ini</b></div>');
+  var recsAll=[];lEmp.forEach(function(e){_absRecs(e,prefix).forEach(function(a){recsAll.push(a)})});
+  recsAll.sort(function(a,b){return (b.date+(b.clock_in||'')).localeCompare(a.date+(a.clock_in||''))});
+  h+='<div class="acc-tb"><table><thead><tr><th>Tanggal</th><th>Nama</th><th>Status</th><th>Masuk</th><th>Keluar</th><th class="nm">Durasi</th><th class="nm">Lembur</th>'+(canEdit?'<th>Aksi</th>':'')+'</tr></thead><tbody>';
+  if(!recsAll.length){h+='<tr><td colspan="'+(canEdit?8:7)+'" style="text-align:center;color:var(--dim);padding:16px">Belum ada catatan bulan ini</td></tr>'}
+  else{recsAll.forEach(function(a){var stt=_absStat(a);var dur='-';var lb='-';
+    if(stt!=='libur'&&a.clock_out){var msx=new Date(a.clock_out)-new Date(a.clock_in);if(!isNaN(msx)){dur=Math.round(msx/60000)+' menit';var hrs=msx/3600000;if(hrs>8)lb='+'+(hrs-8).toFixed(1)+' jam'}}
+    h+='<tr><td>'+a.date+'</td><td style="font-weight:600">'+a.name+'</td><td><span class="sbg '+(stt==='libur'?'unpaid':'paid')+'">'+(stt==='libur'?'LIBUR':'HADIR')+'</span></td><td>'+(stt==='libur'?'-':_absTime(a.clock_in))+'</td><td>'+(stt==='libur'?'-':(a.clock_out?_absTime(a.clock_out):'-'))+'</td><td class="nm">'+dur+'</td><td class="nm" style="color:var(--gold)">'+lb+'</td>'+(canEdit?'<td><button class="me" style="padding:4px 10px;border-radius:4px;font-size:10px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="absOpenEdit('+a.id+')">Edit</button> <button class="bd" style="padding:4px 6px;font-size:10px" onclick="absDel('+a.id+')">×</button></td>':'')+'</tr>';
+  })}
+  h+='</tbody></table></div>';
+  return h;
+}
+function cetakRekapAbsensi(){
+  var y=window.absRep.y,m=window.absRep.m;
+  var mNames=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  var dim=new Date(y,m,0).getDate();
+  var now=new Date();
+  var elapsed=(y===now.getFullYear()&&m===now.getMonth()+1)?now.getDate():dim;
+  var prefix=y+'-'+String(m).padStart(2,'0');
+  var h='<div style="font-family:Arial,sans-serif;color:#111"><div style="text-align:center;margin-bottom:12px"><div style="font-size:18px;font-weight:800">'+(st.sn||'MASU SPACE')+'</div><div style="font-size:12px;color:#555">Rekap Absensi '+mNames[m-1]+' '+y+'</div>'+(st.sa?'<div style="font-size:10px;color:#777">'+st.sa+'</div>':'')+'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#1a3a0a;color:#fff"><th style="border:1px solid #999;padding:7px;text-align:left">Karyawan</th><th style="border:1px solid #999;padding:7px">Hari Masuk</th><th style="border:1px solid #999;padding:7px">Libur</th><th style="border:1px solid #999;padding:7px">Tidak Absen</th><th style="border:1px solid #999;padding:7px">Jam Kerja</th><th style="border:1px solid #999;padding:7px">Lembur</th><th style="border:1px solid #999;padding:7px">Rata²</th></tr></thead><tbody>';
+  lEmp.forEach(function(e,i){
+    var recs=_absRecs(e,prefix);var masukD={},libD=0,ms=0,lembur=0;
+    recs.forEach(function(a){if(_absStat(a)==='libur'){libD++;return}masukD[a.date]=1;if(!a.clock_out)return;var msx=new Date(a.clock_out)-new Date(a.clock_in);if(isNaN(msx))return;ms+=msx;var hrs=msx/3600000;if(hrs>8)lembur+=hrs-8});
+    var masuk=Object.keys(masukD).length;var jam=ms/3600000;var avg=masuk>0?jam/masuk:0;
+    h+='<tr style="background:'+(i%2?'#f3f6ee':'#fff')+'"><td style="border:1px solid #bbb;padding:6px;font-weight:600">'+e.name+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+masuk+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+libD+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+Math.max(0,elapsed-masuk-libD)+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+jam.toFixed(1)+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+lembur.toFixed(1)+'</td><td style="border:1px solid #bbb;padding:6px;text-align:center">'+avg.toFixed(1)+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="margin-top:10px;font-size:10px;color:#666">Periode: tgl 1–'+dim+' '+mNames[m-1]+' '+y+' (hari berjalan: '+elapsed+'). Jam kerja maks 8 jam/hari, kelebihan dihitung lembur. Dicetak '+fmtDT(new Date())+'.</div></div>';
+  var f=document.createElement('iframe');
+  f.style.position='fixed';f.style.right='0';f.style.bottom='0';f.style.width='0';f.style.height='0';f.style.border='0';f.style.visibility='hidden';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document;
+  d.open();d.write('<!DOCTYPE html><html><head><title>Rekap Absensi</title><style>@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:12px;color:#111}</style></head><body>'+h+'</body></html>');d.close();
+  setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
+}
+function absOpenEdit(id){
+  var a=lAtt.find(function(x){return x.id==id});if(!a)return;
+  var stt=_absStat(a);
+  var h='<div class="ml" style="max-width:380px"><h2>Edit Absensi — '+a.name+'</h2><div class="fg"><label>Tanggal</label><input type="date" id="abxD" value="'+a.date+'"></div><div class="fg"><label>Status</label><select id="abxS" onchange="document.getElementById(\'abxRow\').style.display=this.value===\'libur\'?\'none\':\'\'"><option value="hadir" '+(stt!=='libur'?'selected':'')+'>Hadir</option><option value="libur" '+(stt==='libur'?'selected':'')+'>Libur</option></select></div><div id="abxRow" style="display:'+(stt==='libur'?'none':'')+'"><div class="fr"><div class="fg"><label>Jam Masuk</label><input type="time" id="abxI" value="'+_absTime(a.clock_in)+'"></div><div class="fg"><label>Jam Keluar</label><input type="time" id="abxO" value="'+_absTime(a.clock_out)+'"></div></div><p style="font-size:11px;color:var(--dim)">Durasi lebih dari 8 jam otomatis dihitung lembur.</p></div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Batal</button><button class="bp" onclick="absSaveEdit('+a.id+')">Simpan</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+}
+function absSaveEdit(id){
+  var a=lAtt.find(function(x){return x.id==id});if(!a)return;
+  var d=document.getElementById('abxD').value;var stt=document.getElementById('abxS').value;
+  var ti=document.getElementById('abxI')?document.getElementById('abxI').value:'';var to=document.getElementById('abxO')?document.getElementById('abxO').value:'';
+  if(!d){tt('Isi tanggal',true);return}
+  var ci,co;
+  if(stt==='libur'){ci=_absISO(d,'00:00');co=null}
+  else{if(!ti){tt('Isi jam masuk',true);return}ci=_absISO(d,ti);co=to?_absISO(d,to):null;if(ci&&co&&co<ci){tt('Jam keluar < jam masuk',true);return}}
+  a.date=d;a.status=stt;a.clock_in=ci;a.clock_out=co;saveAtt();
+  cm('opModal');rAb();tt('Absensi diubah');
+  if(id>1e11){var ob=lOb.find(function(x){return x.kind==='att'&&x.ref==id});if(ob&&ob.payload){ob.payload.date=d;ob.payload.clock_in=ci;ob.payload.clock_out=co;ob.payload.status=stt;saveOb()}return}
+  var pl={date:d,clock_in:ci,clock_out:co,status:stt};
+  if(apiOn){aU('attendance/'+id,pl).then(function(r){if(r&&r.error){lOb.push({path:'attendance/'+id,m:'U',payload:pl,queued_at:Date.now()});saveOb()}})}
+  else{lOb.push({path:'attendance/'+id,m:'U',payload:pl,queued_at:Date.now()});saveOb();tt('Offline - diantrekan',true)}
+}
+function absDel(id){
+  var a=lAtt.find(function(x){return x.id==id});if(!a)return;
+  showConfirm('Hapus catatan absensi '+a.name+' ('+a.date+')?',function(){
+    lAtt=lAtt.filter(function(x){return x.id!==id});saveAtt();rAb();
+    qObD('attendance/'+id,'att',id);tt('Dihapus');
+  },{title:'Hapus Absensi',yesLabel:'Ya, Hapus'});
+}
+function absOpenAdd(){
+  if(!lEmp.length){tt('Tambah karyawan dulu (Kelola Karyawan)',true);return}
+  var td=new Date().toLocaleDateString('sv-SE');
+  var h='<div class="ml" style="max-width:380px"><h2>Tambah Absensi</h2><div class="fg"><label>Karyawan</label><select id="abxE">'+lEmp.map(function(e){return'<option value="'+e.id+'">'+e.name+'</option>'}).join('')+'</select></div><div class="fg"><label>Tanggal</label><input type="date" id="abxD" value="'+td+'"></div><div class="fg"><label>Status</label><select id="abxS" onchange="document.getElementById(\'abxRow\').style.display=this.value===\'libur\'?\'none\':\'\'"><option value="hadir">Hadir</option><option value="libur">Libur</option></select></div><div id="abxRow"><div class="fr"><div class="fg"><label>Jam Masuk</label><input type="time" id="abxI"></div><div class="fg"><label>Jam Keluar</label><input type="time" id="abxO"></div></div><p style="font-size:11px;color:var(--dim)">Lebih dari 8 jam otomatis = lembur.</p></div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Batal</button><button class="bp" onclick="absSaveAdd()">Simpan</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+}
+function absSaveAdd(){
+  var eid=document.getElementById('abxE').value;var emp=findEmp(eid);if(!emp){tt('Pilih karyawan',true);return}
+  var d=document.getElementById('abxD').value;var stt=document.getElementById('abxS').value;
+  var ti=document.getElementById('abxI')?document.getElementById('abxI').value:'';var to=document.getElementById('abxO')?document.getElementById('abxO').value:'';
+  if(!d){tt('Isi tanggal',true);return}
+  if(lAtt.find(function(a){return a.emp_id==eid&&a.date===d})){tt(emp.name+' sudah ada catatan tgl '+d,true);return}
+  var ci,co;
+  if(stt==='libur'){ci=_absISO(d,'00:00');co=null}
+  else{if(!ti){tt('Isi jam masuk',true);return}ci=_absISO(d,ti);co=to?_absISO(d,to):null;if(ci&&co&&co<ci){tt('Jam keluar < jam masuk',true);return}}
+  var tempId=Date.now();
+  lAtt.push({id:tempId,emp_id:emp.id,name:emp.name,date:d,clock_in:ci,clock_out:co,status:stt});saveAtt();
+  cm('opModal');rAb();tt('Absensi ditambah');
+  qOb('attendance',{emp_id:emp.id,name:emp.name,date:d,clock_in:ci,clock_out:co,status:stt},'att',tempId);
+}
 
 // ===== PENGATURAN + RESET + IMPORT/EXPORT =====
 function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE2" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label><input type="checkbox" id="sTaxOn" '+(st.taxOn?'checked':'')+' onchange="document.getElementById(\'sT2wrap\').style.display=this.checked?\'\':\'none\'"> Aktifkan Pajak</label></div><div class="fg" id="sT2wrap" style="display:'+(st.taxOn?'':'none')+'"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Akses & PIN</h3><div class="fr"><div class="fg"><label>PIN Admin</label><input type="text" id="sPinAdmin" value="'+(st.pinAdmin||'')+'" maxlength="6"></div><div class="fg"><label>PIN Karyawan (Kasir)</label><input type="text" id="sPinKaryawan" value="'+(st.pinKaryawan||'')+'" maxlength="6"></div></div><div class="fr"><div class="fg"><label>PIN Keuangan (Finance)</label><input type="text" id="sPinFinance" value="'+(st.pinFinance||'5678')+'" maxlength="6"></div></div><p style="font-size:11px;color:var(--dim)">Admin = semua menu. Kasir = POS + Inventory + Laporan + Absensi. Keuangan = Kas & Bank + Akuntansi. PIN Admin berlaku di kedua area.</p></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><div class="set-s"><h3>📤 Import Data Spreadsheet</h3><p style="font-size:11px;color:var(--dim);margin-bottom:8px">Copy-paste langsung dari Google Sheets/Excel. Format Penjualan per baris: <b>Tanggal;Menu;Qty;Total;Metode</b> (metode: cash/qris/debit). Format Pengeluaran per baris: <b>Tanggal;Keterangan;Qty;Total;Metode;Sumber</b> (metode: cash/transfer — sumber: cash kasir/cash umum/bank besar/bank kecil). Tanggal boleh 05/09/2026 atau 2026-09-05.</p><div class="fg"><label>Penjualan (1 baris = 1 penjualan)</label><textarea id="impSales" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Cappuccino;2;56000;qris&#10;05/09/2026;Espresso;1;18000;cash"></textarea></div><div class="fg"><label>Pengeluaran</label><textarea id="impExp" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Servis mesin;1;300000;transfer;bank besar"></textarea></div><button class="bp" style="width:100%;background:var(--gold)" onclick="doImport()">Import Sekarang</button><div style="display:flex;gap:6px;margin-top:6px"><button class="bs" onclick="expSales()">⬇ Export Penjualan (CSV)</button><button class="bs" onclick="expExp()">⬇ Export Pengeluaran (CSV)</button></div><p style="font-size:10px;color:var(--dim);margin-top:8px">Import = menambah data (tidak menimpa). File yang sama di-import 2x otomatis dilewati. Order masuk Riwayat, kas terisi sesuai metode/sumber. Stok bahan TIDAK dikurangi (data historis). Kalau di spreadsheet ada kolom nominal satuan, hapus saja — yang dipakai kolom Total.</p></div><div class="set-s" style="border-color:var(--dng)"><h3 style="color:var(--dng)">⚠ Zona Berbahaya</h3><p style="font-size:11px;color:var(--dim);margin-bottom:10px">Hapus SEMUA transaksi & kas di SEMUA DEVICE (laptop, HP) — termasuk di cloud. Menu & bahan baku tetap aman. Pastikan online saat menjalankan ini.</p><button class="bp" style="background:var(--dng)" onclick="resetTxns()">Hapus Semua Transaksi (Semua Device)</button></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';var lp2=document.getElementById('logoPrev');if(st.sl_img){lp2.innerHTML='<img src="'+st.sl_img+'">'}else{lp2.textContent=(st.sl||'M').charAt(0).toUpperCase()}}
