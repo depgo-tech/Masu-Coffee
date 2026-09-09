@@ -367,19 +367,17 @@ export default async function handler(req, res) {
     }
 
     // ===== ATTENDANCE =====
-    if (resource === 'attendance') {
-      if (req.method === 'GET') {
-        const date = url.searchParams.get('date');
-        let q = supabase.from('attendance').select('*').order('clock_in', { ascending: false });
-        if (date) q = q.eq('date', date);
-        const { data, error } = await q.limit(200);
+          if (req.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('attendance').update(body).eq('id', id).select();
         if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json(data);
+        return res.status(200).json(data[0] || { success: true });
       }
-            if (req.method === 'POST') {
-        if (!body.emp_id || !body.name || !body.date || !body.clock_in) {
-          return res.status(400).json({ error: 'emp_id, name, date and clock_in are required' });
-        }
+      if (req.method === 'DELETE' && id) {
+        const { error } = await supabase.from('attendance').delete().eq('id', id);
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+    }
         // IDEMPOTENSI: emp+tanggal+jam masuk identik = sudah pernah masuk, balikin yang lama
         const { data: dupe } = await supabase.from('attendance').select('*').eq('emp_id', body.emp_id).eq('date', body.date).eq('clock_in', body.clock_in).limit(1);
         if (dupe && dupe.length) return res.status(200).json(dupe[0]);
