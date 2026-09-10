@@ -565,7 +565,7 @@ function init(){
   if(!checkSession())showLogin();
 }
 function showLogin(){
-    var lg=document.getElementById('loginLogo');lg.innerHTML=st.sl_img?'<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">':(st.sl||'M').charAt(0).toUpperCase();
+    var lg=document.getElementById('loginLogo');lg.innerHTML=st.sl_img?'<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">':(st.sl||'M').charAt(0).toUpperCase();}
   document.getElementById('loginTitle').textContent=st.sn||'MASU SPACE POS';
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('loginPin').value='';
