@@ -553,7 +553,6 @@ function aSt() {
         if(clean){lg.innerHTML='<img src="'+clean+'" style="width:100%;height:100%;object-fit:cover;'+rotSt+'">'}
         else{lg.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;'+rotSt+'">'+(st.sl||'M').charAt(0).toUpperCase()+'</div>'}
     }
-}
 var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
 function unlockSave(key){_busySave[key]=false}
