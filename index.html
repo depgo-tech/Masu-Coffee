@@ -547,24 +547,18 @@ function aSt() {
         llt.textContent = st.sn || 'MASU SPACE POS';
     }
 }
-    // Sinkronkan juga layar LOGIN
-    var lg=document.getElementById('loginLogo');
-    if(lg){
-        if(clean){lg.innerHTML='<img src="'+clean+'" style="width:100%;height:100%;object-fit:cover;'+rotSt+'">'}
-        else{lg.innerHTML='<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;'+rotSt+'">'+(st.sl||'M').charAt(0).toUpperCase()+'</div>'}
-    }
 var _busySave={};
 function lockSave(key){if(_busySave[key])return false;_busySave[key]=true;setTimeout(function(){_busySave[key]=false},1800);return true}
 function unlockSave(key){_busySave[key]=false}
 function init(){
   var ls=localStorage.getItem('pos_settings');if(ls){try{Object.assign(st,JSON.parse(ls))}catch(e){}}aSt();
-   loadMenu();dedupeOrders();
-  prtAuto();
+  loadMenu();dedupeOrders();
+  if(typeof prtAuto==='function')prtAuto();
   syncBG();
   if(!checkSession())showLogin();
 }
 function showLogin(){
-    var lg=document.getElementById('loginLogo');lg.innerHTML=st.sl_img?'<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">':(st.sl||'M').charAt(0).toUpperCase();}
+  var lg=document.getElementById('loginLogo');lg.innerHTML=st.sl_img?'<img src="'+st.sl_img+'" style="width:100%;height:100%;object-fit:cover">':(st.sl||'M').charAt(0).toUpperCase();
   document.getElementById('loginTitle').textContent=st.sn||'MASU SPACE POS';
   document.getElementById('loginScreen').classList.add('show');
   document.getElementById('loginPin').value='';
@@ -588,18 +582,16 @@ function doLogin(){
   document.getElementById('loginPin').value='';
   document.getElementById('loginErr').textContent='';
   applyRole();
-  cv=(role==='karyawan')?'pos':(role==='finance')?'kas':'dashboard';
+  cv=(role==='karyawan')?'pos':(role==='finance')?'kas':(window.adminArea==='fin')?'kas':'dashboard';
   nav(cv);
+  if(typeof prtAuto==='function')prtAuto();
   startPolling();
 }
 function doLogout(){role=null;try{sessionStorage.removeItem('pos_role')}catch(e){}if(window._pollT){clearInterval(window._pollT);window._pollT=null}showLogin()}
 function applyRole(){document.querySelectorAll('[data-acc]').forEach(function(el){var roles=el.dataset.acc.split(' ');var show=roles.indexOf(role)>-1;if(role==='admin'){var area=window.adminArea||'pos';var hasF=roles.indexOf('finance')>-1,hasK=roles.indexOf('karyawan')>-1,onlyA=!hasF&&!hasK;show=(area==='pos')?(hasK||onlyA):(hasF||onlyA)}el.style.display=show?'':'none'})}
 function checkSession(){
   var r=null;try{r=sessionStorage.getItem('pos_role')}catch(e){}
-  if(r){role=r;try{window.adminArea=sessionStorage.getItem('pos_area')||'pos'}catch(e){window.adminArea='pos'};document.getElementById('loginScreen').classList.remove('show');applyRole();  cv=(role==='karyawan')?'pos':(role==='finance')?'kas':(window.adminArea==='fin')?'kas':'dashboard';
-  nav(cv);
-  prtAuto();
-  startPolling();nav(cv);startPolling();return true}
+  if(r){role=r;try{window.adminArea=sessionStorage.getItem('pos_area')||'pos'}catch(e){window.adminArea='pos'};document.getElementById('loginScreen').classList.remove('show');applyRole();cv=(role==='karyawan')?'pos':(role==='finance')?'kas':(window.adminArea==='fin')?'kas':'dashboard';nav(cv);startPolling();return true}
   return false;
 }
 function toggleSidebar(){var sb=document.getElementById('sb');var ov=document.getElementById('sbOv');if(window.innerWidth<=1024){sb.classList.toggle('show');ov.classList.toggle('show');}else{sb.classList.toggle('col');}}
