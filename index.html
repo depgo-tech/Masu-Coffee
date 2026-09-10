@@ -531,7 +531,7 @@ function syncBG(){
   aG('waste').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lW.filter(function(w){return w.id>1e11});lW=d.map(function(r){return{id:r.id,date:r.date,ingredient_id:r.ingredient_id,quantity:parseFloat(r.quantity),reason:r.reason}}).concat(pend);lsSet('pos_w',lW);if(cv==='stok')rIC();}});
   aG('stock-buys').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lBuy.filter(function(b){return b.id>1e11});lBuy=d.map(function(r){return{id:r.id,date:r.b_date,ing_id:r.ing_id,ing_name:r.ing_name,qty:parseFloat(r.qty),unit:r.unit,amount:parseFloat(r.amount),src:r.src}}).concat(pend);saveBuy();}});
   // Settings + TANDA RESET (dengan pengaman anti-loop) + PIN Keuangan
-  aG('settings').then(function(d){if(d&&!d.error&&d.sn){var lr=d.last_reset_at||'';if(lr&&lr!==lsGet('pos_last_reset','')){if(lsSet('pos_last_reset',lr)){wipeLocalTx();rnd();tt('Sinkron reset: transaksi lokal dibersihkan')}}st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin||'1234'),pinKaryawan:String(d.pinKaryawan||'0000'),pinFinance:String(d.pinFinance||'5678')};lsSet('pos_settings',st);aSt();}}).catch(function(){});
+  aG('settings').then(function(d){if(d&&!d.error&&d.sn){var lr=d.last_reset_at||'';if(lr&&lr!==lsGet('pos_last_reset','')){if(lsSet('pos_last_reset',lr)){wipeLocalTx();rnd();tt('Sinkron reset: transaksi lokal dibersihkan')}}st={sn:d.sn||'MASU SPACE',sl:d.sl||'M',sl_img:d.sl_img||'',sa:d.sa||'',sp:d.sp||'',se:d.se||'',tr:(d.tr!=null?parseFloat(d.tr):0.10),taxOn:!!d.taxOn,rf:d.rf||'',pw:parseInt(d.pw)||80,ap:d.ap!==false,pinAdmin:String(d.pinAdmin!=null&&d.pinAdmin!==''?d.pinAdmin:st.pinAdmin),pinKaryawan:String(d.pinKaryawan!=null&&d.pinKaryawan!==''?d.pinKaryawan:st.pinKaryawan),pinFinance:String(d.pinFinance!=null&&d.pinFinance!==''?d.pinFinance:st.pinFinance)};lsSet('pos_settings',st);aSt();}}).catch(function(){});
 }
 // Sinkron instan saat app dibuka / layar kembali aktif + polling 6 detik
 function startPolling(){if(window._pollT)return;window._pollT=setInterval(function(){if(document.visibilityState==='visible')syncBG()},6000);if(!window._visHook){window._visHook=true;document.addEventListener('visibilitychange',function(){if(!document.hidden)syncBG()})}}
@@ -857,6 +857,18 @@ function uIP(it){var p=document.getElementById('iPr');if(!p)return;if(it&&it.ima
 function delMenuImg(){eI2='';document.getElementById('eU').value='';uIP({});tt('Foto dihapus — jangan lupa Simpan')}
 function hU(e){var f=e.target.files[0];if(!f)return;if(f.size>500000){tt('Maks 500KB',true);return}var r=new FileReader();r.onload=function(ev){eI2=ev.target.result;uIP({image_data:eI2})};r.readAsDataURL(f)}function hUrl(){var u=document.getElementById('eU').value;if(u)uIP({image_url:u});else uIP({})}
 function sP(){var id=document.getElementById('eI').value;var name=document.getElementById('eN').value.trim();var catId=parseInt(document.getElementById('eC').value);var price=parseFloat(document.getElementById('eP').value);var desc=document.getElementById('eD').value.trim();var imgUrl=document.getElementById('eU').value.trim();var active=document.getElementById('eA').value==='true';if(!name){tt('Nama wajib',true);return}if(!price||price<=0){tt('Harga invalid',true);return}var pl={name:name,category_id:catId,base_price:price,description:desc,image_url:imgUrl,image_data:eI2,is_active:active};
+if(id){
+  var idx=md.i.findIndex(function(i){return String(i.id)===String(id)});
+  if(idx>-1){md.i[idx]=Object.assign({},md.i[idx],pl)}
+  saveMenu();cm('mModal');rPr();tt('Tersimpan');
+  if(apiOn)aU('menu-item/'+id,pl).then(function(r){if(r&&r.error)tt('Gagal simpan ke cloud: '+r.error,true)});
+}else{
+  var tempId=Date.now();
+  md.i.push(Object.assign({id:tempId},pl));
+  saveMenu();cm('mModal');rPr();tt('Produk ditambahkan');
+  if(apiOn){aP('menu-item',pl).then(function(r){if(r&&!r.error&&r.id){var idx2=md.i.findIndex(function(i){return i.id===tempId});if(idx2>-1){md.i[idx2].id=r.id;saveMenu()}}else if(r&&r.error){tt('Gagal simpan ke cloud: '+r.error,true)}})}
+}
+}
 function dPr(id){showConfirm('Hapus produk?',function(){md.i=md.i.filter(function(i){return i.id!==id});saveMenu();if(apiOn)aD('menu-item/'+id);rPr();tt('Dihapus')})}
 function oCM(){rCL();document.getElementById('cModal').classList.add('show')}
 function rCL(){document.getElementById('cL').innerHTML=md.c.map(function(c){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border-radius:6px;margin-bottom:4px"><span style="font-size:13px;font-weight:600">'+c.name+'</span><button class="bd" style="padding:4px 8px;font-size:10px" onclick="dC('+c.id+')">Hapus</button></div>'}).join('')}
