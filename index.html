@@ -1198,8 +1198,33 @@ function sKasTutup(){
 }
 function cetakTutupKasir(id){
   var c=lCl.find(function(x){return x.id===id});if(!c)return;
-  var h='<div class="rt"><h3>Laporan Tutup Kasir</h3><div class="ra">'+(st.sn||'')+'</div><div class="rd"></div><div class="rr"><span>Tanggal</span><span>'+c.date+'</span></div><div class="rr"><span>Sumber</span><span>'+srcName(c.src)+'</span></div><div class="rd"></div><div class="rr"><span>Penjualan</span><span>'+rp(c.tin)+'</span></div><div class="rr"><span>Pengeluaran</span><span>'+rp(c.tout)+'</span></div><div class="rr"><span>Saldo Sistem</span><span>'+rp(c.expected)+'</span></div><div class="rr"><span>Uang Fisik</span><span>'+rp(c.counted)+'</span></div><div class="rr rtl"><span>Selisih</span><span>'+(c.variance>=0?'+':'')+rp(c.variance)+'</span></div>'+(c.moved_amount>0?'<div class="rd"></div><div class="rr"><span>Dipindah ke '+srcName(c.moved_to)+'</span><span>'+rp(c.moved_amount)+'</span></div>':'')+'<div class="rd"></div><div class="rf">Dicetak '+fmtDT(new Date())+'</div></div>';
-  printHTML(h,80);
+  var h='<div style="font-family:Arial,sans-serif;color:#111;max-width:700px;margin:0 auto">';
+  h+='<div style="text-align:center;margin-bottom:16px"><div style="font-size:20px;font-weight:800">'+(st.sn||'MASU SPACE')+'</div><div style="font-size:13px;color:#555">Laporan Tutup Kasir</div>'+(st.sa?'<div style="font-size:10px;color:#777">'+st.sa+'</div>':'')+'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  h+='<tr style="background:#1a3a0a;color:#fff"><th colspan="2" style="padding:8px 10px;text-align:left">Informasi Sesi</th></tr>';
+  h+='<tr><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600;width:45%">Tanggal</td><td style="border:1px solid #bbb;padding:7px 10px">'+c.date+'</td></tr>';
+  h+='<tr style="background:#f3f6ee"><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Sumber Kas</td><td style="border:1px solid #bbb;padding:7px 10px">'+srcName(c.src)+'</td></tr>';
+  h+='<tr><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Penjualan Sesi</td><td style="border:1px solid #bbb;padding:7px 10px">'+rp(c.tin)+'</td></tr>';
+  h+='<tr style="background:#f3f6ee"><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Pengeluaran Sesi</td><td style="border:1px solid #bbb;padding:7px 10px">'+rp(c.tout)+'</td></tr>';
+  h+='<tr><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Saldo Sistem</td><td style="border:1px solid #bbb;padding:7px 10px">'+rp(c.expected)+'</td></tr>';
+  h+='<tr style="background:#f3f6ee"><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Uang Fisik Dihitung</td><td style="border:1px solid #bbb;padding:7px 10px">'+rp(c.counted)+'</td></tr>';
+  h+='<tr><td style="border:1px solid #bbb;padding:7px 10px;font-weight:700">Selisih</td><td style="border:1px solid #bbb;padding:7px 10px;font-weight:700;color:'+(c.variance===0?'#1a3a0a':(c.variance>0?'#1a3a0a':'#c75050'))+'">'+(c.variance>=0?'+':'')+rp(c.variance)+(c.variance===0?' (Pas)':c.variance>0?' (Lebih)':' (Kurang)')+'</td></tr>';
+  if(c.moved_to&&c.moved_amount>0){
+    h+='<tr style="background:#f3f6ee"><td style="border:1px solid #bbb;padding:7px 10px;font-weight:600">Dipindah Ke</td><td style="border:1px solid #bbb;padding:7px 10px">'+srcName(c.moved_to)+' — '+rp(c.moved_amount)+'</td></tr>';
+  }
+  h+='</table>';
+  var ttd='';
+  if(role==='karyawan'||role==='finance'){
+    ttd='<div style="display:flex;justify-content:space-between;margin-top:60px;padding:0 30px"><div style="text-align:center;font-size:11px">Kasir<br><br><br>________________</div><div style="text-align:center;font-size:11px">Penerima<br><br><br>________________</div></div>';
+  }
+  h+=ttd;
+  h+='<div style="margin-top:16px;font-size:10px;color:#666">Dicetak '+fmtDT(new Date())+' · Selisih ditutup otomatis lewat penyesuaian kas.</div></div>';
+  var f=document.createElement('iframe');
+  f.style.position='fixed';f.style.right='0';f.style.bottom='0';f.style.width='0';f.style.height='0';f.style.border='0';f.style.visibility='hidden';
+  document.body.appendChild(f);
+  var d=f.contentWindow.document;
+  d.open();d.write('<!DOCTYPE html><html><head><title>Laporan Tutup Kasir '+c.date+'</title><style>@page{size:A4 portrait;margin:15mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;font-size:13px;color:#111}</style></head><body>'+h+'</body></html>');d.close();
+  setTimeout(function(){try{f.contentWindow.focus();f.contentWindow.print()}catch(e){}setTimeout(function(){if(f.parentNode)f.parentNode.removeChild(f)},1500)},300);
 }
 function dCl(id){showConfirm('Hapus catatan tutup kasir ini? (mutasi kas tidak ikut berubah)',function(){lCl=lCl.filter(function(c){return c.id!==id});saveCl();qObD('kas-closures/'+id,'closure',id);rKas();tt('Dihapus')})}
 function eKasTx(id){
@@ -1427,19 +1452,33 @@ function _dlCSV(name,rows){
   setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000);
 }
 function expSales(){
-  var rows=[['Tanggal','No Order','Menu','Qty','Total','Metode']];
+  var f=document.getElementById('expF')?document.getElementById('expF').value:'';
+  var t=document.getElementById('expT')?document.getElementById('expT').value:'';
+  var rows=[['Tanggal','No Order','Menu','Qty','Total','Metode','Nama/Catatan']];
+  var n=0;
   lO.slice().sort(function(a,b){return (a.order.created_at||'').localeCompare(b.order.created_at||'')}).forEach(function(o){
     var d=o.order.created_at?dLocal(o.order.created_at):'';
-    (o.items||[]).forEach(function(it){rows.push([d,o.order_number,it.menu_item_name,it.quantity,it.subtotal,o.order.payment_method||'cash'])});
+    if(f&&d<f)return;
+    if(t&&d>t)return;
+    n++;
+    (o.items||[]).forEach(function(it){rows.push([d,o.order_number,it.menu_item_name,it.quantity,it.subtotal,o.order.payment_method||'cash',o.order.notes||''])});
   });
-  _dlCSV('penjualan-export.csv',rows);tt('CSV penjualan terunduh');
+  _dlCSV('penjualan-export'+(f||t?('_'+(f||'awal')+'_'+(t||'sekarang')):'')+'.csv',rows);
+  tt('CSV terunduh: '+n+' transaksi'+(f||t?(' ('+(f||'awal')+' s/d '+(t||'kini')+')'):''));
 }
 function expExp(){
+  var f=document.getElementById('expF')?document.getElementById('expF').value:'';
+  var t=document.getElementById('expT')?document.getElementById('expT').value:'';
   var rows=[['Tanggal','Keterangan','Qty','Total','Metode','Akun']];
+  var n=0;
   lE.slice().sort(function(a,b){return (a.date||'').localeCompare(b.date||'')}).forEach(function(e){
+    if(f&&e.date<f)return;
+    if(t&&e.date>t)return;
+    n++;
     rows.push([e.date,e.description||e.category||'',1,e.amount,e.method||'cash',e.account?e.account.name:'']);
   });
-  _dlCSV('pengeluaran-export.csv',rows);tt('CSV pengeluaran terunduh');
+  _dlCSV('pengeluaran-export'+(f||t?('_'+(f||'awal')+'_'+(t||'sekarang')):'')+'.csv',rows);
+  tt('CSV terunduh: '+n+' catatan'+(f||t?(' ('+(f||'awal')+' s/d '+(t||'kini')+')'):''));
 }
 // ===== AKHIR BAGIAN 3/4 — BAGIAN 4 DITARUH TEPAT DI BAWAH BARIS INI =====
   // ===== RIWAYAT ORDER + REPRINT =====
@@ -2192,7 +2231,7 @@ function absSaveAdd(){
   qOb('attendance',{emp_id:emp.id,name:emp.name,date:d,clock_in:ci,clock_out:co,status:stt},'att',tempId);
 }
 // ===== PENGATURAN + RESET =====
-function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><button class="bd" style="width:100%;margin-top:6px;font-size:10px" onclick="hLogoDel()">🗑 Hapus Logo</button><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE2" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label><input type="checkbox" id="sTaxOn" '+(st.taxOn?'checked':'')+' onchange="document.getElementById(\'sT2wrap\').style.display=this.checked?\'\':\'none\'"> Aktifkan Pajak</label></div><div class="fg" id="sT2wrap" style="display:'+(st.taxOn?'':'none')+'"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Akses & PIN</h3><div class="fr"><div class="fg"><label>PIN Admin</label><input type="text" id="sPinAdmin" value="'+(st.pinAdmin||'')+'" maxlength="6"></div><div class="fg"><label>PIN Karyawan (Kasir)</label><input type="text" id="sPinKaryawan" value="'+(st.pinKaryawan||'')+'" maxlength="6"></div></div><div class="fr"><div class="fg"><label>PIN Keuangan (Finance)</label><input type="text" id="sPinFinance" value="'+(st.pinFinance||'5678')+'" maxlength="6"></div></div><p style="font-size:11px;color:var(--dim)">Admin = semua menu mengikuti area login. Kasir = POS + Absensi. Keuangan = Kas & Bank + Akuntansi.</p></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><div class="set-s"><h3>📤 Import Data Spreadsheet</h3><p style="font-size:11px;color:var(--dim);margin-bottom:8px">Format Penjualan: <b>Tanggal;Menu;Qty;Total;Metode</b>. Format Pengeluaran: <b>Tanggal;Keterangan;Qty;Total;Metode;Sumber</b>.</p><div class="fg"><label>Penjualan</label><textarea id="impSales" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Cappuccino;2;56000;qris"></textarea></div><div class="fg"><label>Pengeluaran</label><textarea id="impExp" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Servis mesin;1;300000;transfer;bank besar"></textarea></div><button class="bp" style="width:100%;background:var(--gold)" onclick="doImport()">Import Sekarang</button><div style="display:flex;gap:6px;margin-top:6px"><button class="bs" onclick="expSales()">⬇ Export Penjualan (CSV)</button><button class="bs" onclick="expExp()">⬇ Export Pengeluaran (CSV)</button></div></div><div class="set-s" style="border-color:var(--dng)"><h3 style="color:var(--dng)">⚠ Zona Berbahaya</h3><p style="font-size:11px;color:var(--dim);margin-bottom:6px">Hapus SEMUA transaksi & kas di SEMUA DEVICE — termasuk di cloud. Wajib ketik "HAPUS". Tindakan ini tercatat di log.</p><div id="resetLog" style="font-size:11px;color:var(--dim);margin-bottom:10px;background:var(--bg);border-radius:6px;padding:8px 10px">Memuat log reset...</div><button class="bp" style="background:var(--dng)" onclick="resetTxns()">Hapus Semua Transaksi (Semua Device)</button></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';
+function rSe(){document.getElementById('ct').innerHTML='<div class="set-c"><div class="mg-h"><h2>Pengaturan</h2></div><div class="set-s"><h3>Informasi Toko</h3><div class="fg"><label>Nama Toko</label><input type="text" id="sN" value="'+(st.sn||'')+'"></div><div class="fg"><label>Logo (Upload Gambar)</label><div class="logo-up"><div class="logo-prev" id="logoPrev"></div><div class="ib"><input type="file" accept="image/*" onchange="hLogo(event)" style="font-size:11px"><button class="bd" style="width:100%;margin-top:6px;font-size:10px" onclick="hLogoDel()">🗑 Hapus Logo</button><p style="font-size:10px;color:var(--dim);margin-top:4px">Maks 200KB. Format: JPG/PNG</p></div></div></div><div class="fg"><label>Atau Logo Teks (1 huruf)</label><input type="text" id="sL" value="'+(st.sl||'')+'" maxlength="2" style="text-transform:uppercase"></div><div class="fg"><label>Alamat</label><textarea id="sA" rows="2">'+(st.sa||'')+'</textarea></div><div class="fr"><div class="fg"><label>Telepon</label><input type="text" id="sP" value="'+(st.sp||'')+'"></div><div class="fg"><label>Email</label><input type="text" id="sE2" value="'+(st.se||'')+'"></div></div></div><div class="set-s"><h3>Pajak</h3><div class="fg"><label><input type="checkbox" id="sTaxOn" '+(st.taxOn?'checked':'')+' onchange="document.getElementById(\'sT2wrap\').style.display=this.checked?\'\':\'none\'"> Aktifkan Pajak</label></div><div class="fg" id="sT2wrap" style="display:'+(st.taxOn?'':'none')+'"><label>Rate Pajak (%)</label><input type="number" id="sT2" value="'+(parseFloat(st.tr||0.10)*100).toFixed(1)+'" step="0.5"></div></div><div class="set-s"><h3>Akses & PIN</h3><div class="fr"><div class="fg"><label>PIN Admin</label><input type="text" id="sPinAdmin" value="'+(st.pinAdmin||'')+'" maxlength="6"></div><div class="fg"><label>PIN Karyawan (Kasir)</label><input type="text" id="sPinKaryawan" value="'+(st.pinKaryawan||'')+'" maxlength="6"></div></div><div class="fr"><div class="fg"><label>PIN Keuangan (Finance)</label><input type="text" id="sPinFinance" value="'+(st.pinFinance||'5678')+'" maxlength="6"></div></div><p style="font-size:11px;color:var(--dim)">Admin = semua menu mengikuti area login. Kasir = POS + Absensi. Keuangan = Kas & Bank + Akuntansi.</p></div><div class="set-s"><h3>Print</h3><div class="fg"><label>Lebar Kertas</label><select id="sPw"><option value="58" '+(st.pw==58?'selected':'')+'>58mm</option><option value="80" '+(st.pw==80||!st.pw?'selected':'')+'>80mm</option></select></div><div class="fg"><label>Footer</label><input type="text" id="sF" value="'+(st.rf||'')+'"></div><div class="fg"><label><input type="checkbox" id="sAp" '+(st.ap?'checked':'')+'> Auto-print</label></div></div><div class="set-s"><h3>📤 Import Data Spreadsheet</h3><p style="font-size:11px;color:var(--dim);margin-bottom:8px">Format Penjualan: <b>Tanggal;Menu;Qty;Total;Metode</b>. Format Pengeluaran: <b>Tanggal;Keterangan;Qty;Total;Metode;Sumber</b>.</p><div class="fg"><label>Penjualan</label><textarea id="impSales" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Cappuccino;2;56000;qris"></textarea></div><div class="fg"><label>Pengeluaran</label><textarea id="impExp" rows="4" style="font-family:monospace;font-size:12px" placeholder="05/09/2026;Servis mesin;1;300000;transfer;bank besar"></textarea></div><button class="bp" style="width:100%;background:var(--gold)" onclick="doImport()">Import Sekarang</button><div class="fg" style="margin:10px 0 4px"><label>Filter Export (kosongkan = semua data)</label><div style="display:flex;gap:6px"><input type="date" id="expF" style="flex:1"><input type="date" id="expT" style="flex:1"></div></div><div style="display:flex;gap:6px;margin-top:6px"><button class="bs" onclick="expSales()">⬇ Export Penjualan</button><button class="bs" onclick="expExp()">⬇ Export Pengeluaran</button></div></div><div class="set-s" style="border-color:var(--dng)"><h3 style="color:var(--dng)">⚠ Zona Berbahaya</h3><p style="font-size:11px;color:var(--dim);margin-bottom:6px">Hapus SEMUA transaksi & kas di SEMUA DEVICE — termasuk di cloud. Wajib ketik "HAPUS". Tindakan ini tercatat di log.</p><div id="resetLog" style="font-size:11px;color:var(--dim);margin-bottom:10px;background:var(--bg);border-radius:6px;padding:8px 10px">Memuat log reset...</div><button class="bp" style="background:var(--dng)" onclick="resetTxns()">Hapus Semua Transaksi (Semua Device)</button></div><button class="set-sv" onclick="sSt()">Simpan</button></div>';
 var lp2=document.getElementById('logoPrev');
 if(st.sl_img){lp2.innerHTML='<img src="'+st.sl_img+'">'}else{lp2.textContent=(st.sl||'M').charAt(0).toUpperCase()}
 if(typeof loadResetLog==='function')loadResetLog();
