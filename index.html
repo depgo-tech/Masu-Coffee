@@ -1393,7 +1393,27 @@ function sE2(d,src,jenis,method,amt,desc){
     unlockSave('sE');
   })}else{lOb.push({path:'expenses',payload:{date:d,category:cat,description:desc,amount:amt,payment_method:method,account_id:rec.account_id},kind:'exp',ref:tempId,queued_at:Date.now()});saveOb();unlockSave('sE')}
 }
-function dE(id){showConfirm('Hapus catatan pengeluaran ini? (mutasi kas tidak ikut berubah)',function(){lE=lE.filter(function(e){return e.id!==id});lsSet('pos_exp',lE);qObD('expenses/'+id,'exp',id);if(cv==='akuntansi')rAC();tt('Dihapus')})}
+function dE(id){
+  var e=lE.find(function(x){return x.id==id});if(!e)return;
+  showConfirm('Hapus pengeluaran ini?\n"'+(e.description||e.category||'')+'" — '+rp(e.amount)+'\nMutasi kasnya juga ikut dihapus di SEMUA DEVICE (saldo sumber naik kembali).',function(){
+    // 1) Hapus catatan pengeluaran (kalau ada — Pengeluaran Kasir mungkin cuma mutasi)
+    lE=lE.filter(function(x){return x.id!==id});lsSet('pos_exp',lE);
+    qObD('expenses/'+id,'exp',id);
+    // 2) Hapus SEMUA mutasi kas yang mengacu pengeluaran ini (by ref & by deskripsi)
+    lST=lST.filter(function(t){
+      var isExpTx=(t.cat==='expense'||t.cat==='stock_purchase'||t.cat==='payable_paid');
+      return !(isExpTx&&(t.ref==='exp-'+id||(t.desc||'').indexOf((e.description||e.category||''))>-1));
+    });
+    saveST();
+    // 3) Bersihkan outbox yang macet (mutasi pending dari kasir)
+    lOb=lOb.filter(function(x){
+      if(x.kind==='cash'&&x.payload&&x.payload.ref==='exp-'+id)return false;
+      return true;
+    });saveOb();
+    rKas();if(cv==='pos')renderKasirBar();if(cv==='akuntansi')rAC();
+    tt('Dihapus — saldo sumber kembali');
+  },{title:'Hapus Pengeluaran',yesLabel:'Ya, Hapus'});
+}
 // ===== IMPORT / EXPORT SPREADSHEET =====
 function _impSplit(txt){return txt.split(/\r?\n/).map(function(l){return l.trim()}).filter(Boolean).map(function(l){var sep=(l.indexOf('\t')>-1)?'\t':((l.split(';').length>=l.split(',').length)?';':',');return l.split(sep).map(function(c){return c.replace(/^"+|"+$/g,'').trim()})})}
 function _impDate(s){s=(s||'').trim();var m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);if(m)return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return m[3]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[1]).padStart(2,'0');return null}
