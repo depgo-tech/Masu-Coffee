@@ -406,8 +406,14 @@ export default async function handler(req, res) {
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json(data[0] || { success: true });
       }
-      if (req.method === 'DELETE' && id) {
-        const { error } = await supabase.from('attendance').delete().eq('id', id);
+            if (req.method === 'DELETE' && id) {
+        const { data: exp } = await supabase.from('expenses').select('description, category, amount').eq('id', id).maybeSingle();
+        // Hapus semua mutasi kas yang mengacu pengeluaran ini (by ref & by deskripsi)
+        if (exp) {
+          await supabase.from('cash_transactions').delete().eq('ref', 'exp-' + id);
+          await supabase.from('cash_transactions').delete().like('descr', '%' + (exp.description || exp.category || '') + '%');
+        }
+        const { error } = await supabase.from('expenses').delete().eq('id', id);
         if (error) return res.status(500).json({ error: error.message });
         return res.status(200).json({ success: true });
       }
