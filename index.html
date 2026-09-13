@@ -1542,10 +1542,35 @@ function rRO(){
   h+='<div class="tt2"><table><thead><tr><th>No. Order</th><th>Waktu</th><th>Tipe</th><th>Bayar</th><th>Total</th><th>Aksi</th></tr></thead><tbody>';
   if(!f.length){h+='<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:16px">Tidak ada order pada tanggal ini.</td></tr>'}
   else{f.forEach(function(o){
-    h+='<tr><td style="font-weight:600">'+o.order_number+'</td><td>'+fmtDT(o.order.created_at)+'</td><td><span class="bg2 '+(o.order.order_type==='dine-in'?'dine':'take')+'">'+(o.order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.order.payment_method||'cash').toUpperCase()+'</td><td style="color:var(--ac);font-weight:700">'+rp(o.order.total)+'</td><td><button class="me" style="padding:4px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="reprintOrder(\''+o.order_number+'\')">🖨 Ulang</button> <button class="bd" style="padding:4px 8px;font-size:10px" onclick="deleteOrderAsk(\''+o.order_number+'\')">Hapus</button></td></tr>'})}
+    h+='<tr style="cursor:pointer" onclick="oOrdDetail(\''+o.order_number+'\')"><td style="font-weight:600">'+o.order_number+'</td><td>'+fmtDT(o.order.created_at)+'</td><td><span class="bg2 '+(o.order.order_type==='dine-in'?'dine':'take')+'">'+(o.order.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></td><td>'+(o.order.payment_method||'cash').toUpperCase()+'</td><td style="color:var(--ac);font-weight:700">'+rp(o.order.total)+'</td><td onclick="event.stopPropagation()"><button class="me" style="padding:4px 8px;font-size:10px;border-radius:4px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="reprintOrder(\''+o.order_number+'\')">🖨 Ulang</button> <button class="bd" style="padding:4px 8px;font-size:10px" onclick="deleteOrderAsk(\''+o.order_number+'\')">Hapus</button></td></tr>'})}
   h+='</tbody></table></div></div>';
   document.getElementById('ct').innerHTML=h;
 }
+
+function oOrdDetail(num){
+  var rec=lO.find(function(x){return x.order_number===num});
+  if(!rec){tt('Order tidak ada di data ini',true);return}
+  var o=rec.order;var items=rec.items||[];
+  var taxOn=parseFloat(o.tax_rate||0)>0;
+  var h='<div class="ml" style="max-width:420px"><h2 style="justify-content:space-between">Detail Order <span class="pr-on">#'+num+'</span></h2>';
+  h+='<div class="pnl" style="margin-bottom:10px"><div class="pnl-r"><span class="lb">Waktu</span><span>'+fmtDT(o.created_at)+'</span></div><div class="pnl-r"><span class="lb">Tipe</span><span>'+(o.order_type==='dine-in'?'Dine-in':'Takeaway')+'</span></div><div class="pnl-r"><span class="lb">Metode</span><span>'+(o.payment_method||'cash').toUpperCase()+'</span></div>'+(o.notes?'<div class="pnl-r"><span class="lb">Nama/Catatan</span><span style="text-align:right;max-width:60%">📝 '+o.notes+'</span></div>':'')+'</div>';
+  h+='<div class="acc-tb"><table><thead><tr><th>Item</th><th class="nm">Qty</th><th class="nm">Subtotal</th></tr></thead><tbody>';
+  items.forEach(function(it){
+    var vs=[it.variant_temp,it.variant_size].filter(Boolean).join(', ');
+    var ads=it.addons&&it.addons.length?(Array.isArray(it.addons)?it.addons:[]).map(function(a){return a.name}).join(', '):'';
+    h+='<tr><td>'+it.menu_item_name+(vs?'<br><span style="font-size:10px;color:var(--gold)">'+vs+'</span>':'')+(ads?'<br><span style="font-size:10px;color:var(--gold)">+ '+ads+'</span>':'')+'</td><td class="nm">'+it.quantity+'</td><td class="nm">'+rp(it.subtotal)+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="pnl"><div class="pnl-r"><span class="lb">Subtotal</span><span>'+rp(o.subtotal)+'</span></div>';
+  if(parseFloat(o.discount_amount||0)>0)h+='<div class="pnl-r"><span class="lb">Diskon</span><span style="color:var(--dng)">- '+rp(o.discount_amount)+'</span></div>';
+  if(taxOn)h+='<div class="pnl-r"><span class="lb">Pajak ('+Math.round(parseFloat(o.tax_rate)*100)+'%)</span><span>'+rp(o.tax_amount)+'</span></div>';
+  h+='<div class="pnl-r t"><span class="lb">TOTAL</span><span>'+rp(o.total)+'</span></div>';
+  h+='<div class="pnl-r"><span class="lb">Dibayar ('+(o.payment_method||'cash').toUpperCase()+')</span><span>'+rp(o.amount_paid||o.total)+'</span></div>';
+  h+='<div class="pnl-r"><span class="lb">Kembalian</span><span>'+rp(o.change_amount||0)+'</span></div></div>';
+  h+='<div class="ma"><button class="bs" onclick="cm(\'opModal\')">Tutup</button><button class="bp" onclick="cm(\'opModal\');reprintOrder(\''+num+'\')">🖨 Cetak Ulang</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+}
+  
 function reprintOrder(num){
   var rec=lO.find(function(x){return x.order_number===num});
   if(!rec){tt('Order tidak ada di data ini',true);return}
