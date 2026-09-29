@@ -509,6 +509,42 @@ export async function onRequest(context) {
       }
     }
 
+        // ===== KAS & BANK SYNC (8 resource generic CRUD) =====
+    const SYNC_TABLES = {
+      'cash-transactions': 'cash_transactions',
+      'kas-closures': 'kas_closures',
+      'assets': 'assets',
+      'stock-buys': 'stock_buys',
+      'stock-opname': 'stock_opname',
+      'waste': 'waste',
+      'payables': 'payables',
+      'receivables': 'receivables'
+    };
+    if (SYNC_TABLES[resource]) {
+      const table = SYNC_TABLES[resource];
+      if (request.method === 'GET') {
+        const orderCol = table === 'cash_transactions' ? 'ts' : 'date';
+        const { data, error } = await supabase.from(table).select('*').order(orderCol, { ascending: false }).limit(2000);
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (request.method === 'POST') {
+        const { data, error } = await supabase.from(table).insert(body).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (request.method === 'PUT' && id) {
+        const { data, error } = await supabase.from(table).update(body).eq('id', id).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0] || { success: true });
+      }
+      if (request.method === 'DELETE' && id) {
+        const { error } = await supabase.from(table).delete().eq('id', id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+    
     return json({ error: `Endpoint not found: ${request.method} /${path}` }, 404);
   } catch (e) {
     return json({ error: e.message }, 500);
