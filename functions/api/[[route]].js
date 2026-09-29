@@ -71,6 +71,11 @@ export async function onRequest(context) {
       await wipe('profit_distributions', 'id');
       await wipe('stock_transactions', 'id');
       await wipe('journal_entries', 'id');
+      await wipe('cash_transactions', 'id');
+      await wipe('kas_closures', 'id');
+      await wipe('stock_buys', 'id');
+      await wipe('stock_opname', 'id');
+      await wipe('waste', 'id');
       return json({ success: true, results });
     }
 
@@ -407,6 +412,29 @@ export async function onRequest(context) {
       }
     }
 
+    // ===== SHIFTS (legacy) =====
+    if (resource === 'shifts') {
+      if (request.method === 'GET') {
+        const openOnly = url.searchParams.get('open');
+        let q = supabase.from('shifts').select('*').order('opened_at', { ascending: false });
+        if (openOnly) q = q.eq('status', 'open');
+        const { data, error } = await q.limit(50);
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (request.method === 'POST') {
+        if (!body.shift_label) return json({ error: 'shift_label is required' }, 400);
+        const { data, error } = await supabase.from('shifts').insert(body).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (request.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('shifts').update(body).eq('id', id).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0] || { success: true });
+      }
+    }
+
     // ===== CHART OF ACCOUNTS =====
     if (resource === 'accounts') {
       if (request.method === 'GET') {
@@ -509,7 +537,9 @@ export async function onRequest(context) {
       }
     }
 
-        // ===== KAS & BANK SYNC (8 resource generic CRUD) =====
+    // ===== KAS & BANK SYNC (8 resource: cash-transactions, kas-closures,
+    // assets, stock-buys, stock-opname, waste, payables, receivables) =====
+    // Generic CRUD: GET list, POST tambah, PUT edit, DELETE hapus
     const SYNC_TABLES = {
       'cash-transactions': 'cash_transactions',
       'kas-closures': 'kas_closures',
@@ -544,7 +574,7 @@ export async function onRequest(context) {
         return json({ success: true });
       }
     }
-    
+
     return json({ error: `Endpoint not found: ${request.method} /${path}` }, 404);
   } catch (e) {
     return json({ error: e.message }, 500);
