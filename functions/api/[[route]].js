@@ -46,7 +46,7 @@ export async function onRequest(context) {
       return t.toISOString();
     };
 
-       // ===== RESET DATA: hapus SEMUA transaksi di cloud (13 tabel) + catat log =====
+    // ===== RESET DATA: hapus SEMUA transaksi di 15 tabel + update last_reset + tulis log =====
     if (resource === 'reset-data' && request.method === 'POST') {
       const performedBy = (body && body.device) ? String(body.device).slice(0, 80) : 'unknown';
       const results = {};
@@ -80,13 +80,11 @@ export async function onRequest(context) {
       await wipe('payables', 'id');
       await wipe('receivables', 'id');
       await supabase.from('settings').update({ last_reset_at: new Date().toISOString() }).eq('id', 1);
-      try {
-        await supabase.from('audit_log').insert({ action: 'reset-data', performed_by: performedBy, created_at: new Date().toISOString() });
-      } catch (e) { /* log gagal tidak boleh membatalkan reset */ }
+      try { await supabase.from('audit_log').insert({ action: 'reset-data', performed_by: performedBy, created_at: new Date().toISOString() }); } catch (e) {}
       return json({ success: true, results });
     }
 
-    // ===== IMPORT DATA (spreadsheet → cloud, dengan dedup nomor order) =====
+    // ===== IMPORT DATA (spreadsheet → cloud, dedup nomor order) =====
     if (resource === 'import-data' && request.method === 'POST') {
       const orders = body.orders || [];
       const expenses = body.expenses || [];
@@ -574,9 +572,7 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== KAS & BANK SYNC (8 resource: cash-transactions, kas-closures,
-    // assets, stock-buys, stock-opname, waste, payables, receivables) =====
-    // Generic CRUD: GET list, POST tambah, PUT edit, DELETE hapus
+    // ===== KAS & BANK SYNC (8 resource generic CRUD) =====
     const SYNC_TABLES = {
       'cash-transactions': 'cash_transactions',
       'kas-closures': 'kas_closures',
