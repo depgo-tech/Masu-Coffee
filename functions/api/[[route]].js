@@ -46,8 +46,9 @@ export async function onRequest(context) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA (dipanggil "Mulai dari 0") =====
+       // ===== RESET DATA: hapus SEMUA transaksi di cloud (13 tabel) + catat log =====
     if (resource === 'reset-data' && request.method === 'POST') {
+      const performedBy = (body && body.device) ? String(body.device).slice(0, 80) : 'unknown';
       const results = {};
       const wipe = async (table, col) => {
         try {
@@ -76,6 +77,42 @@ export async function onRequest(context) {
       await wipe('stock_buys', 'id');
       await wipe('stock_opname', 'id');
       await wipe('waste', 'id');
+      await wipe('payables', 'id');
+      await wipe('receivables', 'id');
+      await supabase.from('settings').update({ last_reset_at: new Date().toISOString() }).eq('id', 1);
+      try {
+        await supabase.from('audit_log').insert({ action: 'reset-data', performed_by: performedBy, created_at: new Date().toISOString() });
+      } catch (e) { /* log gagal tidak boleh membatalkan reset */ }
+      return json({ success: true, results });
+    }
+
+    // ===== IMPORT DATA (spreadsheet → cloud, dengan dedup nomor order) =====
+    if (resource === 'import-data' && request.method === 'POST') {
+      const orders = body.orders || [];
+      const expenses = body.expenses || [];
+      const cash = body.cash || [];
+      const results = { orders: 0, expenses: 0, skippedOrders: 0 };
+      for (const o of orders) {
+        try {
+          const { data: dup } = await supabase.from('orders').select('id').eq('order_number', o.order_number).maybeSingle();
+          if (dup) { results.skippedOrders++; continue; }
+          const its = o.items || [];
+          const payload = Object.assign({}, o); delete payload.items;
+          const { data: no, error: oe } = await supabase.from('orders').insert(payload).select().single();
+          if (oe) continue;
+          results.orders++;
+          if (its.length) {
+            await supabase.from('order_items').insert(its.map(x => Object.assign({}, x, { order_id: no.id })));
+          }
+        } catch (e) { /* lanjut baris berikutnya */ }
+      }
+      if (expenses.length) {
+        const { error } = await supabase.from('expenses').insert(expenses);
+        if (!error) results.expenses = expenses.length;
+      }
+      for (const c of cash) {
+        try { await supabase.from('cash_transactions').insert(c); } catch (e) { /* skip */ }
+      }
       return json({ success: true, results });
     }
 
