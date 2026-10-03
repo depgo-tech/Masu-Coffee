@@ -38,7 +38,6 @@ export async function onRequest(context) {
     const resource = parts[0] || '';
     const id = parts[1];
 
-    // Tanggal lokal (WIB) → rentang ISO UTC yang benar
     const toWibStart = (d) => new Date(d + 'T00:00:00+07:00').toISOString();
     const toWibEnd = (d) => {
       const t = new Date(d + 'T00:00:00+07:00');
@@ -46,7 +45,7 @@ export async function onRequest(context) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA: hapus SEMUA transaksi di 15 tabel + update last_reset + tulis log =====
+    // ===== RESET DATA: 15 tabel + log =====
     if (resource === 'reset-data' && request.method === 'POST') {
       const performedBy = (body && body.device) ? String(body.device).slice(0, 80) : 'unknown';
       const results = {};
@@ -84,7 +83,7 @@ export async function onRequest(context) {
       return json({ success: true, results });
     }
 
-    // ===== IMPORT DATA (spreadsheet → cloud, dedup nomor order) =====
+    // ===== IMPORT DATA =====
     if (resource === 'import-data' && request.method === 'POST') {
       const orders = body.orders || [];
       const expenses = body.expenses || [];
@@ -102,7 +101,7 @@ export async function onRequest(context) {
           if (its.length) {
             await supabase.from('order_items').insert(its.map(x => Object.assign({}, x, { order_id: no.id })));
           }
-        } catch (e) { /* lanjut baris berikutnya */ }
+        } catch (e) { /* lanjut */ }
       }
       if (expenses.length) {
         const { error } = await supabase.from('expenses').insert(expenses);
@@ -202,8 +201,6 @@ export async function onRequest(context) {
       if (!order || !items || !Array.isArray(items) || items.length === 0) {
         return json({ error: 'order and a non-empty items array are required' }, 400);
       }
-
-      // IDEMPOTENSI: created_at identik = sudah pernah masuk. Balikin yang lama.
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
@@ -212,7 +209,6 @@ export async function onRequest(context) {
           return json({ order: existing, order_number: existing.order_number, duplicate: true });
         }
       }
-
       let newOrder = null;
       let orderErr = null;
       for (let attempt = 0; attempt < 5; attempt++) {
@@ -224,7 +220,6 @@ export async function onRequest(context) {
         } else if (attempt > 0) {
           orderNum = 'MS' + String(attempt + 1).padStart(5, '0');
         }
-
         const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
         if (!result.error) {
           newOrder = result.data;
@@ -322,7 +317,7 @@ export async function onRequest(context) {
       });
     }
 
-    // ===== INGREDIENTS & STOCK =====
+    // ===== INGREDIENTS =====
     if (resource === 'ingredients') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('ingredients').select('*').order('name');
@@ -447,30 +442,7 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== SHIFTS (legacy) =====
-    if (resource === 'shifts') {
-      if (request.method === 'GET') {
-        const openOnly = url.searchParams.get('open');
-        let q = supabase.from('shifts').select('*').order('opened_at', { ascending: false });
-        if (openOnly) q = q.eq('status', 'open');
-        const { data, error } = await q.limit(50);
-        if (error) return json({ error: error.message }, 500);
-        return json(data);
-      }
-      if (request.method === 'POST') {
-        if (!body.shift_label) return json({ error: 'shift_label is required' }, 400);
-        const { data, error } = await supabase.from('shifts').insert(body).select();
-        if (error) return json({ error: error.message }, 500);
-        return json(data[0]);
-      }
-      if (request.method === 'PUT' && id) {
-        const { data, error } = await supabase.from('shifts').update(body).eq('id', id).select();
-        if (error) return json({ error: error.message }, 500);
-        return json(data[0] || { success: true });
-      }
-    }
-
-    // ===== CHART OF ACCOUNTS =====
+    // ===== ACCOUNTS =====
     if (resource === 'accounts') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('accounts').select('*').eq('is_active', true).order('sort_order');
@@ -572,7 +544,7 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== KAS & BANK SYNC (8 resource generic CRUD) =====
+    // ===== KAS SYNC: 8 resource generic CRUD + PROFIT SHARES =====
     const SYNC_TABLES = {
       'cash-transactions': 'cash_transactions',
       'kas-closures': 'kas_closures',
@@ -581,12 +553,13 @@ export async function onRequest(context) {
       'stock-opname': 'stock_opname',
       'waste': 'waste',
       'payables': 'payables',
-      'receivables': 'receivables'
+      'receivables': 'receivables',
+      'profit-shares': 'profit_shares'
     };
     if (SYNC_TABLES[resource]) {
       const table = SYNC_TABLES[resource];
       if (request.method === 'GET') {
-        const orderCol = table === 'cash_transactions' ? 'ts' : 'date';
+        const orderCol = table === 'cash_transactions' ? 'ts' : 'id';
         const { data, error } = await supabase.from(table).select('*').order(orderCol, { ascending: false }).limit(2000);
         if (error) return json({ error: error.message }, 500);
         return json(data);
