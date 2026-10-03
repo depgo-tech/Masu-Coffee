@@ -348,6 +348,8 @@ if(!lEmp){lEmp=[{id:1,name:'Admin',pin:'1111'},{id:2,name:'Barista 1',pin:'2222'
 var lAtt=lsGet('pos_att',[]);
 var lAcc=lsGet('pos_acc',[]);
 var lInv=lsGet('pos_inv',[]);
+var lSh=lsGet('pos_shares',[{id:1,role:'investor',name:'Investor',percentage:70},{id:2,role:'pengelola',name:'Pengelola',percentage:30}]);
+function saveSh(){lsSet('pos_shares',lSh)}
 var lPD=lsGet('pos_pd',[]);
 var lO=lsGet('pos_orders',[]);
 var lE=lsGet('pos_exp',[]);
@@ -689,6 +691,72 @@ function oPrtM(){
   h+='<div class="ma"><button class="bs" onclick="cm(\'opModal\')">Tutup</button></div></div>';
   document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
 }
+
+// ===== SYNC KAS: MERGE DUA ARAH — lokal yang belum di cloud DIUPLOAD,
+// cloud yang belum lokal DITAMBAH. Tidak ada yang menimpa/menghapus. =====
+function kasKey(t){return (t.ref||'')+'|'+(t.date||'')+'|'+(t.src||'')+'|'+(t.type||'')+'|'+Math.round(parseFloat(t.amount||0))+'|'+(t.desc||'')}
+function syncKasPull(){
+  if(lOb.some(function(x){return x.path==='reset-data'}))return;
+  aG('cash-transactions').then(function(d){
+    if(d&&d.error)return;
+    var cloud=Array.isArray(d)?d:[];
+    var cloudKeys={};
+    cloud.forEach(function(t){cloudKeys[kasKey(t)]=1});
+    lST.filter(function(t){return !t.syn}).forEach(function(t){
+      var payload={date:t.date,ts:t.ts||null,src:t.src,type:t.type,cat:t.cat,desc:t.desc,amount:t.amount,m:t.m||null,ref:t.ref||('loc-'+t.id),investor_id:t.investor_id||null};
+      aP('cash-transactions',payload).then(function(r){
+        if(r&&r.id){var ix=lST.findIndex(function(x){return x.id===t.id});if(ix>-1){lST[ix].id=r.id;lST[ix].syn=1;lST[ix].ref=payload.ref;saveST()}}
+      });
+    });
+    var seen={},out=[];
+    lST.forEach(function(t){var k=kasKey(t);if(seen[k])return;seen[k]=1;out.push(t)});
+    cloud.forEach(function(t){var k=kasKey(t);if(seen[k])return;seen[k]=1;out.push({id:t.id,date:t.date,ts:t.ts,src:t.src,type:t.type,cat:t.cat,desc:t.desc,amount:t.amount,m:t.m,ref:t.ref,syn:1})});
+    if(out.length!==lST.length){lST=out;saveST()}
+    if(cv==='kas')rKas();if(cv==='pos')renderKasirBar();if(cv==='akuntansi')rAC();
+  });
+  aG('kas-closures').then(function(d){
+    if(d&&d.error)return;
+    var cloud=Array.isArray(d)?d:[];
+    var norm=function(c){return{id:c.id,date:c.close_date||c.date||'',src:c.src||'',tin:parseFloat(c.tin||0),tout:parseFloat(c.tout||0),expected:parseFloat(c.expected||0),counted:parseFloat(c.counted||0),variance:parseFloat(c.variance||0),moved_to:c.moved_to||'',moved_amount:parseFloat(c.moved_amount||0),created_at:c.created_at||'',syn:1}};
+    var ck2=function(c){return (c.date||'')+'|'+(c.src||'')};
+    var cloudKeys={};cloud.forEach(function(c){cloudKeys[ck2(norm(c))]=1});
+    lCl.filter(function(c){return !c.syn}).forEach(function(c){
+      aP('kas-closures',{close_date:c.date,src:c.src,tin:c.tin,tout:c.tout,expected:c.expected,counted:c.counted,variance:c.variance,moved_to:c.moved_to||null,moved_amount:c.moved_amount||0,created_at:c.created_at||new Date().toISOString()}).then(function(r){if(r&&r.id){var ix=lCl.findIndex(function(x){return x.id===c.id});if(ix>-1){lCl[ix].id=r.id;lCl[ix].syn=1;saveCl()}}});
+    });
+    var seen={},out=lCl.slice();
+    cloud.forEach(function(c){var n=norm(c),k=ck2(n);if(seen[k]||lCl.some(function(x){return ck2(x)===k}))return;seen[k]=1;out.push(n)});
+    if(out.length!==lCl.length){lCl=out;saveCl()}
+    if(cv==='kas')rKas();
+  });
+  aG('assets').then(function(d){
+    if(d&&d.error)return;
+    var cloud=Array.isArray(d)?d:[];
+    var norm=function(a){return{id:a.id,name:a.name||'',value:parseFloat(a.value||0),date:a.a_date||a.date||'',syn:1}};
+    var ak=function(a){return (a.name||'')+'|'+Math.round(parseFloat(a.value||0))};
+    var cloudKeys={};cloud.forEach(function(a){cloudKeys[ak(norm(a))]=1});
+    lAst.filter(function(a){return !a.syn}).forEach(function(a){
+      aP('assets',{name:a.name,value:a.value,a_date:a.date||null}).then(function(r){if(r&&r.id){var ix=lAst.findIndex(function(x){return x.id===a.id});if(ix>-1){lAst[ix].id=r.id;lAst[ix].syn=1;saveAst()}}});
+    });
+    var seen={},out=lAst.slice();
+    cloud.forEach(function(a){var n=norm(a),k=ak(n);if(seen[k]||lAst.some(function(x){return ak(x)===k}))return;seen[k]=1;out.push(n)});
+    if(out.length!==lAst.length){lAst=out;saveAst()}
+  });
+  aG('stock-buys').then(function(d){
+    if(d&&d.error)return;
+    var cloud=Array.isArray(d)?d:[];
+    var norm=function(b){return{id:b.id,date:b.b_date||b.date||'',ing_id:b.ing_id||null,ing_name:b.ing_name||'',qty:parseFloat(b.qty||0),unit:b.unit||'',amount:parseFloat(b.amount||0),src:b.src||'cash_kasir',syn:1}};
+    var bk=function(b){return (b.date||'')+'|'+(b.ing_name||'')+'|'+Math.round(parseFloat(b.qty||0))+'|'+Math.round(parseFloat(b.amount||0))};
+    var cloudKeys={};cloud.forEach(function(b){cloudKeys[bk(norm(b))]=1});
+    lBuy.filter(function(b){return !b.syn}).forEach(function(b){
+      aP('stock-buys',{b_date:b.date,ing_id:b.ing_id||null,ing_name:b.ing_name,qty:b.qty,unit:b.unit,amount:b.amount,src:b.src||'cash_kasir'}).then(function(r){if(r&&r.id){var ix=lBuy.findIndex(function(x){return x.id===b.id});if(ix>-1){lBuy[ix].id=r.id;lBuy[ix].syn=1;saveBuy()}}});
+    });
+    var seen={},out=lBuy.slice();
+    cloud.forEach(function(b){var n=norm(b),k=bk(n);if(seen[k]||lBuy.some(function(x){return bk(x)===k}))return;seen[k]=1;out.push(n)});
+    if(out.length!==lBuy.length){lBuy=out;saveBuy()}
+  });
+  aG('profit-shares').then(function(d){if(d&&!d.error&&Array.isArray(d)&&d.length){lSh=d;saveSh();if(cv==='akuntansi'&&aT==='investor')rAC()}});
+}
+  
 // ===== SINKRONISASI =====
 function syncBG(){
   if(!navigator.onLine)return;
@@ -721,7 +789,7 @@ function syncBG(){
     lE=srv.concat(pending);
     lsSet('pos_exp',lE);if(cv==='akuntansi')rAC();
   }});
-  aG('cash-transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var pend=lST.filter(function(t){return t.id>1e11});lST=d.concat(pend);saveST();if(cv==='kas')rKas();if(cv==='pos')renderKasirBar();if(cv==='akuntansi')rAC();}});
+  syncKasPull();
   aG('kas-closures').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lCl.filter(function(c){return c.id>1e11});lCl=d.map(function(r){return{id:r.id,date:r.close_date,src:r.src,tin:parseFloat(r.tin),tout:parseFloat(r.tout),expected:parseFloat(r.expected),counted:parseFloat(r.counted),variance:parseFloat(r.variance),moved_to:r.moved_to,moved_amount:parseFloat(r.moved_amount),created_at:r.created_at}}).concat(pend);saveCl();if(cv==='kas')rKas();}});
   aG('payables').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lPa.filter(function(p){return p.id>1e11});lPa=d.map(function(r){return{id:r.id,date:r.p_date,supplier:r.supplier,customer:r.supplier,description:r.description,amount:parseFloat(r.amount),paid_amount:parseFloat(r.paid_amount),received_amount:0,due_date:r.due_date,status:r.status}}).concat(pend);lsSet('pos_pa',lPa);if(cv==='akuntansi')rAC();}});
   aG('receivables').then(function(d){if(d&&!d.error&&Array.isArray(d)){var pend=lRe.filter(function(p){return p.id>1e11});lRe=d.map(function(r){return{id:r.id,date:r.r_date,supplier:'',customer:r.customer,description:r.description,amount:parseFloat(r.amount),paid_amount:0,received_amount:parseFloat(r.received_amount),due_date:r.due_date,status:r.status}}).concat(pend);lsSet('pos_re',lRe);if(cv==='akuntansi')rAC();}});
@@ -1672,7 +1740,7 @@ function sPDist(){
   var from=document.getElementById('pdFrom').value,to=document.getElementById('pdTo').value;
   if(!label||!from||!to){tt('Lengkapi periode',true);unlockSave('sPDist');return}
   var f=calcFinancials(from,to);
-  var items=lInv.map(function(i){return{investor_id:i.id,investor_name:i.name,percentage:parseFloat(i.percentage),amount:f.netProfit*(parseFloat(i.percentage)/100)}});
+  var items=lSh.map(function(i){return{investor_id:i.role==='investor'?i.id:null,role:i.role,investor_name:i.name,percentage:parseFloat(i.percentage),amount:f.netProfit*(parseFloat(i.percentage)/100)}});
   var btn=document.getElementById('pdSaveBtn');if(btn)btn.disabled=true;
   var tempId=Date.now();
   var rec={id:tempId,period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,created_at:new Date().toISOString(),profit_distribution_items:items};
@@ -1680,6 +1748,31 @@ function sPDist(){
   qOb('profit-distributions',{period_label:label,net_profit:f.netProfit,period_from:from,period_to:to,items:items},'pd',tempId);
   if(btn)btn.disabled=false;unlockSave('sPDist');
 }
+
+  function oShM(role){
+  var h='<div class="ml" style="max-width:380px"><h2>Tambah '+(role==='investor'?'Investor':'Pengelola')+'</h2><div class="fg"><label>Nama</label><input type="text" id="shN" placeholder="Nama"></div><div class="fg"><label>Persentase dari Laba Bersih (%)</label><input type="number" id="shP" step="0.1" placeholder="'+(role==='investor'?'70':'30')+'"></div><div class="fg"><label>Catatan (opsional)</label><input type="text" id="shNo" placeholder="No. HP / keterangan"></div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Batal</button><button class="bp" onclick="sShM(\''+role+'\')">Simpan</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+}
+function sShM(role){
+  var name=document.getElementById('shN').value.trim();var pct=parseFloat(document.getElementById('shP').value);var note=document.getElementById('shNo').value.trim();
+  if(!name||isNaN(pct)||pct<=0){tt('Isi nama & persentase',true);return}
+  var tempId=Date.now();
+  lSh.push({id:tempId,role:role,name:name,percentage:pct,note:note});saveSh();cm('opModal');tt('Ditambahkan');rAC();
+  qOb('profit-shares',{role:role,name:name,percentage:pct,note:note},'shr',tempId);
+}
+function oShEdit(id){
+  var s=lSh.find(function(x){return x.id===id});if(!s)return;
+  var h='<div class="ml" style="max-width:380px"><h2>Edit — '+s.name+'</h2><div class="fg"><label>Nama</label><input type="text" id="shN" value="'+s.name+'"></div><div class="fg"><label>Persentase (%)</label><input type="number" id="shP" step="0.1" value="'+s.percentage+'"></div><div class="fg"><label>Catatan</label><input type="text" id="shNo" value="'+(s.note||'')+'"></div><div class="ma"><button class="bs" onclick="cm(\'opModal\')">Batal</button><button class="bp" onclick="sShEdit('+s.id+')">Simpan</button></div></div>';
+  document.getElementById('opC').innerHTML=h;document.getElementById('opModal').classList.add('show');
+}
+function sShEdit(id){
+  var s=lSh.find(function(x){return x.id===id});if(!s)return;
+  s.name=document.getElementById('shN').value.trim();s.percentage=parseFloat(document.getElementById('shP').value)||s.percentage;s.note=document.getElementById('shNo').value.trim();
+  saveSh();cm('opModal');rAC();tt('Diperbarui');
+  if(s.id<1e11&&apiOn){aU('profit-shares/'+s.id,{name:s.name,percentage:s.percentage,note:s.note})}
+}
+function dSh(id){showConfirm('Hapus entitas ini?',function(){lSh=lSh.filter(function(x){return x.id!==id});saveSh();qObD('profit-shares/'+id,'shr',id);rAC();tt('Dihapus')})}
+  
 function dPDist(id){showConfirm('Hapus catatan bagi hasil ini?',function(){lPD=lPD.filter(function(p){return p.id!==id});savePD();qObD('profit-distributions/'+id,'pd',id);rAC();tt('Dihapus')})}
 function cetakRekapBulanan(y){
   var mNames=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -1881,7 +1974,38 @@ function rAC(){
     var h='<div style="margin-bottom:10px"><button class="bp" style="padding:10px 14px;font-size:12px" onclick="oDM(\'receivable\')">+ Piutang</button></div><div class="acc-tb"><table><thead><tr><th>Tgl</th><th>Pelanggan</th><th>Desc</th><th>Jumlah</th><th>Status</th><th>Aksi</th></tr></thead><tbody>';
     lRe.forEach(function(r){h+='<tr><td>'+r.date+'</td><td>'+(r.customer||'-')+'</td><td>'+(r.description||'-')+'</td><td class="nm pos">'+rp(parseFloat(r.amount)-parseFloat(r.received_amount||0))+'</td><td><span class="sbg '+(r.status==='paid'?'paid':'unpaid')+'">'+(r.status==='paid'?'Lunas':'Belum')+'</span></td><td>'+(r.status!=='paid'?'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="pD2('+r.id+',\'receivable\')">Lunasi</button> ':'')+'<button class="bd" style="padding:4px 6px;font-size:10px" onclick="dD2('+r.id+',\'receivable\')">Hapus</button></td></tr>'});
     h+='</tbody></table></div>';el.innerHTML=h;
-  }else if(aT==='investor'){
+    }else if(aT==='journal'){
+    var invs=lSh.filter(function(x){return x.role==='investor'});
+    var peng=lSh.filter(function(x){return x.role==='pengelola'});
+    var invTot=invs.reduce(function(s,i){return s+parseFloat(i.percentage||0)},0);
+    var pengTot=peng.reduce(function(s,i){return s+parseFloat(i.percentage||0)},0);
+    var invCap={};lST.forEach(function(t){if(t.cat==='modal'&&t.type==='in'&&t.investor_id){invModal[t.investor_id]=(invModal[t.investor_id]||0)+parseFloat(t.amount||0)}});
+    var totInvCap=0;lInv.forEach(function(i){totInvCap+=parseFloat(i.percentage||0)});
+    var h='<div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="bp" style="padding:10px 14px;font-size:12px" onclick="oShM(\'investor\')">+ Investor (Laba)</button><button class="bp" style="background:var(--gold);padding:10px 14px;font-size:12px" onclick="oShM(\'pengelola\')">+ Pengelola (Laba)</button></div>';
+    h+='<div class="pnl"><h3>💰 Investor — bagian laba <span style="font-size:11px;font-weight:400;color:'+(invTot!==70?'var(--dng)':'var(--dim)')+'">(Total: '+invTot.toFixed(1)+'%'+(invTot!==70?' — seharusnya 70%!':'')+')</span></h3>';
+    if(!invs.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Belum ada investor.</div>'}
+    else{invs.forEach(function(i){var mc=invCap[i.id]||0;h+='<div class="pnl-r"><span class="lb">'+i.name+'<br><span style="font-size:10px;color:var(--ac)">Modal disetor: '+rp(mc)+'</span></span><span style="display:flex;gap:6px;align-items:center"><span style="font-weight:700;color:var(--ac)">'+parseFloat(i.percentage).toFixed(1)+'%</span><button class="me" style="padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="oShEdit('+i.id+')">Edit</button><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dSh('+i.id+')">Hapus</button></span></div>'})}
+    h+='</div>';
+    h+='<div class="pnl"><h3>👤 Pengelola — bagian laba <span style="font-size:11px;font-weight:400;color:'+(pengTot!==30?'var(--dng)':'var(--dim)')+'">(Total: '+pengTot.toFixed(1)+'%'+(pengTot!==30?' — seharusnya 30%!':'')+')</span></h3>';
+    if(!peng.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Belum ada pengelola.</div>'}
+    else{peng.forEach(function(i){h+='<div class="pnl-r"><span class="lb">'+i.name+(i.note?' <span style="font-size:10px;color:var(--dim)">('+i.note+')</span>':'')+'</span><span style="display:flex;gap:6px;align-items:center"><span style="font-weight:700;color:var(--gold)">'+parseFloat(i.percentage).toFixed(1)+'%</span><button class="me" style="padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="oShEdit('+i.id+')">Edit</button><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dSh('+i.id+')">Hapus</button></span></div>'})}
+    h+='</div>';
+    h+='<div class="pnl"><h3>Validasi <span style="font-size:11px;font-weight:400;color:var(--dim)">(Investor 70% + Pengelola 30% = 100%)</span></h3><div class="pnl-r t"><span class="lb">Total</span><span class="vl" style="color:'+(Math.abs((invTot+pengTot)-100)<0.05?'var(--suc)':'var(--dng)')+'">'+(invTot+pengTot).toFixed(1)+'% '+(Math.abs((invTot+pengTot)-100)<0.05?'✓':'⚠ belum 100%')+'</span></div></div>';
+    h+='<div class="pnl"><h3>Rekap per Kuartal <span style="margin-left:10px;font-weight:400"><label style="font-size:11px;color:var(--dim)">Tahun</label> <input type="number" value="'+y+'" style="width:80px;padding:4px 8px;border:1px solid var(--bdr);border-radius:4px" onchange="lsSet(\'pos_inv_year\',parseInt(this.value)||new Date().getFullYear());rAC()"></span></h3>';
+    h+='<div class="acc-tb"><table><thead><tr><th>Kuartal</th><th class="nm">Penjualan</th><th class="nm">Laba Bersih</th><th class="nm">Investor ('+invTot.toFixed(0)+'%)</th><th class="nm">Pengelola ('+pengTot.toFixed(0)+'%)</th><th></th></tr></thead><tbody>';
+    for(var q=1;q<=4;q++){
+      var qr=qRange(y,q);var fq=calcFinancials(qr.start,qr.end);
+      var toInv=fq.netProfit*(invTot/100),toPeng=fq.netProfit*(pengTot/100);
+      h+='<tr><td style="font-weight:600">'+qr.label+'</td><td class="nm">'+rp(fq.totalSales)+'</td><td class="nm '+(fq.netProfit>=0?'pos':'neg')+'">'+rp(fq.netProfit)+'</td><td class="nm" style="color:var(--ac)">'+rp(toInv)+'</td><td class="nm" style="color:var(--gold)">'+rp(toPeng)+'</td>';
+      h+='<td><button class="me" style="padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;border:none;background:var(--ac-l);color:var(--sb-d)" onclick="oPDM(\''+qr.start+'\',\''+qr.end+'\',\''+qr.label+'\')">Bagi Hasil</button></td></tr>';
+    }
+    h+='</tbody></table></div></div>';
+    h+='<div class="pnl"><h3>Riwayat Bagi Hasil</h3>';
+    if(!lPD.length){h+='<div style="color:var(--dim);font-size:12px;padding:6px 0">Belum ada riwayat bagi hasil.</div>'}
+    else{h+='<div class="acc-tb"><table><thead><tr><th>Periode</th><th>Laba Bersih</th><th>Rincian</th><th>Tgl Dibuat</th><th>Aksi</th></tr></thead><tbody>';
+      lPD.slice().sort(function(a,b){return(b.created_at||'').localeCompare(a.created_at||'')}).forEach(function(pd){var items=pd.profit_distribution_items||pd.items||[];var rincian=items.map(function(it){return (it.role==='pengelola'?'[Pengelola] ':'[Investor] ')+it.investor_name+': '+rp(it.amount)}).join('<br>');h+='<tr><td>'+pd.period_label+'</td><td class="nm pos">'+rp(pd.net_profit)+'</td><td style="font-size:11px">'+(rincian||'-')+'</td><td>'+(pd.created_at?new Date(pd.created_at).toLocaleDateString('id-ID'):'-')+'</td><td><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dPDist('+pd.id+')">Hapus</button></td></tr>'});
+      h+='</tbody></table></div>'}
+    h+='</div>';el.innerHTML=h;
     var y=lsGet('pos_inv_year',new Date().getFullYear());
     var totPct=lInv.reduce(function(s,i){return s+parseFloat(i.percentage||0)},0);
     var h='<div style="margin-bottom:10px"><button class="bp" style="padding:10px 14px;font-size:12px" onclick="oInvM()">+ Investor</button></div>';
