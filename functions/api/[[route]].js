@@ -1,25 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
 
-const CORS = {
+const H = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept'
+  'Access-Control-Allow-Headers': 'Content-Type, Accept',
+  'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
 };
 
 function json(data, status = 200) {
-  return new Response(JSON.stringify(data), { status, headers: CORS });
+  return new Response(JSON.stringify(data), { status, headers: H });
 }
 
 export async function onRequest(context) {
   const request = context.request;
   const env = context.env;
 
-  if (request.method === 'OPTIONS') return new Response(null, { status: 200, headers: CORS });
+  if (request.method === 'OPTIONS') return new Response(null, { status: 200, headers: H });
 
   const supabaseUrl = env.SUPABASE_URL;
   const supabaseKey = env.SUPABASE_SERVICE_KEY;
-
   if (!supabaseUrl || !supabaseKey) {
     return json({ error: 'Server env vars not set (SUPABASE_URL / SUPABASE_SERVICE_KEY)' }, 500);
   }
@@ -38,6 +38,7 @@ export async function onRequest(context) {
     const resource = parts[0] || '';
     const id = parts[1];
 
+    const now = () => new Date().toISOString();
     const toWibStart = (d) => new Date(d + 'T00:00:00+07:00').toISOString();
     const toWibEnd = (d) => {
       const t = new Date(d + 'T00:00:00+07:00');
@@ -45,9 +46,8 @@ export async function onRequest(context) {
       return t.toISOString();
     };
 
-    // ===== RESET DATA: 15 tabel + log =====
+    // ===== RESET DATA: 15+ tabel + reset meja + tanda reset + log =====
     if (resource === 'reset-data' && request.method === 'POST') {
-      const performedBy = (body && body.device) ? String(body.device).slice(0, 80) : 'unknown';
       const results = {};
       const wipe = async (table, col) => {
         try {
@@ -70,45 +70,87 @@ export async function onRequest(context) {
       await wipe('profit_distribution_items', 'id');
       await wipe('profit_distributions', 'id');
       await wipe('stock_transactions', 'id');
-      await wipe('journal_entries', 'id');
       await wipe('cash_transactions', 'id');
       await wipe('kas_closures', 'id');
+      await wipe('payables', 'id');
+      await wipe('receivables', 'id');
+      await wipe('assets', 'id');
       await wipe('stock_buys', 'id');
       await wipe('stock_opname', 'id');
       await wipe('waste', 'id');
-      await wipe('payables', 'id');
-      await wipe('receivables', 'id');
-      await supabase.from('settings').update({ last_reset_at: new Date().toISOString() }).eq('id', 1);
-      try { await supabase.from('audit_log').insert({ action: 'reset-data', performed_by: performedBy, created_at: new Date().toISOString() }); } catch (e) {}
+      await wipe('journal_entries', 'id');
+      await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: now() });
+      // TANDA RESET: device lain membersihkan data lokal saat melihat timestamp ini berubah
+      await supabase.from('settings').update({ last_reset_at: now() }).eq('id', 1);
+      const ua = request.headers.get('user-agent') || 'unknown';
+      const ip = request.headers.get('cf-connecting-ip') || (request.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
+      const performedBy = (body && body.device) ? String(body.device).slice(0, 80) : 'unknown';
+      try {
+        await supabase.from('audit_log').insert({
+          action: 'reset-data', entity_type: 'system', entity_id: String(Date.now()),
+          detail: results, performed_by: 'device: ' + performedBy + ' | UA: ' + ua.slice(0, 120) + ' | IP: ' + ip
+        });
+      } catch (e) {}
       return json({ success: true, results });
     }
 
-    // ===== IMPORT DATA =====
+    // ===== IMPORT DATA (bulk dari spreadsheet, dengan dedupe) =====
     if (resource === 'import-data' && request.method === 'POST') {
       const orders = body.orders || [];
       const expenses = body.expenses || [];
       const cash = body.cash || [];
-      const results = { orders: 0, expenses: 0, skippedOrders: 0 };
-      for (const o of orders) {
-        try {
-          const { data: dup } = await supabase.from('orders').select('id').eq('order_number', o.order_number).maybeSingle();
-          if (dup) { results.skippedOrders++; continue; }
-          const its = o.items || [];
-          const payload = Object.assign({}, o); delete payload.items;
-          const { data: no, error: oe } = await supabase.from('orders').insert(payload).select().single();
-          if (oe) continue;
+      const results = { orders: 0, orderItems: 0, expenses: 0, cash: 0, skippedOrders: 0, skippedExpenses: 0, skippedCash: 0, errors: [] };
+
+      if (Array.isArray(orders) && orders.length) {
+        const nums = orders.map(o => o.order_number).filter(Boolean);
+        let existSet = new Set();
+        if (nums.length) {
+          const { data: exist } = await supabase.from('orders').select('order_number').in('order_number', nums);
+          existSet = new Set((exist || []).map(r => r.order_number));
+        }
+        for (const o of orders) {
+          const { items, ...ord } = o;
+          if (!ord.order_number || existSet.has(ord.order_number)) { results.skippedOrders++; continue; }
+          const { data: ins, error } = await supabase.from('orders').insert(ord).select().single();
+          if (error) { results.errors.push('order ' + ord.order_number + ': ' + error.message); continue; }
           results.orders++;
-          if (its.length) {
-            await supabase.from('order_items').insert(its.map(x => Object.assign({}, x, { order_id: no.id })));
+          if (Array.isArray(items) && items.length) {
+            const rows = items.map(it => ({ ...it, order_id: ins.id }));
+            const { error: ie } = await supabase.from('order_items').insert(rows);
+            if (!ie) results.orderItems += rows.length; else results.errors.push('items ' + ord.order_number + ': ' + ie.message);
           }
-        } catch (e) { /* lanjut */ }
+        }
       }
-      if (expenses.length) {
-        const { error } = await supabase.from('expenses').insert(expenses);
-        if (!error) results.expenses = expenses.length;
+
+      if (Array.isArray(expenses) && expenses.length) {
+        const { data: ex } = await supabase.from('expenses').select('date,description,amount').limit(20000);
+        const ekey = e => [e.date, (e.description || ''), String(e.amount)].join('|');
+        const exSet = new Set((ex || []).map(ekey));
+        const toIns = [];
+        for (const e of expenses) {
+          if (!e.date || e.amount == null) { results.errors.push('expense invalid'); continue; }
+          const k = ekey(e);
+          if (exSet.has(k)) { results.skippedExpenses++; continue; }
+          exSet.add(k);
+          toIns.push(e);
+        }
+        if (toIns.length) {
+          const { data: ins, error } = await supabase.from('expenses').insert(toIns).select();
+          if (error) results.errors.push('expenses: ' + error.message);
+          else results.expenses += ins.length;
+        }
       }
-      for (const c of cash) {
-        try { await supabase.from('cash_transactions').insert(c); } catch (e) { /* skip */ }
+
+      if (Array.isArray(cash) && cash.length) {
+        for (const t of cash) {
+          if (!t.src || !t.type || t.amount == null || !t.date) { results.errors.push('cash invalid'); continue; }
+          if (t.ref) {
+            const { data: c } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
+            if (c && c.length) { results.skippedCash++; continue; }
+          }
+          const { error } = await supabase.from('cash_transactions').insert({ tx_date: t.date, ts: t.ts || now(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null, investor_id: t.investor_id || null });
+          if (!error) results.cash++; else results.errors.push('cash: ' + error.message);
+        }
       }
       return json({ success: true, results });
     }
@@ -121,7 +163,7 @@ export async function onRequest(context) {
         return json(data);
       }
       if (request.method === 'PUT') {
-        const { data, error } = await supabase.from('settings').update({ ...body, updated_at: new Date().toISOString() }).eq('id', 1).select();
+        const { data, error } = await supabase.from('settings').update({ ...body, updated_at: now() }).eq('id', 1).select();
         if (error) return json({ error: error.message }, 500);
         return json(data[0] || { success: true });
       }
@@ -201,13 +243,12 @@ export async function onRequest(context) {
       if (!order || !items || !Array.isArray(items) || items.length === 0) {
         return json({ error: 'order and a non-empty items array are required' }, 400);
       }
+      // IDEMPOTENSI: created_at identik = order sudah pernah masuk → balikin yang lama
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
         const { data: existing } = await dupQuery.maybeSingle();
-        if (existing) {
-          return json({ order: existing, order_number: existing.order_number, duplicate: true });
-        }
+        if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
       }
       let newOrder = null;
       let orderErr = null;
@@ -221,17 +262,11 @@ export async function onRequest(context) {
           orderNum = 'MS' + String(attempt + 1).padStart(5, '0');
         }
         const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
-        if (!result.error) {
-          newOrder = result.data;
-          orderErr = null;
-          break;
-        }
+        if (!result.error) { newOrder = result.data; orderErr = null; break; }
         orderErr = result.error;
         if (result.error.code === '23505' && order.created_at) {
           const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
-          if (existing) {
-            return json({ order: existing, order_number: existing.order_number, duplicate: true });
-          }
+          if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
         }
         if (result.error.code !== '23505') break;
       }
@@ -240,10 +275,14 @@ export async function onRequest(context) {
 
       const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
       const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
-      if (itemsErr) return json({ error: itemsErr.message }, 500);
+      if (itemsErr) {
+        // jangan tinggalkan order yatim bila insert items gagal
+        await supabase.from('orders').delete().eq('id', newOrder.id);
+        return json({ error: itemsErr.message }, 500);
+      }
 
       if (table_id) {
-        await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: new Date().toISOString() }).eq('id', table_id);
+        await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: now() }).eq('id', table_id);
       }
 
       for (const item of items) {
@@ -270,7 +309,7 @@ export async function onRequest(context) {
       let query = supabase.from('orders').select('*, order_items(*)').order('created_at', { ascending: false });
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
-      const { data, error } = await query.limit(500);
+      const { data, error } = await query.limit(3000);
       if (error) return json({ error: error.message }, 500);
       return json(data);
     }
@@ -283,6 +322,7 @@ export async function onRequest(context) {
       return json(data[0] || { success: true });
     }
     if (resource === 'transactions' && request.method === 'DELETE' && id) {
+      const { data: ord } = await supabase.from('orders').select('order_number').eq('id', id).maybeSingle();
       const { data: oItems } = await supabase.from('order_items').select('*').eq('order_id', id);
       for (const item of (oItems || [])) {
         if (!item.menu_item_id) continue;
@@ -295,20 +335,25 @@ export async function onRequest(context) {
         }
       }
       await supabase.from('order_items').delete().eq('order_id', id);
+      // Mutasi kas dari penjualan ini juga dihapus (biar semua device konsisten)
+      if (ord?.order_number) {
+        await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + ord.order_number);
+        await supabase.from('cash_transactions').delete().like('descr', '%' + ord.order_number + '%');
+      }
       const { error } = await supabase.from('orders').delete().eq('id', id);
       if (error) return json({ error: error.message }, 500);
       return json({ success: true });
     }
 
+    // ===== DASHBOARD =====
     if (resource === 'dashboard' && request.method === 'GET') {
       const from = url.searchParams.get('from');
       const to = url.searchParams.get('to');
-      let query = supabase.from('orders').select('id, total, order_type, created_at');
+      let query = supabase.from('orders').select('id, total, order_type, created_at').neq('status', 'cancelled');
       if (from) query = query.gte('created_at', toWibStart(from));
       if (to) query = query.lte('created_at', toWibEnd(to));
       const { data: orders, error } = await query;
       if (error) return json({ error: error.message }, 500);
-
       const totalSales = orders.reduce((s, o) => s + parseFloat(o.total || 0), 0);
       return json({
         totalSales, totalOrders: orders.length,
@@ -342,6 +387,8 @@ export async function onRequest(context) {
         return json({ success: true });
       }
     }
+
+    // ===== RECIPES =====
     if (resource === 'recipes') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('recipes').select('*, ingredients(*)').order('id');
@@ -367,6 +414,8 @@ export async function onRequest(context) {
         return json({ success: true });
       }
     }
+
+    // ===== STOCK IN =====
     if (resource === 'stock-in' && request.method === 'POST') {
       const { ingredient_id, quantity, note } = body;
       if (!ingredient_id || !quantity) return json({ error: 'ingredient_id and quantity are required' }, 400);
@@ -390,6 +439,11 @@ export async function onRequest(context) {
         if (error) return json({ error: error.message }, 500);
         return json(data[0]);
       }
+      if (request.method === 'PUT' && id) {
+        const { data, error } = await supabase.from('employees').update(body).eq('id', id).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0] || { success: true });
+      }
       if (request.method === 'DELETE' && id) {
         const { error } = await supabase.from('employees').update({ is_active: false }).eq('id', id);
         if (error) return json({ error: error.message }, 500);
@@ -397,7 +451,7 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== ATTENDANCE =====
+    // ===== ATTENDANCE (POST idempoten supaya replay outbox tidak dobel) =====
     if (resource === 'attendance') {
       if (request.method === 'GET') {
         const date = url.searchParams.get('date');
@@ -411,6 +465,8 @@ export async function onRequest(context) {
         if (!body.emp_id || !body.name || !body.date || !body.clock_in) {
           return json({ error: 'emp_id, name, date and clock_in are required' }, 400);
         }
+        const { data: dupe } = await supabase.from('attendance').select('*').eq('emp_id', body.emp_id).eq('date', body.date).eq('clock_in', body.clock_in).limit(1);
+        if (dupe && dupe.length) return json(dupe[0]);
         const { data, error } = await supabase.from('attendance').insert(body).select();
         if (error) return json({ error: error.message }, 500);
         return json(data[0]);
@@ -419,6 +475,11 @@ export async function onRequest(context) {
         const { data, error } = await supabase.from('attendance').update(body).eq('id', id).select();
         if (error) return json({ error: error.message }, 500);
         return json(data[0] || { success: true });
+      }
+      if (request.method === 'DELETE' && id) {
+        const { error } = await supabase.from('attendance').delete().eq('id', id);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
       }
     }
 
@@ -519,7 +580,23 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== EXPENSES =====
+    // ===== AUDIT LOG =====
+    if (resource === 'audit-log') {
+      if (request.method === 'GET') {
+        const limit = parseInt(url.searchParams.get('limit') || '100');
+        const { data, error } = await supabase.from('audit_log').select('*').order('created_at', { ascending: false }).limit(limit);
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (request.method === 'POST') {
+        if (!body.action) return json({ error: 'action is required' }, 400);
+        const { error } = await supabase.from('audit_log').insert(body);
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+
+    // ===== EXPENSES (DELETE ikut bersihkan mutasi kas terkait) =====
     if (resource === 'expenses') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').order('date', { ascending: false });
@@ -538,44 +615,97 @@ export async function onRequest(context) {
         return json(data[0] || { success: true });
       }
       if (request.method === 'DELETE' && id) {
+        const { data: exp } = await supabase.from('expenses').select('description, category, amount').eq('id', id).maybeSingle();
+        if (exp) {
+          await supabase.from('cash_transactions').delete().eq('ref', 'exp-' + id);
+          const d = exp.description || exp.category || '';
+          if (d) await supabase.from('cash_transactions').delete().like('descr', '%' + d + '%');
+        }
         const { error } = await supabase.from('expenses').delete().eq('id', id);
         if (error) return json({ error: error.message }, 500);
         return json({ success: true });
       }
     }
 
-    // ===== KAS SYNC: 8 resource generic CRUD + PROFIT SHARES =====
-    const SYNC_TABLES = {
-      'cash-transactions': 'cash_transactions',
-      'kas-closures': 'kas_closures',
-      'assets': 'assets',
-      'stock-buys': 'stock_buys',
-      'stock-opname': 'stock_opname',
-      'waste': 'waste',
-      'payables': 'payables',
-      'receivables': 'receivables',
-      'profit-shares': 'profit_shares'
-    };
-    if (SYNC_TABLES[resource]) {
-      const table = SYNC_TABLES[resource];
+    // ===== CASH TRANSACTIONS (Kas & Bank) — WAJIB mapping date→tx_date, desc→descr =====
+    if (resource === 'cash-transactions') {
       if (request.method === 'GET') {
-        const orderCol = table === 'cash_transactions' ? 'ts' : 'id';
-        const { data, error } = await supabase.from(table).select('*').order(orderCol, { ascending: false }).limit(2000);
+        const { data, error } = await supabase.from('cash_transactions').select('*').order('ts', { ascending: false }).limit(5000);
         if (error) return json({ error: error.message }, 500);
-        return json(data);
+        return json((data || []).map(r => ({ id: r.id, date: r.tx_date, ts: r.ts, src: r.src, type: r.type, cat: r.cat, desc: r.descr, amount: parseFloat(r.amount), m: r.m || undefined, investor_id: r.investor_id || null })));
       }
       if (request.method === 'POST') {
-        const { data, error } = await supabase.from(table).insert(body).select();
+        const rows = Array.isArray(body) ? body : [body];
+        const ins = [];
+        for (const t of rows) {
+          if (!t.src || !t.type || t.amount == null) return json({ error: 'src, type, amount are required' }, 400);
+          if (t.ref) {
+            const { data: ex } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
+            if (ex && ex.length) continue; // idempoten by ref
+          }
+          ins.push({ tx_date: t.date, ts: t.ts || now(), src: t.src, type: t.type, cat: t.cat || '', descr: t.desc || '', ref: t.ref || null, amount: t.amount, m: t.m || null, investor_id: t.investor_id || null });
+        }
+        if (!ins.length) return json({ success: true, skipped: true });
+        const { data, error } = await supabase.from('cash_transactions').insert(ins).select();
         if (error) return json({ error: error.message }, 500);
-        return json(data[0]);
+        return json(Array.isArray(body) ? data : data[0]);
       }
       if (request.method === 'PUT' && id) {
-        const { data, error } = await supabase.from(table).update(body).eq('id', id).select();
+        if (!/^\d+$/.test(String(id))) return json({ error: 'numeric id required' }, 400);
+        const up = {};
+        if (body.descr !== undefined) up.descr = body.descr;
+        if (body.desc !== undefined) up.descr = body.desc;
+        if (body.amount !== undefined) up.amount = body.amount;
+        if (body.src !== undefined) up.src = body.src;
+        if (body.tx_date !== undefined) up.tx_date = body.tx_date;
+        if (body.date !== undefined) up.tx_date = body.date;
+        if (!Object.keys(up).length) return json({ error: 'no updatable fields' }, 400);
+        const { data, error } = await supabase.from('cash_transactions').update(up).eq('id', id).select();
         if (error) return json({ error: error.message }, 500);
         return json(data[0] || { success: true });
       }
       if (request.method === 'DELETE' && id) {
-        const { error } = await supabase.from(table).delete().eq('id', id);
+        // id numerik ATAU ref (cth: sale-MS00001, exp-12)
+        const q = /^\d+$/.test(String(id))
+          ? supabase.from('cash_transactions').delete().eq('id', id)
+          : supabase.from('cash_transactions').delete().eq('ref', id);
+        const { error } = await q;
+        if (error) return json({ error: error.message }, 500);
+        return json({ success: true });
+      }
+    }
+
+    // ===== RESOURCE GENERIK (tabel dengan kolom DB apa adanya) =====
+    const SYNC_TABLES = {
+      'kas-closures': { t: 'kas_closures', o: 'created_at' },
+      'assets':       { t: 'assets',       o: 'created_at' },
+      'stock-buys':   { t: 'stock_buys',   o: 'b_date' },
+      'stock-opname': { t: 'stock_opname', o: 'date' },
+      'waste':        { t: 'waste',        o: 'date' },
+      'payables':     { t: 'payables',     o: 'p_date' },
+      'receivables':  { t: 'receivables',  o: 'r_date' },
+      'profit-shares':{ t: 'profit_shares',o: 'id' },
+      'tables':       { t: 'tables',       o: 'id' }
+    };
+    if (SYNC_TABLES[resource]) {
+      const cfg = SYNC_TABLES[resource];
+      if (request.method === 'GET') {
+        const { data, error } = await supabase.from(cfg.t).select('*').order(cfg.o, { ascending: false }).limit(2000);
+        if (error) return json({ error: error.message }, 500);
+        return json(data);
+      }
+      if (request.method === 'POST') {
+        const { data, error } = await supabase.from(cfg.t).insert(body).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0]);
+      }
+      if (request.method === 'PUT' && id) {
+        const { data, error } = await supabase.from(cfg.t).update(body).eq('id', id).select();
+        if (error) return json({ error: error.message }, 500);
+        return json(data[0] || { success: true });
+      }
+      if (request.method === 'DELETE' && id) {
+        const { error } = await supabase.from(cfg.t).delete().eq('id', id);
         if (error) return json({ error: error.message }, 500);
         return json({ success: true });
       }
