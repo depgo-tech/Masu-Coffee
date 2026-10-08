@@ -2420,12 +2420,9 @@ function resetTxns(){
   },{title:'Zona Berbahaya',yesLabel:'Lanjutkan'});
 }
 init();
-/* ================== SYNC ENGINE v2 — TEMPEL DI PALING BAWAH, JANGAN DIHAPUS YANG LAMA ================== */
+/* ================== SYNC ENGINE v3 — TEMPEL DI PALING BAWAH ================== */
 function setAb(){var el=document.getElementById('ab');if(!el)return;el.className='ab '+(apiOn?'on':'off');el.innerHTML='<div class="dt"></div><span>'+(apiOn?'Online':'Local')+'</span>'}
 
-// Ganti isi list lokal dengan data server (server = sumber kebenaran).
-// Baris pending lokal (id timestamp > 1e11) TIDAK dihapus supaya tidak hilang sebelum terkirim.
-// Jika 'complete' (data server tidak terpotong limit), baris server yang hilang = dihapus device lain -> ikut dihapus lokal.
 function mergeList(list,rows,save,complete){
   if(!Array.isArray(rows))return false;
   var byId={},i,r,changed=false;
@@ -2439,7 +2436,6 @@ function mergeList(list,rows,save,complete){
   if(changed){try{save()}catch(e){}}
   return changed;
 }
-// Hapus baris pending lokal (id timestamp) yang ternyata sudah masuk server (dedupe by kunci logis)
 function dedupePending(list,keyFn,save){
   var changed=false,i,j,a,b,ka;
   for(i=list.length-1;i>=0;i--){
@@ -2448,6 +2444,51 @@ function dedupePending(list,keyFn,save){
     for(j=0;j<list.length;j++){
       if(j===i)continue;b=list[j];if(b.id===a.id)continue;
       if(keyFn(b)===ka){list.splice(i,1);changed=true;break}
+    }
+  }
+  if(changed){try{save()}catch(e){}}
+  return changed;
+}
+function rowKey(r){
+  var skip={id:1,created_at:1,updated_at:1};
+  var ks=Object.keys(r).filter(function(k){return !skip[k]&&r[k]!==null&&r[k]!==undefined&&r[k]!==''}).sort();
+  var p=[];
+  for(var i=0;i<ks.length;i++){p.push(ks[i]+'='+String(r[ks[i]]))}
+  return p.join('~');
+}
+// Bersihkan duplikat yang SUDAH di server (warisan replay outbox lama): sisakan satu, hapus sisanya
+function cleanServerDupes(rows,resource){
+  if(!Array.isArray(rows))return rows;
+  var seen={},dels=[];
+  rows.forEach(function(r){
+    if(r.id==null||r.id>1e11)return;
+    var k=rowKey(r);
+    if(seen[k])dels.push(r);else seen[k]=r;
+  });
+  dels.forEach(function(r,i){
+    setTimeout(function(rid){return function(){aD(resource+'/'+rid)}}(r.id),300+i*250);
+  });
+  if(dels.length)return rows.filter(function(r){return !dels.some(function(x){return x.id===r.id})});
+  return rows;
+}
+function looseMatch(a,b){
+  var n=0;
+  for(var k in a){
+    if(k==='id'||k==='created_at'||k==='updated_at')continue;
+    if(a[k]===null||a[k]===undefined||a[k]==='')continue;
+    if(b[k]===undefined)continue;
+    if(String(b[k])!==String(a[k]))return false;
+    n++;
+  }
+  return n>=2;
+}
+function dedupeLoose(list,save){
+  var i,j,changed=false;
+  for(i=list.length-1;i>=0;i--){
+    if(list[i].id<1e11)continue;
+    for(j=0;j<list.length;j++){
+      if(j===i||list[j].id===list[i].id)continue;
+      if(looseMatch(list[i],list[j])){list.splice(i,1);changed=true;break}
     }
   }
   if(changed){try{save()}catch(e){}}
@@ -2468,9 +2509,8 @@ function flushOb(){
   };
   if(it.m==='D'){aD(it.path).then(function(r){done(!(r&&r.error))});return}
   aP(it.path,it.payload).then(function(r){
-    if(r&&r.error){window._flushing=false;return} // gagal -> tetap di outbox, dicoba lagi nanti
+    if(r&&r.error){window._flushing=false;return}
     if(it.path==='order'&&it.payload&&it.payload.order){
-      // server membalas nomor order final -> perbarui lokal + ref kas, biar semua device konsisten
       var cts=it.payload.order.created_at,num=r&&r.order_number;
       if(num&&cts){
         srvCts[cts]=num;
@@ -2494,8 +2534,9 @@ function flushOb(){
 }
 
 function pingApi(){
-  aG('settings').then(function(r){
-    var on=!!(r&&!r.error);
+  // /api/ping selalu sukses kalau server hidup -> badge akurat
+  aG('ping').then(function(r){
+    var on=(r&&r.ok===true)||(r&&r.error&&r.error!=='offline');
     if(on!==apiOn){apiOn=on;setAb();if(apiOn){flushOb();pullAll()}}
   });
 }
@@ -2507,7 +2548,6 @@ function pullAll(){
   _pullBusy=true;
   var fin=function(){_pullBusy=false};
   aG('settings').then(function(s){
-    // deteksi RESET dari device lain -> bersihkan data lokal agar tidak jadi zombie
     if(s&&!s.error&&s.last_reset_at){
       var prev=lsGet('last_reset_at',null);
       if(prev&&prev!==s.last_reset_at){
@@ -2521,9 +2561,9 @@ function pullAll(){
     var jobs=[];
     function P(path,fn){jobs.push(aG(path).then(fn).catch(function(){}))}
     P('transactions',function(d){if(!Array.isArray(d))return;var i;for(i=0;i<d.length;i++){if(d[i].created_at)srvCts[d[i].created_at]=d[i].order_number;if(d[i]&&!d[i].items&&d[i].order_items)d[i].items=d[i].order_items}mergeList(lO,d,function(){lsSet('pos_orders',lO)},d.length<3000);dedupePending(lO,function(x){return x.created_at},function(){lsSet('pos_orders',lO)})});
-    P('cash-transactions',function(d){if(!Array.isArray(d))return;mergeList(lST,d,saveST,d.length<5000);dedupePending(lST,function(x){return x.ref||null},saveST)});
+    P('cash-transactions',function(d){if(!Array.isArray(d))return;d=cleanServerDupes(d,'cash-transactions');mergeList(lST,d,saveST,d.length<5000);dedupePending(lST,function(x){return x.ref||null},saveST);dedupeLoose(lST,saveST)});
     P('expenses',function(d){if(!Array.isArray(d))return;mergeList(lE,d,function(){lsSet('pos_exp',lE)},true);dedupePending(lE,function(x){return [x.date,x.description||'',String(x.amount)].join('|')},function(){lsSet('pos_exp',lE)})});
-    P('kas-closures',function(d){if(Array.isArray(d))mergeList(lCl,d,saveCl,d.length<2000)});
+    P('kas-closures',function(d){if(!Array.isArray(d))return;d=cleanServerDupes(d,'kas-closures');mergeList(lCl,d,saveCl,d.length<2000);dedupeLoose(lCl,saveCl)});
     P('payables',function(d){if(Array.isArray(d))mergeList(lPa,d,function(){lsSet('pos_pa',lPa)},d.length<2000)});
     P('receivables',function(d){if(Array.isArray(d))mergeList(lRe,d,function(){lsSet('pos_re',lRe)},d.length<2000)});
     P('assets',function(d){if(Array.isArray(d))mergeList(lAst,d,saveAst,d.length<2000)});
@@ -2559,9 +2599,9 @@ function pullAll(){
 
 function afterSync(){
   try{
-    if(document.querySelector('.mo.show'))return; // masih di login/modal -> jangan render ulang
+    if(document.querySelector('.mo.show'))return;
     var ae=document.activeElement;
-    if(ae&&['INPUT','SELECT','TEXTAREA'].indexOf(ae.tagName)>-1)return; // user sedang mengetik
+    if(ae&&['INPUT','SELECT','TEXTAREA'].indexOf(ae.tagName)>-1)return;
     var views=['dashboard','riwayat','kas','akuntansi','stok','laporan','absensi','produk'];
     if(views.indexOf(cv)>-1&&typeof nav==='function')nav(cv);
   }catch(e){}
@@ -2575,9 +2615,10 @@ function manualSync(){
 }
 
 function startSyncEngine(){
-  if(window.__syncV2On)return;
-  window.__syncV2On=true;
-  setInterval(function(){
+  if(window.__syncV3On)return;
+  window.__syncV3On=true;
+  if(window.__syncV2Int)try{clearInterval(window.__syncV2Int)}catch(e){}
+  window.__syncV3Int=setInterval(function(){
     if(!navigator.onLine)return;
     if(!apiOn){pingApi();return}
     flushOb();pullAll();
@@ -2586,9 +2627,8 @@ function startSyncEngine(){
   window.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){pingApi();flushOb();pullAll()}});
 }
 startSyncEngine();
-setTimeout(pingApi,1200);
-/* ================== AKHIR SYNC ENGINE v2 ================== */
-  
+setTimeout(pingApi,800);
+/* ================== AKHIR SYNC ENGINE v3 ================== */
 </script>
 </body>
 </html>
