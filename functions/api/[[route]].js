@@ -257,38 +257,52 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== PLACE ORDER (idempoten by created_at) =====
+       // ===== PLACE ORDER (Idempoten by order_number, fallback to created_at) =====
     if (resource === 'order' && request.method === 'POST') {
       const { order, items, table_id } = body;
       if (!order || !items || !Array.isArray(items) || items.length === 0) {
         return json({ error: 'order and a non-empty items array are required' }, 400);
       }
+
+      // 1. CEK ORDER_NUMBER TERLEBIH DAHULU (Paling Akurat)
+      if (order.order_number) {
+        const { data: existingByNum } = await supabase.from('orders').select('*, order_items(*)').eq('order_number', order.order_number).maybeSingle();
+        if (existingByNum) return json({ order: existingByNum, order_number: existingByNum.order_number, duplicate: true });
+      }
+
+      // 2. FALLBACK CEK CREATED_AT + TOTAL (Untuk jaga-jaga)
       if (order.created_at) {
         let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
         if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
-        const { data: existing } = await dupQuery.maybeSingle();
-        if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
+        const { data: existingByTime } = await dupQuery.maybeSingle();
+        if (existingByTime) return json({ order: existingByTime, order_number: existingByTime.order_number, duplicate: true });
       }
+
       let newOrder = null;
       let orderErr = null;
       for (let attempt = 0; attempt < 5; attempt++) {
         const { data: lastOrder } = await supabase.from('orders').select('order_number').order('id', { ascending: false }).limit(1).maybeSingle();
-        let orderNum = 'MS00001';
-        if (lastOrder?.order_number) {
-          const num = parseInt(lastOrder.order_number.replace(/\D/g, '')) + 1 + attempt;
+        let orderNum = order.order_number || 'MS00001'; // Prioritaskan order_number dari frontend
+        
+        // Jika frontend mengirim order_number yang bentrok (sangat jarang), generate baru
+        if (attempt > 0 || !order.order_number) {
+          const num = lastOrder ? parseInt(lastOrder.order_number.replace(/\D/g, '')) + 1 + attempt : 1;
           orderNum = 'MS' + String(num).padStart(5, '0');
-        } else if (attempt > 0) {
-          orderNum = 'MS' + String(attempt + 1).padStart(5, '0');
         }
+
         const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
         if (!result.error) { newOrder = result.data; orderErr = null; break; }
+        
         orderErr = result.error;
-        if (result.error.code === '23505' && order.created_at) {
-          const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
+        if (result.error.code === '23505') { // Unique violation
+          // Cek lagi, mungkin order baru saja masuk dari device lain
+          const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('order_number', orderNum).maybeSingle();
           if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
+        } else {
+          break;
         }
-        if (result.error.code !== '23505') break;
       }
+      
       if (orderErr) return json({ error: orderErr.message }, 500);
       if (!newOrder) return json({ error: 'Could not allocate a unique order number, please retry' }, 500);
 
