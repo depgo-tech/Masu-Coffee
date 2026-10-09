@@ -402,16 +402,15 @@ function aU(p,b){if(!apiOn)return Promise.resolve({error:'offline'});return Prom
 function aD(p){if(!apiOn)return Promise.resolve({error:'offline'});return Promise.race([fetch(A+'/'+p,{method:'DELETE'}).then(function(r){return r.json()}),new Promise(function(_,rej){setTimeout(function(){rej(new Error('t'))},5000)})]).catch(function(){return{error:'offline'}})}
 // ===== OUTBOX GENERIK =====
 function qOb(path,payload,kind,ref){
-  if(apiOn){aP(path,payload).then(function(r){
-    if(r&&r.error){lOb.push({path:path,payload:payload,kind:kind,ref:ref,queued_at:Date.now()});saveOb()}
-    else if(r&&r.id&&kind&&ref)obFixId({kind:kind,ref:ref},r.id);
-  })}else{lOb.push({path:path,payload:payload,kind:kind,ref:ref,queued_at:Date.now()});saveOb()}
+  if(kind==='cash'&&payload&&payload.ref){var lt=lST.find(function(x){return x.id==ref});if(lt&&!lt.ref){lt.ref=payload.ref;saveST()}}
+  lOb.push({path:path,payload:payload,kind:kind,ref:ref,queued_at:Date.now()});saveOb();
+  flushOb();
 }
 function qObD(path,kind,id){
   if(kind&&id!=null)lOb=lOb.filter(function(x){return!(x.kind===kind&&x.ref==id)});
   if(id!=null&&id>1e11){saveOb();return}
-  if(apiOn){aD(path).then(function(r){if(r&&r.error){lOb.push({path:path,m:'D',queued_at:Date.now()});saveOb()}});saveOb()}
-  else{lOb.push({path:path,m:'D',queued_at:Date.now()});saveOb()}
+  lOb.push({path:path,m:'D',queued_at:Date.now()});saveOb();
+  flushOb();
 }
 function obFixId(it,newId){
   var lists={cash:[lST,saveST],exp:[lE,function(){lsSet('pos_exp',lE)}],closure:[lCl,saveCl],pay:[lPa,function(){lsSet('pos_pa',lPa)}],rec:[lRe,function(){lsSet('pos_re',lRe)}],ast:[lAst,saveAst],opn:[lOp,function(){lsSet('pos_op',lOp)}],waste:[lW,function(){lsSet('pos_w',lW)}],buy:[lBuy,saveBuy],att:[lAtt,saveAtt],hold:[lHold,saveHold],pd:[lPD,savePD],shr:[lSh,saveSh]};
@@ -431,23 +430,19 @@ function obFixId(it,newId){
 function llm(){md={c:[{id:1,name:'Coffee'},{id:2,name:'Tea'},{id:3,name:'Snack'},{id:4,name:'Pastry'},{id:5,name:'Makanan'}],i:[{id:1,category_id:1,name:'Espresso',description:'Single shot',base_price:18000,image_url:'',image_data:''},{id:2,category_id:1,name:'Americano',description:'Espresso + water',base_price:22000,image_url:'',image_data:''},{id:3,category_id:1,name:'Cappuccino',description:'Espresso + milk',base_price:28000,image_url:'',image_data:''},{id:4,category_id:1,name:'Caffe Latte',description:'Espresso + foam',base_price:32000,image_url:'',image_data:''},{id:5,category_id:1,name:'Caramel Latte',description:'Latte + caramel',base_price:35000,image_url:'',image_data:''},{id:6,category_id:1,name:'Mocha',description:'Chocolate latte',base_price:36000,image_url:'',image_data:''},{id:7,category_id:1,name:'Flat White',description:'Double shot + milk',base_price:33000,image_url:'',image_data:''},{id:8,category_id:2,name:'Green Tea Latte',description:'Matcha + milk',base_price:30000,image_url:'',image_data:''},{id:9,category_id:2,name:'Lemon Tea',description:'Fresh lemon tea',base_price:20000,image_url:'',image_data:''},{id:10,category_id:2,name:'Jasmine Tea',description:'Hot jasmine',base_price:18000,image_url:'',image_data:''},{id:11,category_id:3,name:'French Fries',description:'Crispy fries',base_price:25000,image_url:'',image_data:''},{id:12,category_id:3,name:'Pisang Goreng',description:'Fried banana',base_price:20000,image_url:'',image_data:''},{id:13,category_id:4,name:'Croissant',description:'Butter croissant',base_price:25000,image_url:'',image_data:''},{id:14,category_id:4,name:'Cheesecake',description:'NY cheesecake',base_price:30000,image_url:'',image_data:''},{id:15,category_id:5,name:'Nasi Goreng',description:'Fried rice',base_price:35000,image_url:'',image_data:''},{id:16,category_id:5,name:'Mie Goreng',description:'Fried noodles',base_price:32000,image_url:'',image_data:''}],v:[],a:[{id:1,name:'Extra Shot',price:8000},{id:2,name:'Less Ice',price:0},{id:3,name:'Whip Cream',price:5000},{id:4,name:'Caramel Syrup',price:5000},{id:5,name:'Vanilla Syrup',price:5000},{id:6,name:'Almond Milk',price:6000}],ia:[]};
 md.i.forEach(function(it){if(it.category_id===1||it.category_id===2){['Hot','Iced'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Temperature',variant_value:v,price_modifier:i*3000})});['Reg','Large'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Size',variant_value:v,price_modifier:i*5000})});md.a.forEach(function(a){md.ia.push({menu_item_id:it.id,addon_id:a.id})})}})}
 function dedupeOrders(){
-  var seen = {}, out = [];
+  var seen={},out=[];
   lO.forEach(function(o){
-    // Kunci unik: kombinasi order_number dan total (untuk menghindari false positive)
-    var num = o.order_number || '';
-    var total = o.order ? (o.order.total || 0) : 0;
-    var time = o.order && o.order.created_at ? o.order.created_at.slice(0, 16) : ''; // Potong detik/ms agar lebih toleran
-    var key = num ? ('n:' + num) : ('t:' + time + '_' + total);
-    
-    if (seen[key]) return; // Skip jika sudah pernah dilihat
-    seen[key] = 1;
-    out.push(o);
+    if(!o||!o.order)return;
+    var k1='n:'+(o.order_number||''),t=o.order.created_at?new Date(o.order.created_at).getTime():0,k2=t?'t:'+t+'|'+Math.round(parseFloat(o.order.total||0)):'';
+    if(seen[k1]||(k2&&seen[k2]))return;
+    seen[k1]=1;if(k2)seen[k2]=1;out.push(o);
   });
-  
-  if (out.length !== lO.length) {
-    lO = out;
-    lsSet('pos_orders', lO);
-  }
+  if(out.length!==lO.length){lO=out;lsSet('pos_orders',lO)}
+}
+function genOrderNo(){
+  var d=new Date(),p=function(n){return String(n).padStart(2,'0')},ch='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',r='';
+  for(var i=0;i<4;i++)r+=ch[Math.floor(Math.random()*ch.length)];
+  return 'MS'+String(d.getFullYear()).slice(2)+p(d.getMonth()+1)+p(d.getDate())+'-'+r;
 }
 // ===== PRINTER USB / BLUETOOTH (ESC/POS) — 2 printer: KASIR + DAPUR =====
 function _newPrt(){return{mode:'',dev:null,ep:null,chr:null,svc:null,name:''}}
@@ -1078,54 +1073,40 @@ function dP(){
   if(recv<pT2){tt('Uang kurang '+rp(pT2-recv),true);if(pb)pb.disabled=false;setTimeout(function(){unlockSave('dP')},600);return}
   var change=recv-pT2;
   var nowIso=new Date().toISOString();
+  var localNum=oN;
   var dv=discType==='amount'?(parseInt((discVal||'').replace(/\D/g,''))||0):(parseFloat(discVal)||0);
-  var op={order_type:oT,discount_value:discType==='amount'?dv:0,discount_type:discType,discount_amount:pD.disc,subtotal:pD.st,tax_rate:st.taxOn?(st.tr||0.10):0,tax_amount:pD.tax,total:pD.total,payment_method:method,amount_paid:recv,change_amount:change,status:'completed',created_at:nowIso,notes:((oCust||oNote)?('Nama: '+(oCust||'-')+(oNote?' | Catatan: '+oNote:'')):null)};
-  var cartSnap=ca,localNum=oN;
-  var rec={order:op,items:cartSnap,order_number:localNum};
-  lO.push(rec);
+  var op={order_number:localNum,order_type:oT,discount_value:discType==='amount'?dv:0,discount_type:discType,discount_amount:pD.disc,subtotal:pD.st,tax_rate:st.taxOn?(st.tr||0.10):0,tax_amount:pD.tax,total:pD.total,payment_method:method,amount_paid:recv,change_amount:change,status:'completed',created_at:nowIso,notes:((oCust||oNote)?('Nama: '+(oCust||'-')+(oNote?' | Catatan: '+oNote:'')):null)};
+  var cartSnap=ca;
   cartSnap.forEach(function(item){
     var mi=md.i.find(function(x){return x.id==item.menu_item_id});
     var manualHpp=(mi&&mi.hpp!=null&&mi.hpp!=='')?parseFloat(mi.hpp):null;
     var itemCogs=0;
     if(manualHpp==null){
-      var recipes=lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id});
-      recipes.forEach(function(r){
+      lRcp.filter(function(r){return r.menu_item_id==item.menu_item_id}).forEach(function(r){
         var ing=lI.find(function(i){return i.id==r.ingredient_id});
-        if(ing){
-          ing.stock=parseFloat(ing.stock)-parseFloat(r.quantity)*item.quantity;
-          itemCogs+=parseFloat(r.quantity)*parseFloat(ing.cost||0);
-        }
+        if(ing){ing.stock=parseFloat(ing.stock)-parseFloat(r.quantity)*item.quantity;itemCogs+=parseFloat(r.quantity)*parseFloat(ing.cost||0)}
       });
     }
     item.cogs_amount=(manualHpp!=null?manualHpp:itemCogs)*item.quantity;
   });
+  var rec={order:op,items:cartSnap,order_number:localNum};
+  lO.push(rec);
   var srcAcc=method==='cash'?'cash_kasir':'bank_kecil';
   var saleTxId=Date.now();
-  lST.push({id:saleTxId,date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method});
-  saveIngs();lsSet('pos_orders',lO);saveST();
-  var cashPay={date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:method==='cash'?'sale_cash':'sale_noncash',desc:'Penjualan '+localNum+' ('+method.toUpperCase()+')',amount:pD.total,m:method,ref:'sale-'+localNum};
+  var cat=method==='cash'?'sale_cash':'sale_noncash';
+  var desc='Penjualan '+localNum+' ('+method.toUpperCase()+')';
+  var cashPay={date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:cat,desc:desc,amount:pD.total,m:method,ref:'sale-'+localNum};
+  lST.push({id:saleTxId,date:dLocal(nowIso),ts:nowIso,src:srcAcc,type:'in',cat:cat,desc:desc,amount:pD.total,m:method,ref:'sale-'+localNum});
+  var ip=cartSnap.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
+  lOb.push({path:'order',payload:{order:op,items:ip},ref:localNum,cashTx:cashPay,cashRef:saleTxId,queued_at:Date.now()});
+  saveIngs();lsSet('pos_orders',lO);saveST();saveOb();
   cm('pModal');
-  ca=[];oN='MS'+Math.floor(Math.random()*90000+10000);discVal='';discType='amount';oCust='';oNote='';
+  ca=[];oN=genOrderNo();discVal='';discType='amount';oCust='';oNote='';
   rOP();renderKasirBar();
   tt('Order tersimpan!');
   sR(localNum,op,cartSnap,change,recv,method);
-  var ip=cartSnap.map(function(c){var ic=JSON.parse(JSON.stringify(c));ic.addons=JSON.stringify(c.addons);return ic});
-  aP('order',{order:op,items:ip}).then(function(result){
-    if(result&&!result.error&&result.order_number){
-      rec.order_number=result.order_number;
-      var stx=lST.find(function(x){return x.id===saleTxId});if(stx)stx.desc='Penjualan '+result.order_number+' ('+method.toUpperCase()+')';
-      lsSet('pos_orders',lO);saveST();
-      var cp=Object.assign({},cashPay);cp.ref='sale-'+result.order_number;cp.desc=stx?stx.desc:cp.desc;
-      aP('cash-transactions',cp).then(function(rr){if(rr&&rr.id){var ix=lST.findIndex(function(x){return x.id===saleTxId});if(ix>-1){lST[ix].id=rr.id;saveST()}}});
-      if(prtKitchenOn())prtKitchen(result.order_number,op,cartSnap);
-      tt(result.duplicate?'Tersinkron (order sudah ada di cloud)':'Tersinkron ke Cloud!');
-      syncBG();
-    }else{
-      lOb.push({path:'order',payload:{order:op,items:ip},ref:localNum,cashTx:cashPay,cashRef:saleTxId,queued_at:Date.now()});saveOb();
-      tt('Disimpan lokal - otomatis sync saat online',true);
-    }
-    setTimeout(function(){unlockSave('dP')},1200);
-  });
+  if(prtKitchenOn())prtKitchen(localNum,op,cartSnap);
+  flushOb();
   setTimeout(function(){unlockSave('dP')},1500);
 }
 // ===== STRUK (layar + cetak dengan potongan DAPUR) =====
@@ -1178,11 +1159,11 @@ function uIP(it){var p=document.getElementById('iPr');if(!p)return;if(it&&it.ima
 function hU(e){var f=e.target.files[0];if(!f)return;if(f.size>500000){tt('Maks 500KB',true);return}var r=new FileReader();r.onload=function(ev){eI2=ev.target.result;uIP({image_data:eI2})};r.readAsDataURL(f)}
 function hUrl(){var u=document.getElementById('eU').value;if(u)uIP({image_url:u});else uIP({})}
 function delMenuImg(){eI2='';document.getElementById('eU').value='';uIP({});tt('Foto dihapus — jangan lupa Simpan')}
-function sP(){var id=document.getElementById('eI').value;var name=document.getElementById('eN').value.trim();var catId=parseInt(document.getElementById('eC').value);var price=parseFloat(document.getElementById('eP').value);var hppV=document.getElementById('eH').value;var hpp=(hppV!==''&&hppV!=null)?parseFloat(hppV):null;var desc=document.getElementById('eD').value.trim();var imgUrl=document.getElementById('eU').value.trim();var active=document.getElementById('eA').value==='true';if(!name){tt('Nama wajib',true);return}if(!price||price<=0){tt('Harga invalid',true);return}var pl={name:name,category_id:catId,base_price:price,hpp:hpp,description:desc,image_url:imgUrl,image_data:eI2,is_active:active};if(id){var it=md.i.find(function(i){return i.id==id});if(it){it.name=name;it.category_id=catId;it.base_price=price;it.hpp=hpp;it.description=desc;it.image_url=imgUrl;it.image_data=eI2;it.is_active=active}}else{md.i.push({id:Date.now(),category_id:catId,name:name,description:desc,base_price:price,hpp:hpp,image_url:imgUrl,image_data:eI2,is_active:active})}saveMenu();if(apiOn)(id?aU('menu-item/'+id,pl):aP('menu-item',pl));cm('mModal');rPr();tt('Produk disimpan')}
+function sP(){var id=document.getElementById('eI').value;var name=document.getElementById('eN').value.trim();var catId=parseInt(document.getElementById('eC').value);var price=parseFloat(document.getElementById('eP').value);var hppV=document.getElementById('eH').value;var hpp=(hppV!==''&&hppV!=null)?parseFloat(hppV):null;var desc=document.getElementById('eD').value.trim();var imgUrl=document.getElementById('eU').value.trim();var active=document.getElementById('eA').value==='true';if(!name){tt('Nama wajib',true);return}if(!price||price<=0){tt('Harga invalid',true);return}var pl={name:name,category_id:catId,base_price:price,hpp:hpp,description:desc,image_url:imgUrl,image_data:eI2,is_active:active};var tmp=null;if(id){var it=md.i.find(function(i){return i.id==id});if(it){it.name=name;it.category_id=catId;it.base_price=price;it.hpp=hpp;it.description=desc;it.image_url=imgUrl;it.image_data=eI2;it.is_active=active}}else{tmp=Date.now();md.i.push({id:tmp,category_id:catId,name:name,description:desc,base_price:price,hpp:hpp,image_url:imgUrl,image_data:eI2,is_active:active})}saveMenu();if(!apiOn)tt('Offline: perubahan menu hanya di device ini',true);else if(id)aU('menu-item/'+id,pl);else aP('menu-item',pl).then(function(r){if(r&&r.id){var x=md.i.find(function(y){return y.id===tmp});if(x){x.id=r.id;saveMenu();if(cv==='produk')rPr()}}});cm('mModal');rPr();tt('Produk disimpan')}
 function dPr(id){showConfirm('Hapus produk?',function(){md.i=md.i.filter(function(i){return i.id!==id});saveMenu();if(apiOn)aD('menu-item/'+id);rPr();tt('Dihapus')})}
 function oCM(){rCL();document.getElementById('cModal').classList.add('show')}
 function rCL(){document.getElementById('cL').innerHTML=md.c.map(function(c){return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:var(--bg);border-radius:6px;margin-bottom:4px"><span style="font-size:13px;font-weight:600">'+c.name+'</span><button class="bd" style="padding:4px 8px;font-size:10px" onclick="dC('+c.id+')">Hapus</button></div>'}).join('')}
-function aC(){var n=document.getElementById('nC').value.trim();if(!n){tt('Isi nama',true);return}md.c.push({id:Date.now(),name:n});saveMenu();if(apiOn)aP('categories',{name:n});document.getElementById('nC').value='';rCL();tt('Ditambah')}
+function aC(){var n=document.getElementById('nC').value.trim();if(!n){tt('Isi nama',true);return}var tmp=Date.now();md.c.push({id:tmp,name:n});saveMenu();if(apiOn)aP('categories',{name:n}).then(function(r){if(r&&r.id){var x=md.c.find(function(y){return y.id===tmp});if(x){x.id=r.id;saveMenu();rCL()}}});
 function dC(id){showConfirm('Hapus kategori?',function(){md.c=md.c.filter(function(c){return c.id!==id});saveMenu();if(apiOn)aD('categories/'+id);rCL();tt('Dihapus')})}
 // ===== KAS & BANK =====
 function saldoSrc(src){var s=0;lST.forEach(function(t){if(t.src===src)s+=(t.type==='in'?1:-1)*parseFloat(t.amount||0)});return s}
@@ -1726,7 +1707,7 @@ function deleteOrderAsk(num){
     });saveOb();
     tt('Order dihapus'+(removed?' — '+removed+' mutasi kas ikut dihapus':''));
     rRO();if(cv==='pos')renderKasirBar();if(cv==='kas')rKas();
-    if(apiOn&&rec.order&&rec.order.id)aD('transactions/'+rec.order.id);
+        qObD('transactions/'+encodeURIComponent((rec.order&&rec.order.id)||num),'ord',num);
   },{title:'Hapus Order',yesLabel:'Ya, Hapus'});
 }
 // ===== AKUN =====
@@ -2303,7 +2284,7 @@ function sW(){if(!lockSave('sW')){tt('Tunggu sebentar, masih diproses',true);ret
 function dW(id){showConfirm('Hapus?',function(){lW=lW.filter(function(w){return w.id!==id});lsSet('pos_w',lW);qObD('waste/'+id,'waste',id);rIC();tt('Dihapus')})}
 function eR(id){var it=md.i.find(function(i){return i.id===id});if(!it)return;var ir=lRcp.filter(function(r){return r.menu_item_id==id});var h='<div class="ml"><h2>Resep: '+it.name+'</h2>';h+='<div style="background:var(--bg);border-radius:8px;padding:10px;margin-bottom:10px"><div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">Bahan Saat Ini:</div>';if(!ir.length){h+='<div style="color:var(--dng);font-size:12px">Belum ada resep</div>'}else{ir.forEach(function(r){var ing=lI.find(function(i){return i.id==r.ingredient_id});if(ing){h+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--bdr)"><span style="flex:1;font-size:12px">'+ing.name+'</span><input type="number" value="'+r.quantity+'" style="width:60px;padding:4px;font-size:11px;text-align:center" onchange="uRQty('+r.id+',this.value,'+id+')"><span style="font-size:10px;color:var(--dim)">'+ing.unit+'</span><button class="bd" style="padding:4px 6px;font-size:10px" onclick="dR('+r.id+','+id+')">x</button></div>'}})}h+='</div>';h+='<div style="background:var(--bg);border-radius:8px;padding:10px"><div style="font-size:11px;font-weight:600;color:var(--dim);margin-bottom:6px">Tambah Bahan:</div><div style="display:flex;gap:4px"><select id="nRI" style="flex:1;padding:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;font-size:14px">';lI.forEach(function(ing){var ex=ir.find(function(r){return r.ingredient_id==ing.id});if(!ex){h+='<option value="'+ing.id+'">'+ing.name+' ('+ing.stock+' '+ing.unit+')</option>'}});h+='</select><input type="number" id="nRQ" placeholder="Qty" style="width:70px;padding:8px;background:var(--bg2);border:1px solid var(--bdr);border-radius:4px;font-size:14px;text-align:center"><button class="bp" style="flex:0 0 auto;padding:8px 12px" onclick="aR('+id+')">+</button></div></div>';h+='<div class="ma"><button class="bs" onclick="cm(\'rcpModal\')">Tutup</button></div></div>';document.getElementById('rcpC').innerHTML=h;document.getElementById('rcpModal').classList.add('show')}
 function uRQty(rid,val,mid){var r=lRcp.find(function(x){return x.id==rid});var v=parseFloat(val);if(r&&!isNaN(v)&&v>0){r.quantity=v;saveRcp();tt('Qty resep diperbarui');eR(mid);if(apiOn)aU('recipes/'+rid,{quantity:v})}}
-function aR(id){var ingId=parseInt(document.getElementById('nRI').value);var q=parseFloat(document.getElementById('nRQ').value);if(!q||q<=0){tt('Isi qty',true);return}lRcp.push({id:Date.now(),menu_item_id:id,ingredient_id:ingId,quantity:q});saveRcp();if(apiOn)aP('recipes',{menu_item_id:id,ingredient_id:ingId,quantity:q});tt('Bahan ditambah ke resep');eR(id)}
+function aR(id){var ingId=parseInt(document.getElementById('nRI').value);var q=parseFloat(document.getElementById('nRQ').value);if(!q||q<=0){tt('Isi qty',true);return}var tmp=Date.now();lRcp.push({id:tmp,menu_item_id:id,ingredient_id:ingId,quantity:q});saveRcp();if(apiOn)var tmp=Date.now();lRcp.push({id:tmp,menu_item_id:id,ingredient_id:ingId,quantity:q});saveRcp();if(apiOn)aP('recipes',{menu_item_id:id,ingredient_id:ingId,quantity:q}).then(function(r){if(r&&r.id){var x=lRcp.find(function(y){return y.id===tmp});if(x){x.id=r.id;saveRcp()}}});
 function dR(rid,mid){lRcp=lRcp.filter(function(r){return r.id!=rid});saveRcp();if(apiOn)aD('recipes/'+rid);tt('Bahan dihapus');eR(mid)}
 // ===== ABSENSI =====
 var absSel=null;
@@ -2501,8 +2482,9 @@ function resetTxns(){
     if(inp!=='HAPUS'){tt('Dibatalkan — ketikan tidak cocok',true);return}
     if(apiOn){
       tt('Menghapus data di cloud...');
-      aP('reset-data',{}).then(function(r){
-        if(r&&r.success){tt('Cloud dibersihkan ✓')}else{tt('Gagal hapus cloud: '+((r&&r.error)||'coba lagi'),true)}
+            aP('reset-data',{device:(navigator.userAgent||'').slice(0,60)}).then(function(r){
+        if(r&&r.success){tt('Cloud dibersihkan ✓');aG('settings').then(function(s){if(s&&s.last_reset_at)lsSet('pos_last_reset',s.last_reset_at)})}
+        else{tt('Gagal hapus cloud: '+((r&&r.error)||'coba lagi'),true)}
         wipeLocalTx();tt('Semua transaksi dihapus. Device lain ikut bersih otomatis.');rnd();
       });
     }else{
@@ -2513,99 +2495,197 @@ function resetTxns(){
   },{title:'Zona Berbahaya',yesLabel:'Lanjutkan'});
 }
 init();
-/* ================== SYNC CORE v5 — SATU-SATUNYA MESIN KIRIM (outbox) ================== */
+/* ================== SYNC ENGINE v4 ================== */
 function setAb(){var el=document.getElementById('ab');if(!el)return;el.className='ab '+(apiOn?'on':'off');el.innerHTML='<div class="dt"></div><span>'+(apiOn?'Online':'Local')+'</span>'}
-var _pingFail=0;
-function pingApi(){
-  aG('ping').then(function(r){
-    if(r&&r.ok===true){
-      _pingFail=0;
-      if(!apiOn){apiOn=true;setAb()}
-      flushOb();
-      return;
-    }
-    _pingFail++;
-    if(_pingFail>=2&&apiOn){apiOn=false;setAb()}
+function isPend(x){return !!x&&x.id>1e11}
+function uniqId(l){var s={};return l.filter(function(x){if(!x||x.id==null)return true;if(s[x.id])return false;s[x.id]=1;return true})}
+var idm=function(x){return x};
+var nameKey=function(x){return String(x.name||'').toLowerCase()};
+// data server = kebenaran; item lokal yang BELUM terkirim (id sementara) dipertahankan kecuali sudah ada di server
+function repl(list,rows,map,keyFn,keepOld){
+  var srv=rows.map(map),seen={};
+  if(keyFn)srv.forEach(function(x){seen[keyFn(x)]=1});
+  var keep=list.filter(function(x){
+    if(isPend(x))return !(keyFn&&seen[keyFn(x)]);
+    return keepOld?!!keepOld(x):false;
   });
+  return uniqId(srv.concat(keep));
 }
+function cashKey(x){var t=x.ts?new Date(x.ts).getTime():0,a=Math.round(parseFloat(x.amount||0));return t?(t+'|'+x.src+'|'+x.type+'|'+a):('d|'+x.date+'|'+x.src+'|'+x.type+'|'+a+'|'+(x.desc||''))}
+function mapOrder(o){
+  var items=(o.order_items||o.items||[]).map(function(it){var c=Object.assign({},it);if(typeof c.addons==='string'){try{c.addons=JSON.parse(c.addons||'[]')}catch(e){c.addons=[]}}else if(!Array.isArray(c.addons))c.addons=[];return c});
+  var ord=Object.assign({},o);delete ord.order_items;
+  return{order:ord,items:items,order_number:o.order_number};
+}
+function orderKey(o){var t=o&&o.order&&o.order.created_at?new Date(o.order.created_at).getTime():0;return t?('t:'+t+'|'+Math.round(parseFloat(o.order.total||0))):null}
+function mergeOrders(rows,from){
+  var sinceMs=from?new Date(from+'T00:00:00+07:00').getTime():0;
+  var fresh=rows.map(mapOrder),seen={},pn={};
+  lOb.forEach(function(x){if(x.path==='order'&&x.ref)pn[x.ref]=1});
+  fresh.forEach(function(o){seen['n:'+o.order_number]=1;var k=orderKey(o);if(k)seen[k]=1});
+  var keep=lO.filter(function(o){
+    if(!o||!o.order)return false;
+    if(pn[o.order_number]){var k=orderKey(o);return !(seen['n:'+o.order_number]||(k&&seen[k]))}
+    var t=o.order.created_at?new Date(o.order.created_at).getTime():0;
+    return !!(sinceMs&&t&&t<sinceMs);
+  });
+  var all=fresh.concat(keep);
+  all.sort(function(a,b){return new Date(a.order.created_at)-new Date(b.order.created_at)});
+  lO=all;lsSet('pos_orders',lO);
+}
+function dataSig(){
+  return [lO.length,lO.length?lO[lO.length-1].order_number:'',lST.length,lE.length,lCl.length,lPa.map(function(p){return p.status+p.paid_amount}).join(),lRe.map(function(p){return p.status+p.received_amount}).join(),lAst.length,lOp.length,lW.length,lBuy.length,lAtt.length,lAtt.filter(function(a){return a.clock_out}).length,lHold.length,lPD.length,lEmp.length,lAcc.length,lInv.length,lRcp.length,md.c.length,md.i.map(function(i){return i.id+':'+i.base_price+':'+i.is_active}).join(),lI.map(function(i){return i.id+':'+i.stock+':'+i.cost}).join()].join('|');
+}
+
 function flushOb(){
-  if(window._flushing)return;
-  if(!apiOn||!navigator.onLine)return;
-  if(!lOb.length)return;
+  if(window._flushing||!navigator.onLine||!lOb.length)return;
+  if(!apiOn){pingApi();return}
   window._flushing=true;
   var it=lOb[0];
-  var done=function(ok){
-    if(ok){lOb.shift();saveOb()}
+  function finish(ok,dead){
+    if(ok||dead){
+      if(dead){var dl=lsGet('pos_outbox_dead',[]);dl.push(it);lsSet('pos_outbox_dead',dl)}
+      lOb=lOb.filter(function(x){return x!==it});saveOb();
+    }
     window._flushing=false;
-    if(ok&&lOb.length)setTimeout(flushOb,80);
-  };
-  if(it.m==='D'){aD(it.path).then(function(r){done(!(r&&r.error))});return}
-  if(it.m==='U'){aU(it.path,it.payload).then(function(r){done(!(r&&r.error))});return}
-  aP(it.path,it.payload).then(function(r){
-    if(r&&r.error){window._flushing=false;return}
-    if(it.path==='order'&&it.payload&&it.payload.order){
-      var cts=it.payload.order.created_at,num=r&&r.order_number;
-      if(num&&cts){
-        srvCts[cts]=num;
-        var rr=null;
-        for(var i=0;i<lO.length;i++){if(lO[i].created_at===cts||(it.ref&&lO[i].order_number===it.ref)){rr=lO[i];break}}
-        if(rr){
-          var old=rr.order_number;
-          rr.order_number=num;
-          if(r.order&&r.order.id)rr.id=r.order.id;
-          var dirty=false;
-          for(var j=0;j<lST.length;j++){
-            if(lST[j].ref==='sale-'+old){lST[j].ref='sale-'+num;lST[j].desc=String(lST[j].desc||'').replace(old,num);lST[j].syn=1;dirty=true}
-          }
-          if(dirty)saveST();
-          lsSet('pos_orders',lO);
+    if((ok||dead)&&lOb.length)setTimeout(flushOb,60);
+  }
+  function fail(r){
+    it.tries=(it.tries||0)+1;
+    if(r&&r.error&&r.error!=='offline'&&it.tries>=5){finish(false,true);return}
+    saveOb();finish(false,false);
+  }
+  if(it.m==='D'){aD(it.path).then(function(r){r&&r.error?fail(r):finish(true)});return}
+  if(it.m==='U'){aU(it.path,it.payload).then(function(r){r&&r.error?fail(r):finish(true)});return}
+  if(it.path==='order'){
+    var s1=it.orderDone?Promise.resolve({num:it.num}):aP('order',it.payload).then(function(r){return(r&&r.error)?{err:r}:{num:r.order_number}});
+    s1.then(function(s){
+      if(s.err){fail(s.err);return}
+      var num=s.num||it.ref;
+      if(!it.orderDone){
+        it.orderDone=true;it.num=num;
+        if(num!==it.ref){
+          var rr=lO.find(function(o){return o.order_number===it.ref});if(rr)rr.order_number=num;
+          lST.forEach(function(t){if(t.ref==='sale-'+it.ref){t.ref='sale-'+num;t.desc=(t.desc||'').replace(it.ref,num)}});
+          saveST();lsSet('pos_orders',lO);
         }
+        saveOb();
       }
-              if (it.cashTx) {
-          var ct2 = Object.assign({}, it.cashTx);
-          var crId = it.cashRef;
-          
-          if (num) {
-            var newRef = 'sale-' + num;
-            ct2.ref = newRef;
-            ct2.desc = String(ct2.desc || '').replace(it.ref || '', num);
-            
-            // Update data lokal segera agar konsisten
-            var stx = lST.find(function(x){ return x.id === crId; });
-            if (stx) {
-              stx.ref = newRef;
-              stx.desc = ct2.desc;
-              saveST();
-            }
-          }
-
-          // LOGIKA PENTING: Jangan POST ulang jika tidak perlu.
-          // Jika crId < 1e11, artinya transaksi kas ini sudah punya ID server, lakukan UPDATE (PUT).
-          // Jika masih lokal (> 1e11), biarkan antrian 'cash-transactions' asli yang menanganinya dengan ref yang sudah diperbarui di atas.
-          if (crId && crId < 1e11) {
-            aU('cash-transactions/' + crId, ct2).then(function(cres){
-              if (cres && cres.error) {
-                // Jika PUT gagal, masukkan ke antrian untuk dicoba lagi
-                lOb.push({ path: 'cash-transactions/' + crId, m: 'U', payload: ct2, queued_at: Date.now() });
-                saveOb();
-              }
-            });
-          }
-        }
-function manualSync(){window._syncPausedUntil=0;window._syncing=false;_pingFail=0;tt('Menyinkronkan...');pingApi();if(apiOn)syncBG()}
-(function(){
-  if(window.__syncCoreOn)return;
-  window.__syncCoreOn=true;
-  pingApi();
-  setInterval(function(){if(navigator.onLine)pingApi()},6000);
-  window.addEventListener('online',function(){_pingFail=0;pingApi()});
-  window.addEventListener('visibilitychange',function(){
-    if(document.visibilityState!=='visible')return;
-    _pingFail=0;pingApi();
-    if(apiOn){flushOb();syncBG()}
+      if(!it.cashTx){finish(true);return}
+      var cp=Object.assign({},it.cashTx);cp.ref='sale-'+num;cp.desc=(cp.desc||'').replace(it.ref,num);
+      aP('cash-transactions',cp).then(function(r2){
+        if(r2&&r2.error){fail(r2);return}
+        if(r2&&r2.id&&it.cashRef!=null)obFixId({kind:'cash',ref:it.cashRef},r2.id);
+        if(cv==='pos')tt('Tersinkron ke Cloud ✓');
+        finish(true);
+      });
+    });
+    return;
+  }
+  aP(it.path,it.payload).then(function(r){
+    if(r&&r.error){fail(r);return}
+    if(it.kind&&it.ref!=null&&r&&r.id)obFixId(it,r.id);
+    finish(true);
   });
-})();
-/* ================== AKHIR SYNC CORE v5 ================== */
+}
+
+function pingApi(){
+  aG('ping').then(function(r){
+    var on=(r&&r.ok===true)||(r&&r.error&&r.error!=='offline');
+    if(on!==apiOn){apiOn=on;setAb();if(apiOn){flushOb();pullAll()}}
+  });
+}
+
+var _pullBusy=false,_pullN=0,_dirty=false;
+function pullAll(){
+  if(_pullBusy||!apiOn||!navigator.onLine)return;
+  if(document.visibilityState==='hidden')return;
+  if(lOb.some(function(x){return x.path==='reset-data'})){flushOb();return}
+  _pullBusy=true;_pullN++;
+  var sig0=dataSig();
+  var full=(_pullN%20===1);
+  var from=full?null:new Date(Date.now()-2*86400000).toLocaleDateString('sv-SE');
+  var fin=function(){_pullBusy=false};
+  aG('settings').then(function(s){
+    if(s&&s.error==='offline'){apiOn=false;setAb();throw 0}
+    if(s&&!s.error){
+      var lr=s.last_reset_at||'',prev=lsGet('pos_last_reset',null);
+      if(lr){if(prev!==null&&prev!==lr){wipeLocalTx();tt('Sinkron reset: transaksi lokal dibersihkan')}lsSet('pos_last_reset',lr)}
+      if(s.sn&&cv!=='settings'){st={sn:s.sn||'MASU SPACE',sl:s.sl||'M',sl_img:s.sl_img||'',sa:s.sa||'',sp:s.sp||'',se:s.se||'',tr:(s.tr!=null?parseFloat(s.tr):0.10),taxOn:!!s.taxOn,rf:s.rf||'',pw:parseInt(s.pw)||80,ap:s.ap!==false,pinAdmin:String(s.pinAdmin||'1234'),pinKaryawan:String(s.pinKaryawan||'0000'),pinFinance:String(s.pinFinance||'5678')};lsSet('pos_settings',st);aSt()}
+    }
+    var jobs=[];
+    function P(path,fn){jobs.push(aG(path).then(function(d){if(Array.isArray(d))fn(d)}).catch(function(){}))}
+    var q=from?('?from='+from):'';
+    P('transactions'+q,function(d){mergeOrders(d,from)});
+    P('cash-transactions'+q,function(d){
+      lST=repl(lST,d,function(r){return{id:r.id,date:r.date,ts:r.ts,src:r.src,type:r.type,cat:r.cat,desc:r.desc,amount:r.amount,m:r.m,ref:r.ref,investor_id:r.investor_id,syn:1}},cashKey,from?function(x){return x.date<from}:null);saveST();
+    });
+    P('expenses',function(d){lE=repl(lE,d,function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}},function(x){return[x.date,x.description||'',Math.round(parseFloat(x.amount||0))].join('|')});lsSet('pos_exp',lE)});
+    P('kas-closures',function(d){lCl=repl(lCl,d,function(r){return{id:r.id,date:r.close_date,src:r.src,tin:parseFloat(r.tin),tout:parseFloat(r.tout),expected:parseFloat(r.expected),counted:parseFloat(r.counted),variance:parseFloat(r.variance),moved_to:r.moved_to,moved_amount:parseFloat(r.moved_amount),created_at:r.created_at}},function(x){return[x.date,x.src,Math.round(x.counted),Math.round(x.expected)].join('|')});saveCl()});
+    P('payables',function(d){lPa=repl(lPa,d,function(r){return{id:r.id,date:r.p_date,supplier:r.supplier,customer:r.supplier,description:r.description,amount:parseFloat(r.amount),paid_amount:parseFloat(r.paid_amount),received_amount:0,due_date:r.due_date,status:r.status}},function(x){return[x.date,x.supplier||'',Math.round(parseFloat(x.amount))].join('|')});lsSet('pos_pa',lPa)});
+    P('receivables',function(d){lRe=repl(lRe,d,function(r){return{id:r.id,date:r.r_date,supplier:'',customer:r.customer,description:r.description,amount:parseFloat(r.amount),paid_amount:0,received_amount:parseFloat(r.received_amount),due_date:r.due_date,status:r.status}},function(x){return[x.date,x.customer||'',Math.round(parseFloat(x.amount))].join('|')});lsSet('pos_re',lRe)});
+    P('assets',function(d){lAst=repl(lAst,d,function(r){return{id:r.id,name:r.name,value:parseFloat(r.value),date:r.a_date}},function(x){return[x.name,Math.round(x.value),x.date||''].join('|')});saveAst()});
+    P('stock-opname',function(d){lOp=repl(lOp,d,function(r){return{id:r.id,date:r.date,ingredient:r.ingredient_name||'?',system:parseFloat(r.system_stock),actual:parseFloat(r.actual_stock),diff:parseFloat(r.difference),note:r.note}},function(x){return[x.date,x.ingredient,x.actual].join('|')});lsSet('pos_op',lOp)});
+    P('waste',function(d){lW=repl(lW,d,function(r){return{id:r.id,date:r.date,ingredient_id:r.ingredient_id,quantity:parseFloat(r.quantity),reason:r.reason}},function(x){return[x.date,x.ingredient_id,x.quantity,x.reason||''].join('|')});lsSet('pos_w',lW)});
+    P('stock-buys',function(d){lBuy=repl(lBuy,d,function(r){return{id:r.id,date:r.b_date,ing_id:r.ing_id,ing_name:r.ing_name,qty:parseFloat(r.qty),unit:r.unit,amount:parseFloat(r.amount),src:r.src}},function(x){return[x.date,x.ing_name,x.qty,Math.round(x.amount)].join('|')});saveBuy()});
+    P('holds',function(d){lHold=repl(lHold,d,function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}},function(x){return x.order_number});saveHold()});
+    P('profit-distributions',function(d){lPD=repl(lPD,d,idm,function(x){return x.period_label});savePD()});
+    P('profit-shares',function(d){if(d.length){lSh=d;saveSh()}});
+    P('ingredients',function(d){lI=repl(lI,d,idm,nameKey);saveIngs()});
+    P('recipes',function(d){lRcp=repl(lRcp,d,idm,function(x){return(x.menu_item_id||'')+'|'+(x.ingredient_id||'')});saveRcp()});
+    P('accounts',function(d){lAcc=repl(lAcc,d,idm,nameKey);saveAcc()});
+    P('investors',function(d){lInv=repl(lInv,d,idm,nameKey);saveInv()});
+    P('employees',function(d){lEmp=repl(lEmp,d,idm,nameKey);saveEmp()});
+    P('attendance',function(d){
+      var ak=function(a){return(a.emp_id||'')+'|'+(a.date||'')+'|'+new Date(a.clock_in).getTime()};
+      d.forEach(function(sv){
+        var k=ak(sv);
+        var ix=lAtt.findIndex(function(a){return a.id===sv.id||(isPend(a)&&!lOb.some(function(x){return x.kind==='att'&&x.ref==a.id})&&ak(a)===k)});
+        if(ix>-1)lAtt[ix]=sv;else lAtt.push(sv);
+      });
+      lAtt=uniqId(lAtt);saveAtt();
+    });
+    if(full||_pullN%4===0){
+      jobs.push(aG('menu').then(function(d){
+        if(!d||d.error||!d.i)return;
+        md.c=repl(md.c,d.c||[],idm,nameKey);
+        md.i=repl(md.i,d.i||[],idm,nameKey);
+        md.v=d.v||[];md.a=d.a||[];md.ia=d.ia||[];
+        saveMenu();
+      }).catch(function(){}));
+    }
+    return Promise.all(jobs);
+  }).then(function(){fin();if(dataSig()!==sig0)_dirty=true;if(_dirty&&afterSync())_dirty=false}).catch(fin);
+}
+
+function afterSync(){
+  try{
+    if(document.querySelector('.mo.show'))return false;
+    var ae=document.activeElement;
+    if(ae&&['INPUT','SELECT','TEXTAREA'].indexOf(ae.tagName)>-1)return false;
+    if(cv==='pos'){renderKasirBar();rCT();rMG();rHL();return true}
+    if(['dashboard','riwayat','kas','akuntansi','stok','laporan','absensi','produk'].indexOf(cv)>-1)nav(cv);
+    return true;
+  }catch(e){return true}
+}
+
+function manualSync(){tt('Sinkronisasi ke server...');_pullN=0;_pullBusy=false;pingApi();flushOb();pullAll()}
+function syncBG(){pullAll()}
+function startPolling(){}
+function startSyncEngine(){
+  if(window.__syncV4On)return;
+  window.__syncV4On=true;
+  setInterval(function(){
+    if(!navigator.onLine)return;
+    if(!apiOn){pingApi();return}
+    flushOb();pullAll();
+  },15000);
+  window.addEventListener('online',function(){pingApi()});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){pingApi();flushOb();pullAll()}});
+}
+startSyncEngine();
+setTimeout(pingApi,800);
+/* ================== AKHIR SYNC ENGINE v4 ================== */
 </script>
 </body>
 </html>
