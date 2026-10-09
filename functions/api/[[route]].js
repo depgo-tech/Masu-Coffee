@@ -21,6 +21,7 @@ export async function onRequest(context) {
   const url0 = new URL(request.url);
   const path0 = url0.pathname.replace(/^\/api\//, '').replace(/^\/+|\/+$/g, '');
 
+  // PING: selalu OK selama function hidup (dipakai badge Online/Local)
   if (path0 === 'ping') return json({ ok: true, t: Date.now() });
 
   const supabaseUrl = env.SUPABASE_URL;
@@ -54,6 +55,70 @@ export async function onRequest(context) {
       .filter(k => !['id', 'created_at', 'updated_at'].includes(k))
       .sort()
       .map(k => (o[k] === null || o[k] === undefined) ? '' : String(o[k])));
+
+    // ===== DEDUPE (kunci = isi bisnis, BUKAN timestamp) =====
+    if (resource === 'dedupe' && request.method === 'GET') {
+      const keyFor = (table, r) => {
+        const p = (...f) => f.map(x => (r[x] === null || r[x] === undefined) ? '' : String(r[x])).join('~');
+        switch (table) {
+          case 'cash_transactions': return 'cash|' + p('tx_date','src','type','cat','descr','amount');
+          case 'kas_closures': return 'cl|' + p('close_date','src','tin','tout','expected','counted','variance','moved_to','moved_amount');
+          case 'expenses': return 'ex|' + p('date','description','category','amount');
+          case 'payables': return 'pa|' + p('p_date','supplier','description','amount');
+          case 'receivables': return 're|' + p('r_date','customer','description','amount');
+          case 'assets': return 'as|' + p('name','value');
+          case 'stock_buys': return 'sb|' + p('b_date','ing_name','qty','amount');
+          case 'stock_opname': return 'so|' + p('date','ingredient_name','system_stock','actual_stock');
+          case 'waste': return 'wa|' + p('date','ingredient_id','quantity','reason');
+          case 'attendance': return 'at|' + p('emp_id','date','clock_in');
+          case 'holds': return 'ho|' + p('order_number');
+          case 'profit_distributions': return 'pd|' + p('period_label');
+          case 'ingredients': case 'categories': case 'accounts': case 'investors': case 'employees': return table + '|' + p('name');
+          case 'menu_items': return 'mi|' + p('name','base_price');
+          case 'menu_variants': return 'mv|' + p('menu_item_id','variant_group','variant_value');
+          case 'menu_item_addons': return 'ma|' + p('menu_item_id','addon_id');
+          case 'recipes': return 'rc|' + p('menu_item_id','ingredient_id');
+          default: return table + '|' + p();
+        }
+      };
+      const results = {};
+      const TABLES = ['kas_closures','cash_transactions','expenses','payables','receivables','assets','stock_buys','stock_opname','waste','attendance','holds','profit_distributions','investors','accounts','ingredients','categories','menu_items','menu_variants','menu_item_addons','recipes','employees'];
+      for (const table of TABLES) {
+        try {
+          const { data, error } = await supabase.from(table).select('*').order('id', { ascending: true }).limit(20000);
+          if (error) { results[table] = 'skip: ' + error.message; continue; }
+          if (!data || data.length < 2) { results[table] = { kept: data ? data.length : 0, removed: 0 }; continue; }
+          const seen = new Map(); const dels = [];
+          for (const r of data) { const k = keyFor(table, r); if (seen.has(k)) dels.push(r.id); else seen.set(k, true); }
+          let removed = 0, delErr = null;
+          for (let i = 0; i < dels.length; i += 200) {
+            const { error: dErr } = await supabase.from(table).delete().in('id', dels.slice(i, i + 200));
+            if (dErr) { delErr = dErr.message; break; }
+            removed += Math.min(200, dels.length - i);
+          }
+          results[table] = delErr ? ('error: ' + delErr) : { kept: data.length - dels.length, removed };
+        } catch (e) { results[table] = 'error: ' + e.message; }
+      }
+      // ORDERS: duplikat = created_at+total sama. Sisakan id terkecil; bersihkan items + mutasi kas nomor lama.
+      try {
+        const { data: ords } = await supabase.from('orders').select('id, order_number, created_at, total').order('id', { ascending: true }).limit(20000);
+        const groups = new Map(); const kill = [];
+        (ords || []).forEach(o => {
+          const k = (o.created_at || '') + '|' + (o.total == null ? '' : o.total);
+          if (groups.has(k)) kill.push(o); else groups.set(k, o);
+        });
+        for (const o of kill) {
+          await supabase.from('order_items').delete().eq('order_id', o.id);
+          if (o.order_number) {
+            await supabase.from('cash_transactions').delete().eq('ref', 'sale-' + o.order_number);
+            await supabase.from('cash_transactions').delete().like('descr', '%' + o.order_number + '%');
+          }
+          await supabase.from('orders').delete().eq('id', o.id);
+        }
+        results.orders = { kept: (ords || []).length - kill.length, removed: kill.length };
+      } catch (e) { results.orders = 'error: ' + e.message; }
+      return json({ ok: true, at: now(), results });
+    }
 
     // ===== RESET DATA =====
     if (resource === 'reset-data' && request.method === 'POST') {
@@ -89,7 +154,6 @@ export async function onRequest(context) {
       await wipe('waste', 'id');
       await wipe('journal_entries', 'id');
       await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: now() });
-      
       const resetStamp = now();
       const { data: su } = await supabase.from('settings').update({ last_reset_at: resetStamp }).eq('id', 1).select();
       if (!su || su.length === 0) {
@@ -113,7 +177,6 @@ export async function onRequest(context) {
       const expenses = body.expenses || [];
       const cash = body.cash || [];
       const results = { orders: 0, orderItems: 0, expenses: 0, cash: 0, skippedOrders: 0, skippedExpenses: 0, skippedCash: 0, errors: [] };
-
       if (Array.isArray(orders) && orders.length) {
         const nums = orders.map(o => o.order_number).filter(Boolean);
         let existSet = new Set();
@@ -134,7 +197,6 @@ export async function onRequest(context) {
           }
         }
       }
-
       if (Array.isArray(expenses) && expenses.length) {
         const { data: ex } = await supabase.from('expenses').select('date,description,amount').limit(20000);
         const ekey = e => [e.date, (e.description || ''), String(e.amount)].join('|');
@@ -153,7 +215,6 @@ export async function onRequest(context) {
           else results.expenses += ins.length;
         }
       }
-
       if (Array.isArray(cash) && cash.length) {
         for (const t of cash) {
           if (!t.src || !t.type || t.amount == null || !t.date) { results.errors.push('cash invalid'); continue; }
@@ -187,7 +248,7 @@ export async function onRequest(context) {
       }
     }
 
-        // ===== MENU =====
+    // ===== MENU =====
     if (resource === 'menu' && request.method === 'GET') {
       const [cats, items, vars, ads, ia] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
@@ -255,80 +316,65 @@ export async function onRequest(context) {
       }
     }
 
-   // ===== PLACE ORDER (IDEMPOTEN BY ORDER_NUMBER, FALLBACK CREATED_AT) =====
-if (resource === 'order' && request.method === 'POST') {
-  const { order, items, table_id } = body;
-  if (!order || !items || !Array.isArray(items) || items.length === 0) {
-    return json({ error: 'order and a non-empty items array are required' }, 400);
-  }
-
-  // 1. CEK ORDER_NUMBER TERLEBIH DAHULU
-  if (order.order_number) {
-    const { data: existingByNum } = await supabase.from('orders').select('*, order_items(*)').eq('order_number', order.order_number).maybeSingle();
-    if (existingByNum) return json({ order: existingByNum, order_number: existingByNum.order_number, duplicate: true });
-  }
-
-  // 2. FALLBACK CEK CREATED_AT + TOTAL
-  if (order.created_at) {
-    let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
-    if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
-    const { data: existingByTime } = await dupQuery.maybeSingle();
-    if (existingByTime) return json({ order: existingByTime, order_number: existingByTime.order_number, duplicate: true });
-  }
-
-  let newOrder = null;
-  let orderErr = null;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const { data: lastOrder } = await supabase.from('orders').select('order_number').order('id', { ascending: false }).limit(1).maybeSingle();
-    let orderNum = order.order_number || 'MS00001';
-    
-    if (attempt > 0 || !order.order_number) {
-      const num = lastOrder ? parseInt(lastOrder.order_number.replace(/\D/g, '')) + 1 + attempt : 1;
-      orderNum = 'MS' + String(num).padStart(5, '0');
-    }
-
-    const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
-    if (!result.error) { newOrder = result.data; orderErr = null; break; }
-    
-    orderErr = result.error;
-    if (result.error.code === '23505') {
-      const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('order_number', orderNum).maybeSingle();
-      if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
-    } else {
-      break;
-    }
-  }
-  
-  if (orderErr) return json({ error: orderErr.message }, 500);
-  if (!newOrder) return json({ error: 'Could not allocate a unique order number, please retry' }, 500);
-
-  const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
-  const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
-  if (itemsErr) {
-    await supabase.from('orders').delete().eq('id', newOrder.id);
-    return json({ error: itemsErr.message }, 500);
-  }
-
-  if (table_id) {
-    await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: now() }).eq('id', table_id);
-  }
-
-  for (const item of items) {
-    if (!item.menu_item_id) continue;
-    const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity').eq('menu_item_id', item.menu_item_id);
-    if (recipes && recipes.length > 0) {
-      for (const r of recipes) {
-        const reduceQty = parseFloat(r.quantity) * item.quantity;
-        const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', r.ingredient_id).single();
-        if (ing) {
-          await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) - reduceQty }).eq('id', r.ingredient_id);
-          await supabase.from('stock_transactions').insert({ ingredient_id: r.ingredient_id, quantity: -reduceQty, type: 'out', note: `Order ${newOrder.order_number}` });
+    // ===== PLACE ORDER (idempoten by created_at) =====
+    if (resource === 'order' && request.method === 'POST') {
+      const { order, items, table_id } = body;
+      if (!order || !items || !Array.isArray(items) || items.length === 0) {
+        return json({ error: 'order and a non-empty items array are required' }, 400);
+      }
+      if (order.created_at) {
+        let dupQuery = supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at);
+        if (order.total != null) dupQuery = dupQuery.eq('total', order.total);
+        const { data: existing } = await dupQuery.maybeSingle();
+        if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
+      }
+      let newOrder = null;
+      let orderErr = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const { data: lastOrder } = await supabase.from('orders').select('order_number').order('id', { ascending: false }).limit(1).maybeSingle();
+        let orderNum = 'MS00001';
+        if (lastOrder?.order_number) {
+          const num = parseInt(lastOrder.order_number.replace(/\D/g, '')) + 1 + attempt;
+          orderNum = 'MS' + String(num).padStart(5, '0');
+        } else if (attempt > 0) {
+          orderNum = 'MS' + String(attempt + 1).padStart(5, '0');
+        }
+        const result = await supabase.from('orders').insert({ ...order, order_number: orderNum }).select().single();
+        if (!result.error) { newOrder = result.data; orderErr = null; break; }
+        orderErr = result.error;
+        if (result.error.code === '23505' && order.created_at) {
+          const { data: existing } = await supabase.from('orders').select('*, order_items(*)').eq('created_at', order.created_at).maybeSingle();
+          if (existing) return json({ order: existing, order_number: existing.order_number, duplicate: true });
+        }
+        if (result.error.code !== '23505') break;
+      }
+      if (orderErr) return json({ error: orderErr.message }, 500);
+      if (!newOrder) return json({ error: 'Could not allocate a unique order number, please retry' }, 500);
+      const orderItems = items.map(it => ({ ...it, order_id: newOrder.id }));
+      const { error: itemsErr } = await supabase.from('order_items').insert(orderItems);
+      if (itemsErr) {
+        await supabase.from('orders').delete().eq('id', newOrder.id);
+        return json({ error: itemsErr.message }, 500);
+      }
+      if (table_id) {
+        await supabase.from('tables').update({ status: 'available', hold_order: null, updated_at: now() }).eq('id', table_id);
+      }
+      for (const item of items) {
+        if (!item.menu_item_id) continue;
+        const { data: recipes } = await supabase.from('recipes').select('ingredient_id, quantity').eq('menu_item_id', item.menu_item_id);
+        if (recipes && recipes.length > 0) {
+          for (const r of recipes) {
+            const reduceQty = parseFloat(r.quantity) * item.quantity;
+            const { data: ing } = await supabase.from('ingredients').select('stock').eq('id', r.ingredient_id).single();
+            if (ing) {
+              await supabase.from('ingredients').update({ stock: parseFloat(ing.stock) - reduceQty }).eq('id', r.ingredient_id);
+              await supabase.from('stock_transactions').insert({ ingredient_id: r.ingredient_id, quantity: -reduceQty, type: 'out', note: `Order ${newOrder.order_number}` });
+            }
+          }
         }
       }
+      return json({ order: newOrder, order_number: newOrder.order_number });
     }
-  }
-  return json({ order: newOrder, order_number: newOrder.order_number });
-}
 
     // ===== TRANSACTIONS =====
     if (resource === 'transactions' && request.method === 'GET') {
@@ -478,7 +524,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== ATTENDANCE =====
+    // ===== ATTENDANCE (POST idempoten) =====
     if (resource === 'attendance') {
       if (request.method === 'GET') {
         const date = url.searchParams.get('date');
@@ -510,7 +556,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== HOLDS =====
+    // ===== HOLDS (POST idempoten by order_number) =====
     if (resource === 'holds') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('holds').select('*').order('created_at', { ascending: false });
@@ -582,7 +628,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== PROFIT DISTRIBUTIONS =====
+    // ===== PROFIT DISTRIBUTIONS (POST idempoten by period_label) =====
     if (resource === 'profit-distributions') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('profit_distributions').select('*, profit_distribution_items(*)').order('created_at', { ascending: false });
@@ -627,7 +673,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== EXPENSES =====
+    // ===== EXPENSES (POST anti-duplikat; DELETE bersihkan mutasi kas) =====
     if (resource === 'expenses') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('expenses').select('*, accounts(name, group_label, type)').order('date', { ascending: false });
@@ -667,7 +713,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== CASH TRANSACTIONS =====
+    // ===== CASH TRANSACTIONS (Kas & Bank) — mapping date->tx_date, desc->descr =====
     if (resource === 'cash-transactions') {
       if (request.method === 'GET') {
         const { data, error } = await supabase.from('cash_transactions').select('*').order('ts', { ascending: false }).limit(5000);
@@ -681,7 +727,7 @@ if (resource === 'order' && request.method === 'POST') {
           if (!t.src || !t.type || t.amount == null) return json({ error: 'src, type, amount are required' }, 400);
           if (t.ref) {
             const { data: ex } = await supabase.from('cash_transactions').select('id').eq('ref', t.ref).limit(1);
-            if (ex && ex.length) continue;
+            if (ex && ex.length) continue; // idempoten by ref
           } else {
             try {
               let dq = supabase.from('cash_transactions').select('id')
@@ -722,7 +768,7 @@ if (resource === 'order' && request.method === 'POST') {
       }
     }
 
-    // ===== RESOURCE GENERIK =====
+    // ===== RESOURCE GENERIK (anti-duplikat persis di POST) =====
     const SYNC_TABLES = {
       'kas-closures': { t: 'kas_closures', o: 'created_at' },
       'assets':       { t: 'assets',       o: 'created_at' },
