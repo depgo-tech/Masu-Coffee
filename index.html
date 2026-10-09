@@ -431,13 +431,23 @@ function obFixId(it,newId){
 function llm(){md={c:[{id:1,name:'Coffee'},{id:2,name:'Tea'},{id:3,name:'Snack'},{id:4,name:'Pastry'},{id:5,name:'Makanan'}],i:[{id:1,category_id:1,name:'Espresso',description:'Single shot',base_price:18000,image_url:'',image_data:''},{id:2,category_id:1,name:'Americano',description:'Espresso + water',base_price:22000,image_url:'',image_data:''},{id:3,category_id:1,name:'Cappuccino',description:'Espresso + milk',base_price:28000,image_url:'',image_data:''},{id:4,category_id:1,name:'Caffe Latte',description:'Espresso + foam',base_price:32000,image_url:'',image_data:''},{id:5,category_id:1,name:'Caramel Latte',description:'Latte + caramel',base_price:35000,image_url:'',image_data:''},{id:6,category_id:1,name:'Mocha',description:'Chocolate latte',base_price:36000,image_url:'',image_data:''},{id:7,category_id:1,name:'Flat White',description:'Double shot + milk',base_price:33000,image_url:'',image_data:''},{id:8,category_id:2,name:'Green Tea Latte',description:'Matcha + milk',base_price:30000,image_url:'',image_data:''},{id:9,category_id:2,name:'Lemon Tea',description:'Fresh lemon tea',base_price:20000,image_url:'',image_data:''},{id:10,category_id:2,name:'Jasmine Tea',description:'Hot jasmine',base_price:18000,image_url:'',image_data:''},{id:11,category_id:3,name:'French Fries',description:'Crispy fries',base_price:25000,image_url:'',image_data:''},{id:12,category_id:3,name:'Pisang Goreng',description:'Fried banana',base_price:20000,image_url:'',image_data:''},{id:13,category_id:4,name:'Croissant',description:'Butter croissant',base_price:25000,image_url:'',image_data:''},{id:14,category_id:4,name:'Cheesecake',description:'NY cheesecake',base_price:30000,image_url:'',image_data:''},{id:15,category_id:5,name:'Nasi Goreng',description:'Fried rice',base_price:35000,image_url:'',image_data:''},{id:16,category_id:5,name:'Mie Goreng',description:'Fried noodles',base_price:32000,image_url:'',image_data:''}],v:[],a:[{id:1,name:'Extra Shot',price:8000},{id:2,name:'Less Ice',price:0},{id:3,name:'Whip Cream',price:5000},{id:4,name:'Caramel Syrup',price:5000},{id:5,name:'Vanilla Syrup',price:5000},{id:6,name:'Almond Milk',price:6000}],ia:[]};
 md.i.forEach(function(it){if(it.category_id===1||it.category_id===2){['Hot','Iced'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Temperature',variant_value:v,price_modifier:i*3000})});['Reg','Large'].forEach(function(v,i){md.v.push({id:Math.random(),menu_item_id:it.id,variant_group:'Size',variant_value:v,price_modifier:i*5000})});md.a.forEach(function(a){md.ia.push({menu_item_id:it.id,addon_id:a.id})})}})}
 function dedupeOrders(){
-  var seen={},out=[];
+  var seen = {}, out = [];
   lO.forEach(function(o){
-    var kn='n:'+(o.order_number||''),kt='t:'+((o.order&&o.order.created_at)||'');
-    if(seen[kn]||(kt!=='t:'&&seen[kt]))return;
-    seen[kn]=1;if(kt!=='t:')seen[kt]=1;out.push(o);
+    // Kunci unik: kombinasi order_number dan total (untuk menghindari false positive)
+    var num = o.order_number || '';
+    var total = o.order ? (o.order.total || 0) : 0;
+    var time = o.order && o.order.created_at ? o.order.created_at.slice(0, 16) : ''; // Potong detik/ms agar lebih toleran
+    var key = num ? ('n:' + num) : ('t:' + time + '_' + total);
+    
+    if (seen[key]) return; // Skip jika sudah pernah dilihat
+    seen[key] = 1;
+    out.push(o);
   });
-  if(out.length!==lO.length){lO=out;lsSet('pos_orders',lO)}
+  
+  if (out.length !== lO.length) {
+    lO = out;
+    lsSet('pos_orders', lO);
+  }
 }
 // ===== PRINTER USB / BLUETOOTH (ESC/POS) — 2 printer: KASIR + DAPUR =====
 function _newPrt(){return{mode:'',dev:null,ep:null,chr:null,svc:null,name:''}}
@@ -756,16 +766,53 @@ function syncBG(){
   aG('accounts').then(function(d){if(d&&!d.error&&Array.isArray(d)){lAcc=d;saveAcc();if(cv==='akuntansi')rAC()}});
   aG('investors').then(function(d){if(d&&!d.error&&Array.isArray(d)){lInv=d;saveInv();if(cv==='akuntansi'&&aT==='investor')rAC()}});
   if(Date.now()>_pdPause){aG('profit-distributions').then(function(d){if(d&&d.error){_pdFail++;if(_pdFail>=3){_pdPause=Date.now()+300000;_pdFail=0;tt('Sinkron bagi hasil dijeda 5 menit (server error)',true);return}}else{_pdFail=0}if(d&&!d.error&&Array.isArray(d)){if(lOb.some(function(x){return x.path==='reset-data'}))return;var pending=lPD.filter(function(p){return p.id>1e11});lPD=d.concat(pending);savePD();if(cv==='akuntansi'&&aT==='investor')rAC()}})}
-  aG('transactions').then(function(d){if(d&&!d.error&&Array.isArray(d)){
-    if(lOb.some(function(x){return x.path==='reset-data'}))return;
-    var pendingRefs={};lOb.forEach(function(x){if(x.path==='order'&&x.ref)pendingRefs[x.ref]=1});
-    d.forEach(function(o){if(o.order&&o.order.created_at)srvCts[o.order.created_at]=o.order_number});
-    var fresh=d.map(function(o){return{order:o,items:(o.order_items||[]).map(function(it){var c=Object.assign({},it);try{c.addons=JSON.parse(it.addons||'[]')}catch(e){c.addons=[]}return c}),order_number:o.order_number}});
-    var stillPending=lO.filter(function(o){return pendingRefs[o.order_number]});
-    lO=fresh.concat(stillPending);
-    dedupeOrders();lsSet('pos_orders',lO);
-    if(cv==='dashboard')rD();if(cv==='riwayat')rRO();if(cv==='akuntansi')rAC();if(cv==='pos')renderKasirBar();
-  }});
+      aG('transactions').then(function(d){
+      if (d && !d.error && Array.isArray(d)) {
+        if (lOb.some(function(x){return x.path==='reset-data'})) return;
+        
+        var pendingRefs = {};
+        lOb.forEach(function(x){ if(x.path==='order' && x.ref) pendingRefs[x.ref] = 1; });
+        
+        // 1. Buat peta data dari server
+        var serverMap = {};
+        d.forEach(function(o){
+          if (o.order && o.order.created_at) srvCts[o.order.created_at] = o.order_number;
+          var key = o.order_number || (o.order && o.order.created_at);
+          if (key) {
+            serverMap[key] = {
+              order: o,
+              items: (o.order_items || []).map(function(it){
+                var c = Object.assign({}, it);
+                try { c.addons = JSON.parse(it.addons || '[]'); } catch(e){ c.addons = []; }
+                return c;
+              }),
+              order_number: o.order_number
+            };
+          }
+        });
+
+        // 2. Merge cerdas: Timpa data lokal dengan data server (agar dapat ID server yang benar)
+        var mergedMap = Object.assign({}, serverMap);
+        
+        // 3. Tambahkan hanya order yang benar-benar lokal dan belum ada di server
+        lO.forEach(function(o){
+          var key = o.order_number || (o.order && o.order.created_at);
+          if (key && !mergedMap[key]) {
+            mergedMap[key] = o;
+          }
+        });
+
+        // 4. Konversi kembali ke array
+        lO = Object.values(mergedMap);
+        dedupeOrders();
+        lsSet('pos_orders', lO);
+        
+        if (cv === 'dashboard') rD();
+        if (cv === 'riwayat') rRO();
+        if (cv === 'akuntansi') rAC();
+        if (cv === 'pos') renderKasirBar();
+      }
+    });
   aG('expenses').then(function(d){if(d&&!d.error&&Array.isArray(d)){
     if(lOb.some(function(x){return x.path==='reset-data'}))return;
     var srv=d.map(function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}});
@@ -2514,21 +2561,37 @@ function flushOb(){
           lsSet('pos_orders',lO);
         }
       }
-      if(it.cashTx){
-        var ct2=Object.assign({},it.cashTx);
-        if(num){ct2.ref='sale-'+num;ct2.desc=String(ct2.desc||'').replace(it.ref||'',num)}
-        var crId=it.cashRef;
-        aP('cash-transactions',ct2).then(function(cres){
-          if(cres&&cres.id&&crId){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
-          else if(cres&&cres.error&&crId){lOb.push({path:'cash-transactions',payload:ct2,kind:'cash',ref:crId,queued_at:Date.now()});saveOb()}
-        });
-      }
-      done(true);return;
-    }
-    if(it.kind&&it.ref!=null&&r&&r.id)obFixId(it,r.id);
-    done(true);
-  });
-}
+              if (it.cashTx) {
+          var ct2 = Object.assign({}, it.cashTx);
+          var crId = it.cashRef;
+          
+          if (num) {
+            var newRef = 'sale-' + num;
+            ct2.ref = newRef;
+            ct2.desc = String(ct2.desc || '').replace(it.ref || '', num);
+            
+            // Update data lokal segera agar konsisten
+            var stx = lST.find(function(x){ return x.id === crId; });
+            if (stx) {
+              stx.ref = newRef;
+              stx.desc = ct2.desc;
+              saveST();
+            }
+          }
+
+          // LOGIKA PENTING: Jangan POST ulang jika tidak perlu.
+          // Jika crId < 1e11, artinya transaksi kas ini sudah punya ID server, lakukan UPDATE (PUT).
+          // Jika masih lokal (> 1e11), biarkan antrian 'cash-transactions' asli yang menanganinya dengan ref yang sudah diperbarui di atas.
+          if (crId && crId < 1e11) {
+            aU('cash-transactions/' + crId, ct2).then(function(cres){
+              if (cres && cres.error) {
+                // Jika PUT gagal, masukkan ke antrian untuk dicoba lagi
+                lOb.push({ path: 'cash-transactions/' + crId, m: 'U', payload: ct2, queued_at: Date.now() });
+                saveOb();
+              }
+            });
+          }
+        }
 function manualSync(){window._syncPausedUntil=0;window._syncing=false;_pingFail=0;tt('Menyinkronkan...');pingApi();if(apiOn)syncBG()}
 (function(){
   if(window.__syncCoreOn)return;
