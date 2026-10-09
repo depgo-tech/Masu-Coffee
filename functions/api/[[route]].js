@@ -187,7 +187,7 @@ export async function onRequest(context) {
       }
     }
 
-    // ===== MENU =====
+        // ===== MENU =====
     if (resource === 'menu' && request.method === 'GET') {
       const [cats, items, vars, ads, ia] = await Promise.all([
         supabase.from('categories').select('*').order('sort_order'),
@@ -197,7 +197,7 @@ export async function onRequest(context) {
         supabase.from('menu_item_addons').select('*'),
       ]);
       return json({ c: cats.data || [], i: items.data || [], v: vars.data || [], a: ads.data || [], ia: ia.data || [] });
-.    }
+    }
 
     // ===== CATEGORIES =====
     if (resource === 'categories') {
