@@ -1345,14 +1345,14 @@ function sKasTxEdit(id){
   else{lOb.push({path:'cash-transactions/'+id,m:'U',payload:pl,queued_at:Date.now()});saveOb();tt('Offline - perubahan diantrekan',true)}
 }
 function dKasTx(id){
-  var t=lST.find(function(x){return x.id==id});if(!t)return;
-  if(t.cat==='sale_cash'||t.cat==='sale_noncash'){tt('Penjualan dihapus lewat Riwayat Order',true);return}
-  showConfirm('Hapus mutasi ini?\n"'+(t.desc||'')+'" — '+rp(t.amount)+' ('+srcName(t.src)+')\nSaldo '+srcName(t.src)+' otomatis menyesuaikan.',function(){
-    lST=lST.filter(function(x){return x.id!==id});saveST();
-    rKas();if(cv==='pos')renderKasirBar();if(cv==='akuntansi')rAC();
-    qObD('cash-transactions/'+id,'cash',id);
-    tt('Mutasi dihapus');
-  },{title:'Hapus Mutasi',yesLabel:'Ya, Hapus'});
+var t=lST.find(function(x){return x.id==id});if(!t)return;
+if(t.cat==='sale_cash'||t.cat==='sale_noncash'){tt('Penjualan dihapus lewat Riwayat Order',true);return}
+showConfirm('Hapus mutasi ini?\n"'+(t.desc||'')+'" — '+rp(t.amount)+' ('+srcName(t.src)+')\nSaldo '+srcName(t.src)+' otomatis menyesuaikan.',function(){
+lST=lST.filter(function(x){return x.id!==id});saveST();
+rKas();if(cv==='pos')renderKasirBar();if(cv==='akuntansi')rAC();
+qObD('cash-transactions/'+id,'cash',id);
+tt('Mutasi dihapus');
+},{title:'Hapus Mutasi',yesLabel:'Ya, Hapus'});
 }
 // ===== PENGELUARAN (kasir vs finance) =====
 function oKasRiwayat(){
