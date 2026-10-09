@@ -2498,206 +2498,80 @@ function resetTxns(){
   },{title:'Zona Berbahaya',yesLabel:'Lanjutkan'});
 }
 init();
-/* ================== SYNC ENGINE v4 ================== */
+/* ================== SYNC CORE v5 ================== */
 function setAb(){var el=document.getElementById('ab');if(!el)return;el.className='ab '+(apiOn?'on':'off');el.innerHTML='<div class="dt"></div><span>'+(apiOn?'Online':'Local')+'</span>'}
-function isPend(x){return !!x&&x.id>1e11}
-function uniqId(l){var s={};return l.filter(function(x){if(!x||x.id==null)return true;if(s[x.id])return false;s[x.id]=1;return true})}
-var idm=function(x){return x};
-var nameKey=function(x){return String(x.name||'').toLowerCase()};
-// data server = kebenaran; item lokal yang BELUM terkirim (id sementara) dipertahankan kecuali sudah ada di server
-function repl(list,rows,map,keyFn,keepOld){
-  var srv=rows.map(map),seen={};
-  if(keyFn)srv.forEach(function(x){seen[keyFn(x)]=1});
-  var keep=list.filter(function(x){
-    if(isPend(x))return !(keyFn&&seen[keyFn(x)]);
-    return keepOld?!!keepOld(x):false;
-  });
-  return uniqId(srv.concat(keep));
-}
-function cashKey(x){var t=x.ts?new Date(x.ts).getTime():0,a=Math.round(parseFloat(x.amount||0));return t?(t+'|'+x.src+'|'+x.type+'|'+a):('d|'+x.date+'|'+x.src+'|'+x.type+'|'+a+'|'+(x.desc||''))}
-function mapOrder(o){
-  var items=(o.order_items||o.items||[]).map(function(it){var c=Object.assign({},it);if(typeof c.addons==='string'){try{c.addons=JSON.parse(c.addons||'[]')}catch(e){c.addons=[]}}else if(!Array.isArray(c.addons))c.addons=[];return c});
-  var ord=Object.assign({},o);delete ord.order_items;
-  return{order:ord,items:items,order_number:o.order_number};
-}
-function orderKey(o){var t=o&&o.order&&o.order.created_at?new Date(o.order.created_at).getTime():0;return t?('t:'+t+'|'+Math.round(parseFloat(o.order.total||0))):null}
-function mergeOrders(rows,from){
-  var sinceMs=from?new Date(from+'T00:00:00+07:00').getTime():0;
-  var fresh=rows.map(mapOrder),seen={},pn={};
-  lOb.forEach(function(x){if(x.path==='order'&&x.ref)pn[x.ref]=1});
-  fresh.forEach(function(o){seen['n:'+o.order_number]=1;var k=orderKey(o);if(k)seen[k]=1});
-  var keep=lO.filter(function(o){
-    if(!o||!o.order)return false;
-    if(pn[o.order_number]){var k=orderKey(o);return !(seen['n:'+o.order_number]||(k&&seen[k]))}
-    var t=o.order.created_at?new Date(o.order.created_at).getTime():0;
-    return !!(sinceMs&&t&&t<sinceMs);
-  });
-  var all=fresh.concat(keep);
-  all.sort(function(a,b){return new Date(a.order.created_at)-new Date(b.order.created_at)});
-  lO=all;lsSet('pos_orders',lO);
-}
-function dataSig(){
-  return [lO.length,lO.length?lO[lO.length-1].order_number:'',lST.length,lE.length,lCl.length,lPa.map(function(p){return p.status+p.paid_amount}).join(),lRe.map(function(p){return p.status+p.received_amount}).join(),lAst.length,lOp.length,lW.length,lBuy.length,lAtt.length,lAtt.filter(function(a){return a.clock_out}).length,lHold.length,lPD.length,lEmp.length,lAcc.length,lInv.length,lRcp.length,md.c.length,md.i.map(function(i){return i.id+':'+i.base_price+':'+i.is_active}).join(),lI.map(function(i){return i.id+':'+i.stock+':'+i.cost}).join()].join('|');
-}
-
-function flushOb(){
-  if(window._flushing)return;
-  if(!apiOn||!navigator.onLine)return;
-  if(!lOb.length)return;
-  window._flushing=true;
-  var it=lOb[0];
-  var done=function(ok){
-    if(ok){lOb.shift();saveOb()}
-    window._flushing=false;
-    if(ok&&lOb.length)setTimeout(flushOb,80);
-  };
-  if(it.m==='D'){aD(it.path).then(function(r){done(!(r&&r.error))});return}
-  if(it.m==='U'){aU(it.path,it.payload).then(function(r){done(!(r&&r.error))});return}
-  aP(it.path,it.payload).then(function(r){
-    if(r&&r.error){window._flushing=false;return}
-    if(it.path==='order'&&it.payload&&it.payload.order){
-      var cts=it.payload.order.created_at,num=r&&r.order_number;
-      if(num&&cts){
-        srvCts[cts]=num;
-        var rr=null;
-        for(var i=0;i<lO.length;i++){if(lO[i].created_at===cts||(it.ref&&lO[i].order_number===it.ref)){rr=lO[i];break}}
-        if(rr){
-          var old=rr.order_number;
-          rr.order_number=num;
-          if(r.order&&r.order.id)rr.id=r.order.id;
-          var dirty=false;
-          for(var j=0;j<lST.length;j++){
-            if(lST[j].ref==='sale-'+old){lST[j].ref='sale-'+num;lST[j].desc=String(lST[j].desc||'').replace(old,num);lST[j].syn=1;dirty=true}
-          }
-          if(dirty)saveST();
-          lsSet('pos_orders',lO);
-        }
-      }
-      
-      // === PERBAIKAN CASH TX: CEKAH DOUBLE MUTASI KAS ===
-      if(it.cashTx){
-        var ct2=Object.assign({},it.cashTx);
-        var crId=it.cashRef;
-        if(num){ct2.ref='sale-'+num;ct2.desc=String(ct2.desc||'').replace(it.ref||'',num)}
-        
-        // Jika cash tx sudah punya ID server (sudah pernah di-POST), lakukan UPDATE (jangan POST baru)
-        if(crId && crId < 1e11){
-          aU('cash-transactions/'+crId, ct2).then(function(cres){
-            if(cres&&cres.id){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
-            else if(cres&&cres.error){lOb.push({path:'cash-transactions/'+crId,m:'U',payload:ct2,queued_at:Date.now()});saveOb()}
-          });
-        } else {
-          // Jika belum punya ID server, baru lakukan POST
-          aP('cash-transactions',ct2).then(function(cres){
-            if(cres&&cres.id&&crId){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
-            else if(cres&&cres.error&&crId){lOb.push({path:'cash-transactions',payload:ct2,kind:'cash',ref:crId,queued_at:Date.now()});saveOb()}
-          });
-        }
-      }
-      done(true);return;
-    }
-    if(it.kind&&it.ref!=null&&r&&r.id)obFixId(it,r.id);
-    done(true);
-  });
-}
-
+var _pingFail=0;
 function pingApi(){
-  aG('ping').then(function(r){
-    var on=(r&&r.ok===true)||(r&&r.error&&r.error!=='offline');
-    if(on!==apiOn){apiOn=on;setAb();if(apiOn){flushOb();pullAll()}}
-  });
+aG('ping').then(function(r){
+if(r&&r.ok===true){_pingFail=0;if(!apiOn){apiOn=true;setAb()}flushOb();return;}
+_pingFail++;if(_pingFail>=2&&apiOn){apiOn=false;setAb()}
+});
 }
-
-var _pullBusy=false,_pullN=0,_dirty=false;
-function pullAll(){
-  if(_pullBusy||!apiOn||!navigator.onLine)return;
-  if(document.visibilityState==='hidden')return;
-  if(lOb.some(function(x){return x.path==='reset-data'})){flushOb();return}
-  _pullBusy=true;_pullN++;
-  var sig0=dataSig();
-  var full=(_pullN%20===1);
-  var from=full?null:new Date(Date.now()-2*86400000).toLocaleDateString('sv-SE');
-  var fin=function(){_pullBusy=false};
-  aG('settings').then(function(s){
-    if(s&&s.error==='offline'){apiOn=false;setAb();throw 0}
-    if(s&&!s.error){
-      var lr=s.last_reset_at||'',prev=lsGet('pos_last_reset',null);
-      if(lr){if(prev!==null&&prev!==lr){wipeLocalTx();tt('Sinkron reset: transaksi lokal dibersihkan')}lsSet('pos_last_reset',lr)}
-      if(s.sn&&cv!=='settings'){st={sn:s.sn||'MASU SPACE',sl:s.sl||'M',sl_img:s.sl_img||'',sa:s.sa||'',sp:s.sp||'',se:s.se||'',tr:(s.tr!=null?parseFloat(s.tr):0.10),taxOn:!!s.taxOn,rf:s.rf||'',pw:parseInt(s.pw)||80,ap:s.ap!==false,pinAdmin:String(s.pinAdmin||'1234'),pinKaryawan:String(s.pinKaryawan||'0000'),pinFinance:String(s.pinFinance||'5678')};lsSet('pos_settings',st);aSt()}
-    }
-    var jobs=[];
-    function P(path,fn){jobs.push(aG(path).then(function(d){if(Array.isArray(d))fn(d)}).catch(function(){}))}
-    var q=from?('?from='+from):'';
-    P('transactions'+q,function(d){mergeOrders(d,from)});
-    P('cash-transactions'+q,function(d){
-      lST=repl(lST,d,function(r){return{id:r.id,date:r.date,ts:r.ts,src:r.src,type:r.type,cat:r.cat,desc:r.desc,amount:r.amount,m:r.m,ref:r.ref,investor_id:r.investor_id,syn:1}},cashKey,from?function(x){return x.date<from}:null);saveST();
-    });
-    P('expenses',function(d){lE=repl(lE,d,function(e){return{id:e.id,date:e.date,category:e.category,description:e.description,amount:e.amount,method:e.payment_method,account_id:e.account_id,account:e.accounts||null}},function(x){return[x.date,x.description||'',Math.round(parseFloat(x.amount||0))].join('|')});lsSet('pos_exp',lE)});
-    P('kas-closures',function(d){lCl=repl(lCl,d,function(r){return{id:r.id,date:r.close_date,src:r.src,tin:parseFloat(r.tin),tout:parseFloat(r.tout),expected:parseFloat(r.expected),counted:parseFloat(r.counted),variance:parseFloat(r.variance),moved_to:r.moved_to,moved_amount:parseFloat(r.moved_amount),created_at:r.created_at}},function(x){return[x.date,x.src,Math.round(x.counted),Math.round(x.expected)].join('|')});saveCl()});
-    P('payables',function(d){lPa=repl(lPa,d,function(r){return{id:r.id,date:r.p_date,supplier:r.supplier,customer:r.supplier,description:r.description,amount:parseFloat(r.amount),paid_amount:parseFloat(r.paid_amount),received_amount:0,due_date:r.due_date,status:r.status}},function(x){return[x.date,x.supplier||'',Math.round(parseFloat(x.amount))].join('|')});lsSet('pos_pa',lPa)});
-    P('receivables',function(d){lRe=repl(lRe,d,function(r){return{id:r.id,date:r.r_date,supplier:'',customer:r.customer,description:r.description,amount:parseFloat(r.amount),paid_amount:0,received_amount:parseFloat(r.received_amount),due_date:r.due_date,status:r.status}},function(x){return[x.date,x.customer||'',Math.round(parseFloat(x.amount))].join('|')});lsSet('pos_re',lRe)});
-    P('assets',function(d){lAst=repl(lAst,d,function(r){return{id:r.id,name:r.name,value:parseFloat(r.value),date:r.a_date}},function(x){return[x.name,Math.round(x.value),x.date||''].join('|')});saveAst()});
-    P('stock-opname',function(d){lOp=repl(lOp,d,function(r){return{id:r.id,date:r.date,ingredient:r.ingredient_name||'?',system:parseFloat(r.system_stock),actual:parseFloat(r.actual_stock),diff:parseFloat(r.difference),note:r.note}},function(x){return[x.date,x.ingredient,x.actual].join('|')});lsSet('pos_op',lOp)});
-    P('waste',function(d){lW=repl(lW,d,function(r){return{id:r.id,date:r.date,ingredient_id:r.ingredient_id,quantity:parseFloat(r.quantity),reason:r.reason}},function(x){return[x.date,x.ingredient_id,x.quantity,x.reason||''].join('|')});lsSet('pos_w',lW)});
-    P('stock-buys',function(d){lBuy=repl(lBuy,d,function(r){return{id:r.id,date:r.b_date,ing_id:r.ing_id,ing_name:r.ing_name,qty:parseFloat(r.qty),unit:r.unit,amount:parseFloat(r.amount),src:r.src}},function(x){return[x.date,x.ing_name,x.qty,Math.round(x.amount)].join('|')});saveBuy()});
-    P('holds',function(d){lHold=repl(lHold,d,function(h){return{id:h.id,cart:h.cart,orderType:h.order_type,order_number:h.order_number,note:h.note,created_at:h.created_at}},function(x){return x.order_number});saveHold()});
-    P('profit-distributions',function(d){lPD=repl(lPD,d,idm,function(x){return x.period_label});savePD()});
-    P('profit-shares',function(d){if(d.length){lSh=d;saveSh()}});
-    P('ingredients',function(d){lI=repl(lI,d,idm,nameKey);saveIngs()});
-    P('recipes',function(d){lRcp=repl(lRcp,d,idm,function(x){return(x.menu_item_id||'')+'|'+(x.ingredient_id||'')});saveRcp()});
-    P('accounts',function(d){lAcc=repl(lAcc,d,idm,nameKey);saveAcc()});
-    P('investors',function(d){lInv=repl(lInv,d,idm,nameKey);saveInv()});
-    P('employees',function(d){lEmp=repl(lEmp,d,idm,nameKey);saveEmp()});
-    P('attendance',function(d){
-      var ak=function(a){return(a.emp_id||'')+'|'+(a.date||'')+'|'+new Date(a.clock_in).getTime()};
-      d.forEach(function(sv){
-        var k=ak(sv);
-        var ix=lAtt.findIndex(function(a){return a.id===sv.id||(isPend(a)&&!lOb.some(function(x){return x.kind==='att'&&x.ref==a.id})&&ak(a)===k)});
-        if(ix>-1)lAtt[ix]=sv;else lAtt.push(sv);
-      });
-      lAtt=uniqId(lAtt);saveAtt();
-    });
-    if(full||_pullN%4===0){
-      jobs.push(aG('menu').then(function(d){
-        if(!d||d.error||!d.i)return;
-        md.c=repl(md.c,d.c||[],idm,nameKey);
-        md.i=repl(md.i,d.i||[],idm,nameKey);
-        md.v=d.v||[];md.a=d.a||[];md.ia=d.ia||[];
-        saveMenu();
-      }).catch(function(){}));
-    }
-    return Promise.all(jobs);
-  }).then(function(){fin();if(dataSig()!==sig0)_dirty=true;if(_dirty&&afterSync())_dirty=false}).catch(fin);
+function flushOb(){
+if(window._flushing)return;
+if(!apiOn||!navigator.onLine)return;
+if(!lOb.length)return;
+window._flushing=true;
+var it=lOb[0];
+var done=function(ok){if(ok){lOb.shift();saveOb()}window._flushing=false;if(ok&&lOb.length)setTimeout(flushOb,80);};
+if(it.m==='D'){aD(it.path).then(function(r){done(!(r&&r.error))});return}
+if(it.m==='U'){aU(it.path,it.payload).then(function(r){done(!(r&&r.error))});return}
+aP(it.path,it.payload).then(function(r){
+if(r&&r.error){window._flushing=false;return}
+if(it.path==='order'&&it.payload&&it.payload.order){
+var cts=it.payload.order.created_at,num=r&&r.order_number;
+if(num&&cts){
+srvCts[cts]=num;
+var rr=null;
+for(var i=0;i<lO.length;i++){if(lO[i].created_at===cts||(it.ref&&lO[i].order_number===it.ref)){rr=lO[i];break}}
+if(rr){
+var old=rr.order_number;
+rr.order_number=num;
+if(r.order&&r.order.id)rr.id=r.order.id;
+var dirty=false;
+for(var j=0;j<lST.length;j++){
+if(lST[j].ref==='sale-'+old){lST[j].ref='sale-'+num;lST[j].desc=String(lST[j].desc||'').replace(old,num);lST[j].syn=1;dirty=true}
 }
-
-function afterSync(){
-  try{
-    if(document.querySelector('.mo.show'))return false;
-    var ae=document.activeElement;
-    if(ae&&['INPUT','SELECT','TEXTAREA'].indexOf(ae.tagName)>-1)return false;
-    if(cv==='pos'){renderKasirBar();rCT();rMG();rHL();return true}
-    if(['dashboard','riwayat','kas','akuntansi','stok','laporan','absensi','produk'].indexOf(cv)>-1)nav(cv);
-    return true;
-  }catch(e){return true}
+if(dirty)saveST();
+lsSet('pos_orders',lO);
 }
-
-function manualSync(){tt('Sinkronisasi ke server...');_pullN=0;_pullBusy=false;pingApi();flushOb();pullAll()}
-function syncBG(){pullAll()}
-function startPolling(){}
-function startSyncEngine(){
-  if(window.__syncV4On)return;
-  window.__syncV4On=true;
-  setInterval(function(){
-    if(!navigator.onLine)return;
-    if(!apiOn){pingApi();return}
-    flushOb();pullAll();
-  },15000);
-  window.addEventListener('online',function(){pingApi()});
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){pingApi();flushOb();pullAll()}});
 }
-startSyncEngine();
-setTimeout(pingApi,800);
-/* ================== AKHIR SYNC ENGINE v4 ================== */
+if(it.cashTx){
+var ct2=Object.assign({},it.cashTx);
+var crId=it.cashRef;
+if(num){ct2.ref='sale-'+num;ct2.desc=String(ct2.desc||'').replace(it.ref||'',num)}
+if(crId&&crId<1e11){
+aU('cash-transactions/'+crId,ct2).then(function(cres){
+if(cres&&cres.id){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
+else if(cres&&cres.error){lOb.push({path:'cash-transactions/'+crId,m:'U',payload:ct2,queued_at:Date.now()});saveOb()}
+});
+}else{
+aP('cash-transactions',ct2).then(function(cres){
+if(cres&&cres.id&&crId){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
+else if(cres&&cres.error&&crId){lOb.push({path:'cash-transactions',payload:ct2,kind:'cash',ref:crId,queued_at:Date.now()});saveOb()}
+});
+}
+}
+done(true);return;
+}
+if(it.kind&&it.ref!=null&&r&&r.id)obFixId(it,r.id);
+done(true);
+});
+}
+function manualSync(){window._syncPausedUntil=0;window._syncing=false;_pingFail=0;tt('Menyinkronkan...');pingApi();if(apiOn)syncBG()}
+(function(){
+if(window.__syncCoreOn)return;
+window.__syncCoreOn=true;
+pingApi();
+setInterval(function(){if(navigator.onLine)pingApi()},6000);
+window.addEventListener('online',function(){_pingFail=0;pingApi()});
+window.addEventListener('visibilitychange',function(){
+if(document.visibilityState!=='visible')return;
+_pingFail=0;pingApi();
+if(apiOn){flushOb();syncBG()}
+});
+})();
+/* ================== AKHIR SYNC CORE v5 ================== */
 </script>
 </body>
 </html>
