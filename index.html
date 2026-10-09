@@ -2541,54 +2541,63 @@ function dataSig(){
 }
 
 function flushOb(){
-  if(window._flushing||!navigator.onLine||!lOb.length)return;
-  if(!apiOn){pingApi();return}
+  if(window._flushing)return;
+  if(!apiOn||!navigator.onLine)return;
+  if(!lOb.length)return;
   window._flushing=true;
   var it=lOb[0];
-  function finish(ok,dead){
-    if(ok||dead){
-      if(dead){var dl=lsGet('pos_outbox_dead',[]);dl.push(it);lsSet('pos_outbox_dead',dl)}
-      lOb=lOb.filter(function(x){return x!==it});saveOb();
-    }
+  var done=function(ok){
+    if(ok){lOb.shift();saveOb()}
     window._flushing=false;
-    if((ok||dead)&&lOb.length)setTimeout(flushOb,60);
-  }
-  function fail(r){
-    it.tries=(it.tries||0)+1;
-    if(r&&r.error&&r.error!=='offline'&&it.tries>=5){finish(false,true);return}
-    saveOb();finish(false,false);
-  }
-  if(it.m==='D'){aD(it.path).then(function(r){r&&r.error?fail(r):finish(true)});return}
-  if(it.m==='U'){aU(it.path,it.payload).then(function(r){r&&r.error?fail(r):finish(true)});return}
-  if(it.path==='order'){
-    var s1=it.orderDone?Promise.resolve({num:it.num}):aP('order',it.payload).then(function(r){return(r&&r.error)?{err:r}:{num:r.order_number}});
-    s1.then(function(s){
-      if(s.err){fail(s.err);return}
-      var num=s.num||it.ref;
-      if(!it.orderDone){
-        it.orderDone=true;it.num=num;
-        if(num!==it.ref){
-          var rr=lO.find(function(o){return o.order_number===it.ref});if(rr)rr.order_number=num;
-          lST.forEach(function(t){if(t.ref==='sale-'+it.ref){t.ref='sale-'+num;t.desc=(t.desc||'').replace(it.ref,num)}});
-          saveST();lsSet('pos_orders',lO);
-        }
-        saveOb();
-      }
-      if(!it.cashTx){finish(true);return}
-      var cp=Object.assign({},it.cashTx);cp.ref='sale-'+num;cp.desc=(cp.desc||'').replace(it.ref,num);
-      aP('cash-transactions',cp).then(function(r2){
-        if(r2&&r2.error){fail(r2);return}
-        if(r2&&r2.id&&it.cashRef!=null)obFixId({kind:'cash',ref:it.cashRef},r2.id);
-        if(cv==='pos')tt('Tersinkron ke Cloud ✓');
-        finish(true);
-      });
-    });
-    return;
-  }
+    if(ok&&lOb.length)setTimeout(flushOb,80);
+  };
+  if(it.m==='D'){aD(it.path).then(function(r){done(!(r&&r.error))});return}
+  if(it.m==='U'){aU(it.path,it.payload).then(function(r){done(!(r&&r.error))});return}
   aP(it.path,it.payload).then(function(r){
-    if(r&&r.error){fail(r);return}
+    if(r&&r.error){window._flushing=false;return}
+    if(it.path==='order'&&it.payload&&it.payload.order){
+      var cts=it.payload.order.created_at,num=r&&r.order_number;
+      if(num&&cts){
+        srvCts[cts]=num;
+        var rr=null;
+        for(var i=0;i<lO.length;i++){if(lO[i].created_at===cts||(it.ref&&lO[i].order_number===it.ref)){rr=lO[i];break}}
+        if(rr){
+          var old=rr.order_number;
+          rr.order_number=num;
+          if(r.order&&r.order.id)rr.id=r.order.id;
+          var dirty=false;
+          for(var j=0;j<lST.length;j++){
+            if(lST[j].ref==='sale-'+old){lST[j].ref='sale-'+num;lST[j].desc=String(lST[j].desc||'').replace(old,num);lST[j].syn=1;dirty=true}
+          }
+          if(dirty)saveST();
+          lsSet('pos_orders',lO);
+        }
+      }
+      
+      // === PERBAIKAN CASH TX: CEKAH DOUBLE MUTASI KAS ===
+      if(it.cashTx){
+        var ct2=Object.assign({},it.cashTx);
+        var crId=it.cashRef;
+        if(num){ct2.ref='sale-'+num;ct2.desc=String(ct2.desc||'').replace(it.ref||'',num)}
+        
+        // Jika cash tx sudah punya ID server (sudah pernah di-POST), lakukan UPDATE (jangan POST baru)
+        if(crId && crId < 1e11){
+          aU('cash-transactions/'+crId, ct2).then(function(cres){
+            if(cres&&cres.id){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
+            else if(cres&&cres.error){lOb.push({path:'cash-transactions/'+crId,m:'U',payload:ct2,queued_at:Date.now()});saveOb()}
+          });
+        } else {
+          // Jika belum punya ID server, baru lakukan POST
+          aP('cash-transactions',ct2).then(function(cres){
+            if(cres&&cres.id&&crId){var ix=lST.findIndex(function(x){return x.id==crId});if(ix>-1){lST[ix].id=cres.id;lST[ix].syn=1;saveST()}}
+            else if(cres&&cres.error&&crId){lOb.push({path:'cash-transactions',payload:ct2,kind:'cash',ref:crId,queued_at:Date.now()});saveOb()}
+          });
+        }
+      }
+      done(true);return;
+    }
     if(it.kind&&it.ref!=null&&r&&r.id)obFixId(it,r.id);
-    finish(true);
+    done(true);
   });
 }
 
